@@ -5,7 +5,8 @@
 (import json)
 (import readline)
 (import pathlib [Path])
-(import hashlib [md5])
+(import hashlib [sha1 pbkdf2-hmac])
+(import hmac [compare-digest])
 
 ;; tomllib for python 3.11 onwards
 ;; when we move to 3.11, we can remove this
@@ -15,12 +16,11 @@
     (import tomli :as tomllib)))
 
 
-(setv config-file "config.toml")
-
-
 ;;; -----------------------------------------------------------------------------
 ;;; config functions
 ;;; -----------------------------------------------------------------------------
+
+(setv config-file "config.toml")
 
 (defn config [#* keys]
   "Get values in a toml file like a hashmap, but default to None."
@@ -92,22 +92,37 @@
     (.write f text)))
 
 ;;; -----------------------------------------------------------------------------
-;;; Other utility functions
+;;; Hashing, id and password functions
 ;;; -----------------------------------------------------------------------------
 
 (defn hash-id [s]
-  "Hex digest of md5 hash of string."
+  "Hex digest of sha1 hash of string."
   (-> (s.encode "utf-8")
-      (md5)
+      (sha1)
       (.hexdigest)))
 
 (defn short-id [x]
   "First 6 chars of hash-id."
   (cut (hash-id x) 6))
 
-;;; -----------------------------------------------------------------------------
-;;; Message and chat functions
-;;; -----------------------------------------------------------------------------
+(defn hash-pw [pw]
+  "Hash password with a secret salt."
+  (let [salt (os.urandom 24)
+        digest (pbkdf2-hmac "sha512"
+                            (pw.encode "utf-8")
+                            :iterations 100000
+                            :salt salt)]
+    {"salt" (.hex salt)
+     "hexdigest" (.hex digest)}))
+
+(defn check-pw [pw stored]
+  "Check password is correct."
+  (let [salt (bytes.fromhex (:salt stored))
+        hexdigest (:hexdigest stored)]
+    (compare-digest hexdigest (.hex (pbkdf2-hmac "sha512"
+                                                 (pw.encode "utf-8")
+                                                 :iterations 100000
+                                                 :salt salt)))))
 
 ;;; -----------------------------------------------------------------------------
 ;;; String functions
