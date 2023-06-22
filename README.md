@@ -1,51 +1,34 @@
 # CHASM - CHAracter State Manager
 
-A rough draft of a generative text adventure game that uses a large language model.
+A rough draft of a generative text adventure game that uses a large language model to generate scenes and characters.
 
 
-## Intended Features
+## Features
 
-- specify things with toml or json files
-  * initial world info, setting etc
-  * locations
-  * characters
-- persistent global event memory (vector db)
-- per character event memory (vector db)
-- per character dialogue memory (vector db)
-- character inventory (current state only; toml?)
-- protagonist is just another player but with a "human" model
-- thus it could generalise to MMP worlds
+- specify initial world with a short description
+- persistent world / locations
+- persistent global event memory (vector db) (TBD)
+- per character event memory (vector db) (TBD)
+- per character dialogue memory (vector db) (TBD)
+- character inventory (current state only; toml?) (TBD)
+- protagonist is just another player but with a "human" model (TBD)
+- thus it could generalise to MMP worlds (TBD)
   * how should many people access at the same time?
 
 
 ## State
 
 ### Saved state
-```
-world-name/
-    state.json             -- general world description, style etc. Read only.
-    locations/
-        location-name-1/
-            state.json     -- lstate
-            events.db      -- historical events for location 1
-        location-name-2/
-            ...
-    characters/
-        character-name-1/
-            state.json     -- cstate
-            events.db      -- historical events
-            chat.db        -- conversation snippets
-        character-name-2/
-            ...
-```
+
+- locations, characters, items. See `types.hy` and `state.hy`
 
 
-### Live state (in-memory)
+### Generated
 
-See `types.hy`
-
-- `chat`, per-character dialogue
-
+- scene descriptions
+- map connectivity
+- puzzles
+- chat, per-character dialogue
 
 
 ### Actions
@@ -63,15 +46,7 @@ say: dialogue, cstate -> dialogue, cstate
 
 ### Matching
 
-Functions which determine if a reference refers to an existing object or a new one.
-
-```
-is-same-space: location, location -> score
-is-same-character: character, character -> score
-nearby: location -> [location]
-```
-
-We can consider geographical location (`nearby`) when determining available locations from the current location.
+We need functions which determine if a reference refers to an existing object or a new one.
 
 
 ### Generation
@@ -83,7 +58,7 @@ new-location: coords -> location
 new-character: coords -> character
 ```
 
-`new-location` should graft in available locations at each direction. Like an 8-way linked list.
+`location.new` grafts in available locations at each direction. Like an 8-way linked list.
 
 
 ## Interface

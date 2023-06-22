@@ -7,7 +7,8 @@ Functions that manage location.
 (import random [choice])
 (import string [capwords])
 
-(import chasm.state [get-location set-location update-location])
+(import chasm.stdlib *)
+(import chasm.state [world get-location set-location update-location])
 (import chasm.types [Coords Location])
 (import chasm.chat [respond true-false system user assistant])
 
@@ -173,9 +174,11 @@ in adjacent cells, accessible or not."
   (.join "\n" (nearby-list coords :direction direction)))
   
 (defn accessible [loc]
-  "A list of the accessible Locations the player can move to."
-  (let [near-locs (nearby-list loc.coords :direction False :return-location True)]
-    (lfor dest near-locs
-          :if (accessible? loc.name dest.name)
-          dest)))
+  "A list of the accessible Locations the player can move to.
+If none are naturally accessible, pick one at random."
+  (let [near-locs (nearby-list loc.coords :direction False :return-location True)
+        dests (lfor dest near-locs
+                    :if (accessible? loc.name dest.name)
+                    dest)]
+    (or dests (choice near-locs))))
 
