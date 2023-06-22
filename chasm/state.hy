@@ -33,7 +33,7 @@ Thing in themselves and relationships between things.
 
 (setv characters (SqliteDict f"{path}/db.sqlite"
                              :tablename "characters"
-                             :autocommit True
+                             :autocommit False
                              :encode json.dumps
                              :decode json.loads))
 
@@ -53,27 +53,33 @@ Thing in themselves and relationships between things.
 
 ;;; -----------------------------------------------------------------------------
 ;;; Locations
-;;; key is coords-str, value is Location
+;;; key is string repr of coords, value is Location
 ;;; -----------------------------------------------------------------------------
 
-(setv locations (SqliteDict f"{path}/db.sqlite"
-                            :tablename "locations"
-                            :autocommit True
-                            :encode json.dumps
-                            :decode json.loads))
+#_(setv locations (SqliteDict f"{path}/db.sqlite"
+                              :tablename "locations"
+                              :autocommit False
+                              :encode json.dumps
+                              :decode json.loads))
+
+(setv locations {})
 
 (defn get-location [coords]
-  (try
-    (Location #* (get locations (str coords)))
-    (except [KeyError])))
+  (let [key (str coords)]
+    (try
+      (Location #* (get locations key))
+      (except [KeyError]))))
 
 (defn set-location [loc]
-  (setv (get locations (str loc.coords)) loc))
+  (let [key (str loc.coords)]
+    (setv (get locations key) loc)))
 
 (defn update-location [loc #** kwargs]
-  "Update a location's details. You cannot change the coordinates."
-  (let [new-loc { #** (._asdict loc) #** kwargs}]
-    (setv (get locations (str (:coords new-loc)))
+  "Update a location's details. You cannot change the coordinates
+(it replaces the location at those coords instead)."
+  (let [new-loc { #** (._asdict loc) #** kwargs}
+        key (str (:coords new-loc))]
+    (setv (get locations key)
           (Location #** new-loc))))
 
 ;;; -----------------------------------------------------------------------------
@@ -83,7 +89,7 @@ Thing in themselves and relationships between things.
 
 (setv items (SqliteDict f"{path}/db.sqlite"
                         :tablename "items"
-                        :autocommit True
+                        :autocommit False
                         :encode json.dumps
                         :decode json.loads))
 

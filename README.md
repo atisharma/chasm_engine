@@ -5,7 +5,7 @@ A rough draft of a generative text adventure game that uses a large language mod
 
 ## Intended Features
 
-- specify things with toml files
+- specify things with toml or json files
   * initial world info, setting etc
   * locations
   * characters
@@ -23,16 +23,16 @@ A rough draft of a generative text adventure game that uses a large language mod
 ### Saved state
 ```
 world-name/
-    world.state            -- general world description, style etc. Read only.
+    state.json             -- general world description, style etc. Read only.
     locations/
         location-name-1/
-            state.toml     -- lstate
+            state.json     -- lstate
             events.db      -- historical events for location 1
         location-name-2/
             ...
     characters/
         character-name-1/
-            state.toml     -- cstate
+            state.json     -- cstate
             events.db      -- historical events
             chat.db        -- conversation snippets
         character-name-2/
@@ -42,32 +42,10 @@ world-name/
 
 ### Live state (in-memory)
 
+See `types.hy`
+
 - `chat`, per-character dialogue
-- `cstate`, per-character state
-  * (not dialogue)
-  * inventory
-  * location
-  * health
-  * skills
-  * quests
-  * character type 
-  * appearance
-  * main occupation
-  * personality
-  * mental state (for NPC)
-    - near-term plan
-    - goals
-    - intention
-- `lstate`
-  * inventory
-  * available locations
-    - locations at cardinal directions.
-  * world coordinates
-  * terrain
-  * type [room, building, campus, region]
 
-
-## Functions
 
 
 ### Actions
@@ -75,10 +53,11 @@ world-name/
 Functions which modify state.
 
 ```
-move: cstate -> cstate
+move: modifies a character's coords
+use: character, item -> event
+interact-location: cstate, lstate -> event
 interact-character: [cstate] -> [cstate]
-interact-location: cstate, lstate -> cstate, lstate
-say: dialogue -> dialogue
+say: dialogue, cstate -> dialogue, cstate
 ```
 
 
@@ -100,8 +79,8 @@ We can consider geographical location (`nearby`) when determining available loca
 Functions which generate a new NPC or location
 
 ```
-new-location: location -> location
-new-character: -> character
+new-location: coords -> location
+new-character: coords -> character
 ```
 
 `new-location` should graft in available locations at each direction. Like an 8-way linked list.

@@ -12,17 +12,19 @@ Various types used throughout.
   (-> (x._asdict)
       (json.dumps)))
 
-(setv Location (namedtuple "Location" ["name"
-                                       "facts"
-                                       "coords" ; [x y], loaded as a list by json loads
-                                       "location_type" ; one of [room, building, campus, city, region, country]
-                                       "accessible" ; list of accessible locations
-                                       "terrain"]))
+(defn Coords [x y]
+  "Just a dict of eastings and northings."
+  {"x" x "y" y})
+
+(setv Location (namedtuple "Location" ["coords" ; {"x" x "y" y}
+                                       "name"
+                                       "events"]))
 
 (setv Item (namedtuple "Item" ["name"
                                "item_type"
                                "facts"
                                "owner" ; None if no character has in their inventory
+                               "coords" ; None if it's being carried
                                "is_fixed" ; bool, is fixed in place at a location or not
                                "abilities"]))
 

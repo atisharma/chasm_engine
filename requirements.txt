@@ -1,2 +1,5 @@
 hy
 hyrule
+sqlitedict
+openai
+tomli

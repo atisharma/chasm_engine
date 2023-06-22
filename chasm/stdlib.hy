@@ -1,12 +1,16 @@
 (require hyrule.argmove [-> ->>])
 (require hyrule.control [unless])
 
+(import importlib)
 (import os)
+(import re)
 (import json)
 (import readline)
 (import pathlib [Path])
 (import hashlib [sha1 pbkdf2-hmac])
 (import hmac [compare-digest])
+
+(import jaro)
 
 ;; tomllib for python 3.11 onwards
 ;; when we move to 3.11, we can remove this
@@ -15,6 +19,29 @@
   (except [ModuleNotFoundError]
     (import tomli :as tomllib)))
 
+
+;;; -----------------------------------------------------------------------------
+;;; generic functions
+;;; -----------------------------------------------------------------------------
+
+(defn mreload [#* modules]
+  "Reload a whole list of modules."
+  (->> modules
+       (map importlib.reload) 
+       (list)))
+
+; TODO: rewrite as macros
+(defn first [xs]
+  (get xs 0))
+
+(defn rest [xs]
+  (cut xs 1 None))
+
+(defn last [xs]
+  (get xs -1))
+
+(defn butlast [xs]
+  (cut xs 0 -1))
 
 ;;; -----------------------------------------------------------------------------
 ;;; config functions
@@ -127,3 +154,29 @@
 ;;; -----------------------------------------------------------------------------
 ;;; String functions
 ;;; -----------------------------------------------------------------------------
+
+(defn sstrip [s]
+  "Strip surrounding whitespace, quotes, '.',
+force to lowercase, remove 'the' from start of line."
+  (re.sub r"^the " ""
+          (-> s
+              (.strip "\n\t .\"'`")
+              (.lower))))
+
+(defn similar [s1 s2 [threshold 0.8]] ; -> bool
+  "Two strings are similar, based on Jaro-Winkler algorithm."
+  (let [cs1 (sstrip s1)
+        cs2 (sstrip s2)
+        score (jaro.jaro-winkler-metric cs1 cs2)]
+    (> score threshold)))
+
+(defn debullet [markdown-list] ; -> list[str]
+  "Just remove the bullet point bits from a markdown list and return items as a list."
+  (lfor l (.split markdown-list "\n")
+        (or (match (cut l 2)
+                   "- " (cut l 2 None)
+                   "* " (cut l 2 None))
+            (match (cut l 4)
+                   "[*] " (cut l 4 None)
+                   "[ ] " (cut l 4 None))
+            l)))
