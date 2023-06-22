@@ -33,7 +33,7 @@ Thing in themselves and relationships between things.
 
 (setv characters (SqliteDict f"{path}/db.sqlite"
                              :tablename "characters"
-                             :autocommit False
+                             :autocommit True
                              :encode json.dumps
                              :decode json.loads))
 
@@ -56,13 +56,11 @@ Thing in themselves and relationships between things.
 ;;; key is string repr of coords, value is Location
 ;;; -----------------------------------------------------------------------------
 
-#_(setv locations (SqliteDict f"{path}/db.sqlite"
-                              :tablename "locations"
-                              :autocommit False
-                              :encode json.dumps
-                              :decode json.loads))
-
-(setv locations {})
+(setv locations (SqliteDict f"{path}/db.sqlite"
+                            :tablename "locations"
+                            :autocommit True
+                            :encode json.dumps
+                            :decode json.loads))
 
 (defn get-location [coords]
   (let [key (str coords)]
@@ -89,7 +87,7 @@ Thing in themselves and relationships between things.
 
 (setv items (SqliteDict f"{path}/db.sqlite"
                         :tablename "items"
-                        :autocommit False
+                        :autocommit True
                         :encode json.dumps
                         :decode json.loads))
 
