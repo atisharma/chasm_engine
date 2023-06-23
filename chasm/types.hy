@@ -3,12 +3,14 @@ Various types used throughout.
 "
 (require hyrule.argmove [-> ->>])
 
+(import chasm [log])
+
 (import json)
 (import collections [namedtuple])
 
 
 (defn as-json [x]
-  "Format a namedtuple as json."
+  "Format a namedtuple as a json string with fields."
   (-> (x._asdict)
       (json.dumps)))
 
@@ -16,9 +18,9 @@ Various types used throughout.
   "Just a dict of eastings and northings."
   {"x" x "y" y})
 
-(setv Location (namedtuple "Location" ["coords" ; {"x" x "y" y}
-                                       "name"
-                                       "events"]))
+(setv Place (namedtuple "Place" ["coords"
+                                 "name"
+                                 "rooms"]))
 
 (setv Item (namedtuple "Item" ["name"
                                "item_type"
@@ -28,25 +30,26 @@ Various types used throughout.
                                "is_fixed" ; bool, is fixed in place at a location or not
                                "abilities"]))
 
+;; TODO: reduce number of fields
+(setv Character (namedtuple "Character" ["inventory"
+                                         "coords"
+                                         "memories" ; db of chats? Events?
+                                         "health"
+                                         "skills"
+                                         "quests"
+                                         "appearance"
+                                         "occupation"
+                                         "personality"
+                                         "mental_state"
+                                         "goals"
+                                         "anti_goals"
+                                         "intention"]))
+
+
 ;; should be an event db? sqlite table or vectordb?
 (setv Event (namedtuple "Event" ["name"
                                  "facts"
                                  "coords"
                                  "description"]))
 
-(setv Character (namedtuple "Character" ["inventory"
-                                         "coords"
-                                         "memory" ; db of chats
-                                         "health"
-                                         "skills"
-                                         "quests"
-                                         "species"
-                                         "appearance"
-                                         "occupation"
-                                         "personality"
-                                         "mental_state"
-                                         "plan"
-                                         "goals"
-                                         "intention"]))
-
-
+;; chats? Similarity search with threshold?

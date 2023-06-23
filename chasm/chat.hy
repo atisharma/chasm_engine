@@ -3,12 +3,27 @@ Chat management functions.
 "
 (require hyrule.argmove [-> ->>])
 
+(import chasm [log])
+
 (import functools [partial])
 
 (import openai [ChatCompletion])
 
-(import .stdlib *)
+(import chasm.stdlib *)
 
+
+;;; -----------------------------------------------------------------------------
+
+(defn token-count [x]
+  "The number of tokens, roughly, of a chat history (or anything with a meaningful __repr__)."
+  ; avoid transformers import unless necessary
+  (import transformers [LlamaTokenizerFast])
+  (let [tokenizer (LlamaTokenizerFast.from-pretrained (config "storage" "tokenizer")
+                                              :add-eos-token True)]
+    (->> x
+         (str)
+         (tokenizer.encode)
+         (len))))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Message functions
@@ -56,7 +71,7 @@ Return modified dialogue message or None."
 Return dialogue." 
   (->> messages
        (map (partial msg->dlg user-name assistant-name))
-       (filter None)
+       (sieve)
        (list)))
 
 (defn dlg->msg [user-name assistant-name message]

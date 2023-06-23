@@ -1,6 +1,8 @@
 (require hyrule.argmove [-> ->>])
 (require hyrule.control [unless])
 
+(import chasm [log])
+
 (import importlib)
 (import os)
 (import re)
@@ -42,6 +44,9 @@
 
 (defn butlast [xs]
   (cut xs 0 -1))
+
+(defn sieve [xs]
+  (filter None xs))
 
 ;;; -----------------------------------------------------------------------------
 ;;; config functions
@@ -163,6 +168,12 @@ force to lowercase, remove 'the' from start of line."
               (.strip "\n\t .\"'`")
               (.lower))))
 
+(defn itemize [markdown-list] ; -> str
+  "Get the main items from a markdown list."
+  (->> markdown-list
+       (re.sub r"^[\*\-\.(\[ \])\d]*" "" :flags re.M) ; remove bullet points
+       (re.sub r"^([\w ']*\w).*$" r"\1" :flags re.M))) ; get main item
+  
 (defn similar [s1 s2 [threshold 0.8]] ; -> bool
   "Two strings are similar, based on Jaro-Winkler algorithm."
   (let [cs1 (sstrip s1)
@@ -170,13 +181,3 @@ force to lowercase, remove 'the' from start of line."
         score (jaro.jaro-winkler-metric cs1 cs2)]
     (> score threshold)))
 
-(defn debullet [markdown-list] ; -> list[str]
-  "Just remove the bullet point bits from a markdown list and return items as a list."
-  (lfor l (.split markdown-list "\n")
-        (or (match (cut l 2)
-                   "- " (cut l 2 None)
-                   "* " (cut l 2 None))
-            (match (cut l 4)
-                   "[*] " (cut l 4 None)
-                   "[ ] " (cut l 4 None))
-            l)))

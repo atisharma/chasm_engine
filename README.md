@@ -1,7 +1,8 @@
 # CHASM - CHAracter State Manager
 
-A rough draft of a generative text adventure game that uses a large language model to generate scenes and characters.
+Chasm is a *generative text adventure game*. It uses generative artificial intelligence to generate scenes and characters as you play. Unlike role-playing in ChatGPT or similar, important state persists (locations, characters, dialogue etc.)
 
+It is still being written.
 
 ## Features
 
@@ -18,7 +19,7 @@ A rough draft of a generative text adventure game that uses a large language mod
 
 ## State
 
-### Saved state
+### Persistent state
 
 - locations, characters, items. See `types.hy` and `state.hy`
 
