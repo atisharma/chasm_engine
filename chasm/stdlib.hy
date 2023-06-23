@@ -28,9 +28,10 @@
 
 (defn mreload [#* modules]
   "Reload a whole list of modules."
-  (->> modules
-       (map importlib.reload) 
-       (list)))
+  (for [m modules]
+    (try (importlib.reload m)
+         (except [e [ImportError]] 
+            (print e)))))
 
 ; TODO: rewrite as macros
 (defn first [xs]
@@ -174,10 +175,21 @@ force to lowercase, remove 'the' from start of line."
        (re.sub r"^[\*\-\.(\[ \])\d]*" "" :flags re.M) ; remove bullet points
        (re.sub r"^([\w ']*\w).*$" r"\1" :flags re.M))) ; get main item
   
+(defn trim-prose [s]
+  "Remove any incomplete sentence."
+  (let [paras (-> s
+                  (.strip)
+                  (.split "\n\n")
+                  (sieve)
+                  (list))]
+    (.join "\n\n"
+           (if (in (last (last paras)) ".?!")
+               paras
+               (cut paras -1)))))
+
 (defn similar [s1 s2 [threshold 0.8]] ; -> bool
   "Two strings are similar, based on Jaro-Winkler algorithm."
   (let [cs1 (sstrip s1)
         cs2 (sstrip s2)
         score (jaro.jaro-winkler-metric cs1 cs2)]
     (> score threshold)))
-

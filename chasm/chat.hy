@@ -8,21 +8,20 @@ Chat management functions.
 (import functools [partial])
 
 (import openai [ChatCompletion])
+(import tiktoken)
 
 (import chasm.stdlib *)
 
 
 ;;; -----------------------------------------------------------------------------
 
-(defn token-count [x]
-  "The number of tokens, roughly, of a chat history (or anything with a meaningful __repr__)."
-  ; avoid transformers import unless necessary
-  (import transformers [LlamaTokenizerFast])
-  (let [tokenizer (LlamaTokenizerFast.from-pretrained (config "storage" "tokenizer")
-                                              :add-eos-token True)]
+(defn token-length [x]
+  "The number of tokens, roughly, of a chat history (or anything with a meaningful __repr__).
+We use tiktoken because I don't want to install pytorch."
+  (let [encoding (tiktoken.get-encoding "cl100k_base")]
     (->> x
          (str)
-         (tokenizer.encode)
+         (encoding.encode)
          (len))))
 
 ;;; -----------------------------------------------------------------------------
@@ -48,6 +47,14 @@ Chat management functions.
 ;;; -----------------------------------------------------------------------------
 ;;; Chat functions
 ;;; -----------------------------------------------------------------------------
+
+; TODO: extract and store events of chopped bit
+
+(defn truncate [messages [length 1500]]
+  "Hack until below length."
+  (while (> (token-length messages) length)
+    (setv messages (cut messages 2 None)))
+  messages)
 
 (defn prepend [x #^list l]
   "Prepend x at the front of list l."

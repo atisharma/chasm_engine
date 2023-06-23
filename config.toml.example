@@ -1,0 +1,28 @@
+protagonist = "Protagonist"
+world = "worlds/generic-world-name"
+
+# context_length is the context window of the model.
+context_length = 2000
+
+[storage]
+# if you change the embedding your previous data will be unreadable
+#embedding = "all-mpnet-base-v2"
+#tokenizer = "oobabooga/llama-tokenizer"
+chunk-size-tokens = 380
+sources = 6
+
+[OpenAI]
+# params passed to OpenAI's ChatCompletion.create method
+# Oobabooga's text-generation-webui works well using the "openai" extension
+# and setting the base url appropriately. Exllama is fast.
+# I've been using Guanaco and Wizard-Vicuna-Uncensored, both 30B 4bit, with good results.
+# The 13B are a bit hit-and-miss.
+model = "gpt-3.5-turbo"
+api_base = "http://localhost:5001"
+#api_base = "https://api.openai.com/v1"
+api_key = "sk-super-secret"
+
+# StarChat
+temperature = 0.2
+top_p = 0.95
+

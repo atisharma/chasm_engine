@@ -31,16 +31,19 @@ Various types used throughout.
                                "abilities"]))
 
 ;; TODO: reduce number of fields
-(setv Character (namedtuple "Character" ["inventory"
-                                         "coords"
-                                         "memories" ; db of chats? Events?
-                                         "health"
-                                         "skills"
-                                         "quests"
+(setv Character (namedtuple "Character" [; immutable traits
+                                         "name"
                                          "appearance"
                                          "occupation"
                                          "personality"
-                                         "mental_state"
+                                         ; mutable traits
+                                         "inventory"
+                                         "memories" ; db of chats? Events?
+                                         "coords"
+                                         "health"
+                                         "skills"
+                                         "quests"
+                                         "emotions"
                                          "goals"
                                          "anti_goals"
                                          "intention"]))

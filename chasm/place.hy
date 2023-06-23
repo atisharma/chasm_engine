@@ -12,7 +12,7 @@ Functions that manage place.
 (import string [capwords])
 
 (import chasm.stdlib *)
-(import chasm.state [world get-place set-place update-place])
+(import chasm.state [news world get-place set-place update-place])
 (import chasm.types [Coords Place])
 (import chasm.chat [respond true-false system user assistant])
 
@@ -52,48 +52,22 @@ Respond with only either 'Yes' or 'No'.")
 
 Your task is to generate a single, interesting name for {terrain} that you want to explore, that's not one nearby, in keeping with the story's setting. Avoid adjectives used in nearby places. Reply with just the name.
 Examples:
-'Mysterious Ruins'
-'Enchanted Forest'
-'Block of flats'
+'Mysterious ruins'
+'Enchanted forest'
+'Residential buildings'
 'Corner shop'
 'Small White House'
-'Crossroads'
+'Junction'
 'Ship'
 'Castle'
 'Secret Cave'")]
-        response (-> (respond messages :max-tokens 15))
+        response (-> (respond messages :max-tokens 50))
         m (re.search r"[\"']([\w\d][\w\d ']+[\w\d])[\"']" response)]
     (-> (if m (m.group) response) 
         sstrip
         capwords)))
 
-(defn _defunct?_name [nearby-places [hint None]] ; TODO: REMOVE once name-place is validated
-  "Make up a place from its neighbours."
-  (-> (respond [(system f"{world}
-Your purpose is to make up names of places in keeping with the game environment.")
-                (user "Places may be outdoor spaces buildings, or rooms within buildings. They vary in size, so we split up very large areas (for example a forest or beach) into at most two or three smaller ones. A new place is often unlike nearby places. If you have doubts, don't ask questions, just try.
-I will you send a long message describing the environment for the game. Please acknowledge you understand the request.
-After that, I will give your next command.")
-                (assistant "Understood.")
-                (user f"Nearby places and their direction from here:
-{nearby-places}")
-                (assistant "I understand the game environment.")
-                (user "Generate a single, interesting name for a new place that the player coming from nearby would want to explore. Don't use any word already used in names of nearby places. Reply with just the name. For example:
-'The Village'
-'Kitchen'
-'Grove'
-'Mysterious Cove'
-'Cathedral'
-'Crypt'
-'Beach'
-")]
-                ;(assistant "The new generated name is:")]
-               :max-tokens 15)
-               ;:top-p 0.25)
-      (sstrip)
-      (capwords)))
-
-(defn gen-description [nearby-places placename [paragraphs 1]]
+(defn gen-description [nearby-places placename rooms-str [paragraphs 1]]
   "Make up a short place description from its name."
   (let [length (if (in paragraphs [1 "one"])
                    "no more than a single paragraph"
@@ -105,16 +79,15 @@ After that, I will give your next command.")
 Nearby places:
 {nearby-places}
 
-The reader's location is '{placename}'.")
+The reader's location is '{placename}'.
+{rooms-str}
+
+{(news)}")
                   (assistant "I understand the story's environment.")
                   (user f"Generate a vivid description of {length} of what the reader ('you') sees, hears, smells and touches from {placename}.")
                   (assistant f"The description of '{placename}' is:")]
-        response (respond messages :max-tokens (* (inc paragraphs) 150))
-        paras (-> response (.strip) (.split "\n\n") (sieve) (list))]
-    (.join "\n\n"
-           (if (in (last (last paras)) ".?!")
-               paras
-               (cut paras -1)))))
+        response (respond messages :max-tokens (* (inc paragraphs) 150))]
+    (trim-prose response)))
 
 (defn gen-facts [nearby-places placename]
   "Make up invariant facts about a place."
@@ -253,11 +226,24 @@ If none are naturally accessible, pick a nearby one at random."
           (or (get-place _coords)
               (new _coords)))))
 
+(defn rooms [coords [as-string True]]
+  (let [place (get-place coords)
+        rooms-str (.join ", " place.rooms)
+        room-str (if place.rooms
+                     f"{place.name} has the following rooms: {rooms-str}"
+                     "")]
+    (if as-string
+        room-str
+        place.rooms)))
+
 (defn describe [coords [paragraphs 1]]
   "Return a description of the location."
   (let [place (get-place coords)]
     (if place
-        (gen-description (nearby-str coords) place.name :paragraphs paragraphs)
+        (gen-description (nearby-str coords)
+                         place.name
+                         (rooms coords)
+                         :paragraphs paragraphs)
         "I can't even being to tell you how completely lost you are. How did you get here?")))
 
 (defn name [coords]

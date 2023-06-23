@@ -12,7 +12,10 @@ The main REPL where we read output and issue commands.
 (import chasm.stdlib *)
 (import chasm [place character])
 (import chasm.types [Coords])
-(import chasm.chat [chat append prepend user assistant])
+(import chasm.state [world world-name news])
+(import chasm.chat [respond token-length
+                    truncate append prepend
+                    user assistant system])
 (import chasm.interface [banner
                          clear
                          console
@@ -21,13 +24,14 @@ The main REPL where we read output and issue commands.
                          status-line
                          print-message
                          print-messages
-                         format-msg
                          info
                          error
                          exception])
 
 
 ;; TODO: cache recent locations, adjust verbosity accordingly
+
+;;; -----------------------------------------------------------------------------
 
 (defn is-quit [line]
   (or (.startswith line "/q")
@@ -41,20 +45,73 @@ The main REPL where we read output and issue commands.
 
 (defn is-go [line]
   (let [[cmd _ dirn] (.partition line " ")]
-    (when (.startswith cmd "/g")
-      dirn)))
+    (cond (.startswith cmd "/g") dirn
+          (in cmd ["/n" "/e" "/s" "/w" "/ne" "/se" "/sw" "/nw"]) (rest cmd))))
   
+;;; -----------------------------------------------------------------------------
+
+(defn parse [line]
+  "Lines starting with `!` are sent here.
+Evaluate a Hy form."
+  (let [result (-> line
+                   (rest)
+                   (hy.reader.read)
+                   (hy.eval))]
+    (when result
+      (info result :style "green"))))
+
 (defn move [coords dirn]
   "Extend the map. Adjust the coordinates. Describe. Return msg-pair."
   (let [new-coords (place.go dirn coords)]
     (when new-coords
-      (place.extend-map new-coords)
-      {"coords" new-coords
-       "msg" (assistant (place.describe new-coords :paragraphs 0))})))
+      (with [s (spinner "Writing...")]
+        (place.extend-map new-coords)
+        {"coords" new-coords
+         "msg" (assistant (.join "\n\n"
+                                 [f"**{(place.name new-coords)}**"
+                                  (place.describe new-coords :paragraphs 0)]))}))))
 
-(defn look [coords]
+(defn look [coords [paragraphs 2]]
   "Describe the surroundings."
-  (assistant (place.describe coords :paragraphs 1)))
+  ; TODO: speak of characters and items. Look at a character.
+  (with [s (spinner "Writing...")]
+    (assistant (place.describe coords :paragraphs paragraphs))))
+
+(defn print-map [coords]
+  "Get your bearings."
+  (print-message (system (.join "\n\n"
+                             [f"***{(place.name coords)}***"
+                              f"*{(place.nearby-str coords)}*"]))))
+
+(defn converse [messages coords]
+  "Carry on a conversation, in the fictional universe."
+  (let [story-guidance "The following is a passage from a gripping and enjoyable story.
+The reader interjects with questions. These are meant in the context of the story.
+You respond as the author. You must never break the 'fourth wall'. Ignore off-topic questions.
+
+Story setting: {world}"
+        location-guidance f"{(news)}
+You are at {(place.name coords)}. {(place.rooms coords)}.
+Nearby are:
+{(place.nearby-str coords)}"]
+    (with [s (spinner "Writing...")]
+      (->> messages
+           (prepend (system story-guidance))
+           (append (system location-guidance))
+           (respond)
+           (trim-prose)
+           (assistant)))))
+
+(defn status [coords messages]
+  (clear-status-line)
+  (status-line
+    (.join " | "
+           [f"[italic blue]{world-name}[/italic blue]"
+            f"[italic cyan]{(place.name coords)}[/italic cyan]"
+            f"[italic magenta]{(.join ", " (place.rooms coords :as-string False))}[/italic magenta]"
+            f"{(:x coords)} {(:y coords)}"
+            f"{(+ (token-length world) (token-length messages))} tkns"])))
+
 
 ;;; -----------------------------------------------------------------------------
 
@@ -68,25 +125,38 @@ it, and passes it to the appropriate action."
   (let [history-file (os.path.join (os.path.expanduser "~") ".chasm_history")
         username (config "user")
         coords (with [s (spinner "Spawning...")]
-                 (character.spawn username :box [1 1]))
-        messages []]
+                 (character.spawn username :box [-3 3]))
+        messages [(assistant (.join "\n\n"
+                                    [f"**{(place.name coords)}**"
+                                     (place.describe coords :paragraphs 1)]))]]
     (try
+      (readline.set-history-length 100)
       (readline.read-history-file history-file)
       (except [e [FileNotFoundError]]))
+    (console.print)
+    (print-message (system f"*{world}*"))
+    (print-message (last messages))
     (while True
-      (clear-status-line)
-      (status-line f"{(:x coords)} {(:y coords)} | [italic cyan]{(place.name coords)}[/italic cyan]")
       (try ; ----- parser block ----- 
+        (setv messages (truncate messages
+                                 :length (- (config "context_length")
+                                            (token-length world)
+                                            750))) 
+        (status coords messages)
         (let [line (.strip (rlinput "> "))
               dirn (go? line)
               user-msg (user line)
-              result (cond (quit? line) (break)
+              result (cond (.startswith line "!") (parse line)
+                           (quit? line) (break)
                            (look? line) (look coords)
+                           (.startswith line "/map") (print-map coords)
+                           (.startswith line "/system") (print-message (system (.join "\n"[world (news)])))
                            (hist? line) (print-messages messages)
                            dirn (let [x (move coords dirn)]
                                   (setv coords (:coords x))
                                   (:msg x))
-                           line (chat (append user-msg messages)))]
+                           (.startswith line "/") (error "I didn't understand your command.")
+                           line (converse (append user-msg messages) coords))]
           (when result
             (print-message result)
             (.extend messages [user-msg result])))
@@ -98,7 +168,7 @@ it, and passes it to the appropriate action."
             (import traceback)
             (traceback.print-exception e :file f))
           (exception)
-          (raise e))))
+          (sleep 30))))
+          ;(raise e))))
     (readline.write-history-file history-file)
     (clear)))
-    

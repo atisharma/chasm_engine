@@ -3,6 +3,8 @@ Functions that relate to output on the screen.
 "
 (require hyrule.argmove [-> ->> as->])
 
+(import re)
+
 (import rich.console [Console])
 (import rich.padding [Padding])
 (import rich.markdown [Markdown])
@@ -46,6 +48,20 @@ Functions that relate to output on the screen.
 ;;; Printers
 ;;; -----------------------------------------------------------------------------
 
+(defn info [s [style "blue italic"]]
+  "Print an information string to the screen."
+  (print-markdown s :style style))
+
+(defn error [s [style "red italic"]]
+  "Print an error string to the screen."
+  (print-markdown s :style style))
+
+(defn exception []
+  "Formats and prints the current exception."
+  (console.print-exception :max-frames 2))
+
+;;; -----------------------------------------------------------------------------
+
 (defn banner []
   (console.clear)
   (setv banner-text r"      _:
@@ -62,29 +78,14 @@ Functions that relate to output on the screen.
                        :overflow "crop"))
   (console.print "[default]"))
 
-(defn print-messages [messages]
-  "Format and print messages to the terminal."
-  (console.rule)
-  (console.print)
-  (for [msg messages]
-    (print-message msg :padding #(0 4 1 0)))
-  (console.rule))
-
 (defn print-markdown [s [style None] [padding #(0 3 0 0)]]
   "Print some markdown to the screen."
+  (print "\033[K" :end "") ; clear to end of line for new input
   (-> s
       (sanitize-markdown)
       (Markdown)
       (Padding padding)
       (console.print :justify "left" :style style)))
-
-(defn info [s [style "blue italic"]]
-  "Print an information string to the screen."
-  (print-markdown s :style style))
-
-(defn error [s [style "red italic"]]
-  "Print an error string to the screen."
-  (print-markdown s :style style))
 
 (defn status-line [s]
   "Print a status line at the bottom of the screen."
@@ -95,7 +96,8 @@ Functions that relate to output on the screen.
   (console.rule)
   ; cropping not working :(
   (let [max-length-s (+ console.width 24)
-        truncated-s (if (> (len s) max-length-s)
+        s-without-markup (re.sub r"\[[/\w ]*\]" "" s)
+        truncated-s (if (> (len s-without-markup) max-length-s)
                         (+ (cut s 0 max-length-s) "…")
                         s)]
     (console.print truncated-s
@@ -115,23 +117,28 @@ Functions that relate to output on the screen.
   (print "\033[1A" :end "") ; up one line
   (print "\033[1A" :end "")) ; up one line
   
-(defn exception []
-  "Formats and prints the current exception."
-  (console.print-exception))
+(defn print-messages [messages]
+  "Format and print messages to the terminal."
+  (console.rule)
+  (console.print)
+  (for [msg messages]
+    (print-message msg :padding #(0 4 1 0)))
+  (console.rule))
 
-(defn print-message [msg [padding #(0 0 1 0)]]
-  "Format and print a message to the screen."
+(defn print-message [msg [padding #(0 3 1 0)]]
+  "Format and print a message with role to the screen."
   (let [output (Table :padding padding
                       :expand True
                       :show-header False
                       :show-lines False
                       :box None)
-        prompt (match (:role msg)
-                      "assistant" ""
-                      "user" "> ")]
+        role-prompt (match (:role msg)
+                           "assistant" ""
+                           "user" "> "
+                           "system" "")]
     (.add-column output :min-width 2)
     (.add-column output :ratio 1 :overflow "fold")
-    (.add-row output f"[bold cyan]{prompt}[/bold cyan]"
+    (.add-row output f"[bold cyan]{role-prompt}[/bold cyan]"
               (if render-markdown
                   (Markdown (sanitize-markdown (:content msg)))
                   (:content msg)))

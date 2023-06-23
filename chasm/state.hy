@@ -9,21 +9,44 @@ Thing in themselves and relationships between things.
 
 (import json)
 (import pathlib [Path])
+(import datetime [datetime timezone])
+(import string [capwords])
+
+(import atexit)
 (import sqlitedict [SqliteDict])
 
-(import chasm.stdlib [config slurp])
+(import chasm.stdlib *)
 (import chasm.types [Place Item Character])
 
 
+;;; -----------------------------------------------------------------------------
+;;; World info
+;;; -----------------------------------------------------------------------------
+
 (setv path (config "world"))
+
+(setv world-name (-> path
+                     (.split "/")
+                     (last)
+                     (capwords)))
+
 (.mkdir (Path path) :parents True :exist-ok True)
-(setv world (.strip (slurp f"{path}.txt")))
+
+(setv world (-> (Path f"{path}.txt")
+                (.read-text)
+                (.strip)))
+
+(defn news []
+  "Up-to-date info about the universe."
+  f"It is now {(.strftime (datetime.now timezone.utc) "%H:%M, %a %d %h")}.")
+
+;;; -----------------------------------------------------------------------------
 
 (defn dumps [db]
   "Print a table of db."
   (for [r (db.values)]
     (print r)))
-  
+
 ;;; -----------------------------------------------------------------------------
 ;;; Relationships between things
 ;;; -----------------------------------------------------------------------------
@@ -43,6 +66,7 @@ Thing in themselves and relationships between things.
                              :autocommit True
                              :encode json.dumps
                              :decode json.loads))
+(.register atexit characters.close)
 
 (defn get-character [char-name]
   (try
@@ -50,13 +74,15 @@ Thing in themselves and relationships between things.
     (except [KeyError])))
 
 (defn set-character [char]
-  (setv (get characters char.name) char))
+  (setv (get characters char.name) char)
+  (.commit characters))
 
 (defn update-character [char #** kwargs]
   "Update a character's details. You cannot change the name."
   (let [new-char { #** (._asdict char) #** kwargs}]
     (setv (get characters (:name new-char))
-          (Character #** new-char))))
+          (Character #** new-char))
+    (.commit characters)))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Locations
@@ -68,6 +94,7 @@ Thing in themselves and relationships between things.
                          :autocommit True
                          :encode json.dumps
                          :decode json.loads))
+(.register atexit places.close)
 
 (defn get-place [coords]
   (let [key (str coords)]
@@ -77,7 +104,8 @@ Thing in themselves and relationships between things.
 
 (defn set-place [loc]
   (let [key (str loc.coords)]
-    (setv (get places key) loc)))
+    (setv (get places key) loc))
+  (.commit places))
 
 (defn update-place [loc #** kwargs]
   "Update a place's details. You cannot change the coordinates
@@ -85,7 +113,8 @@ Thing in themselves and relationships between things.
   (let [new-loc { #** (._asdict loc) #** kwargs}
         key (str (:coords new-loc))]
     (setv (get places key)
-          (Place #** new-loc))))
+          (Place #** new-loc))
+    (.commit places)))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Items
@@ -97,6 +126,7 @@ Thing in themselves and relationships between things.
                         :autocommit True
                         :encode json.dumps
                         :decode json.loads))
+(.register atexit items.close)
 
 (defn get-item [item-name]
   (try
@@ -104,13 +134,15 @@ Thing in themselves and relationships between things.
     (except [KeyError])))
 
 (defn set-item [item]
-  (setv (get items item.name) item))
+  (setv (get items item.name) item)
+  (.commit items))
 
 (defn update-item [item #** kwargs]
   "Update an item's details. You cannot change the name."
   (let [new-item { #** (._asdict item) #** kwargs}]
     (setv (get items (:name new-item))
-          (Item #** new-loc))))
+          (Item #** new-loc))
+    (.commit items)))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Dialogues

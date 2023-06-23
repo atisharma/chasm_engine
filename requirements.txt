@@ -2,4 +2,5 @@ hy
 hyrule
 sqlitedict
 openai
+tiktoken
 tomli
