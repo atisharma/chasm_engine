@@ -17,5 +17,6 @@ tags.temp
 .hy-history
 
 config.toml
+.chasm_history
 chasm.log
 traceback.log

@@ -173,6 +173,26 @@ The place is called '{placename}'. List its rooms, if any.")]
          #(-1 -1) "southwest"
          #(-1 1)  "northwest"))
 
+(defn go [dirn coords]
+  "Interpret a string as a change in location. Return new coords."
+  ;; TODO: check against accessible places
+  (let [d (-> dirn (.lower) (.strip))
+        x (:x coords)
+        y (:y coords)
+        n (inc (:y coords))
+        e (inc (:x coords))
+        s (dec (:y coords))
+        w (dec (:x coords))]
+    ; remember, eastings then northings
+    (cond (in d ["n" "north"]) (Coords x n)
+          (in d ["ne" "northeast"]) (Coords e n)
+          (in d ["e" "east"]) (Coords e y)
+          (in d ["se" "southeast"]) (Coords e s)
+          (in d ["s" "south"]) (Coords x s)
+          (in d ["sw" "southwest"]) (Coords w s)
+          (in d ["w" "west"]) (Coords w y)
+          (in d ["nw" "northwest"]) (Coords w n))))
+
 (defn is-nearby [coords1 coords2 [distance 1]]
   "Is coord1 within a distance of coord2 (inclusive)?"
   (and (<= (abs (- (:x coords1) (:x coords2))) distance)
@@ -182,7 +202,7 @@ The place is called '{placename}'. List its rooms, if any.")]
   (get-place (Coords (+ (:x coords) dx) (+ (:y coords) dy))))
 
 (defn nearby-list [coords [direction True] [return-place False]]
-  "A list of all existing [place names, directions]
+  "A list of all existing [place names + directions]
 in adjacent cells, accessible or not."
   (let [cx (:x coords)
         cy (:y coords)]
@@ -238,4 +258,7 @@ If none are naturally accessible, pick a nearby one at random."
   (let [place (get-place coords)]
     (if place
         (gen-description (nearby-str coords) place.name :paragraphs paragraphs)
-        "You are completely lost. How did you get here?")))
+        "I can't even being to tell you how completely lost you are. How did you get here?")))
+
+(defn name [coords]
+  (. (get-place coords) name))

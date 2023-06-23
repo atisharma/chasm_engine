@@ -34,7 +34,6 @@ Chat management functions.
   {"role" role
    "content" (->> content
                   (.join "\n")
-                  (.replace "</s>" "")
                   (.strip))})
 
 (defn system [#* content]
@@ -55,7 +54,7 @@ Chat management functions.
   (+ [x] l))
 
 (defn append [x #^list l]
-  "Prepend x at the front of list l."
+  "Append x to list l."
   (+ l [x]))
 
 (defn msg->dlg [user-name assistant-name message]
@@ -107,12 +106,11 @@ The messages should already have the standard roles."
         (:message)
         (:content))))
 
-(defn chat [messages]
-  "Add an assistant response to a list of messages.
+(defn chat [messages #** kwargs] ; -> message
+  "An assistant response (message) to a list of messages.
 The messages should already have the standard roles."
-  (-> (respond messages)
-      (assistant)
-      (append messages)))
+  (-> (respond messages #** kwargs)
+      (assistant)))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Prompts over messages -> text
