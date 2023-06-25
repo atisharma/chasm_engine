@@ -2,10 +2,12 @@
 Functions that manage place.
 "
 (require hyrule.argmove [-> ->>])
+(require hyrule.control [unless])
 
 (import chasm [log])
 
 (import hyrule [inc dec])
+(import functools [partial lru-cache])
 (import json)
 (import re)
 (import random [choice])
@@ -14,29 +16,41 @@ Functions that manage place.
 (import chasm.stdlib *)
 (import chasm.state [news world get-place set-place update-place])
 (import chasm.types [Coords Place])
-(import chasm.chat [respond true-false system user assistant])
+(import chasm.chat [respond edit yes-no
+                    msgs->dlg
+                    system user assistant])
+
+
+(setv compass-directions ["n" "north"
+                          "ne" "northeast"
+                          "e" "east"
+                          "se" "southeast"
+                          "s" "south"
+                          "sw" "southwest"
+                          "w" "west"
+                          "nw" "northwest"])
 
 ;;; -----------------------------------------------------------------------------
-;;; Place prompts -> text
+;;; Anything -> bool
 ;;; -----------------------------------------------------------------------------
 
-(defn is-move [messages accessible-places placename character]
-  "Determine whether the player is trying to move to a valid place."
-  (true-false messages
-              f"The active player is: {character.name}.
-Accessible places are:
-{nearby-places}"
-              "Is the player trying to leave {placename} and move to an accessible place?"))
+(defn is-nearby [coords1 coords2 [distance 1]]
+  "Is coord1 within a distance of coord2 (inclusive)?"
+  (and (<= (abs (- (:x coords1) (:x coords2))) distance)
+       (<= (abs (- (:y coords1) (:y coords2))) distance)))
 
-(defn is-accessible [placename destination]
+(defn [lru-cache] is-accessible [placename destination]
   "Is a destination accessible to the player?"
   (let [response (respond [(system world)
                            (user f"Your place is {placename}. Would you expect to be able to reach {destination} from here in one or two moves?
 Respond with only either 'Yes' or 'No'.")
                            (assistant "My single-word yes/no response is:")])]
-    ;(print placename "->" destination response)
     (or (similar response "yes")
         (in "yes" (.lower response)))))
+
+;;; -----------------------------------------------------------------------------
+;;; Place prompts -> text
+;;; -----------------------------------------------------------------------------
 
 (defn gen-name [nearby-places]
   "Make up a place from its neighbours."
@@ -67,26 +81,39 @@ Examples:
         sstrip
         capwords)))
 
-(defn gen-description [nearby-places placename rooms-str [paragraphs 1]]
+(defn chat-gen-description [nearby-str placename rooms-str messages [length "short"]]
   "Make up a short place description from its name."
-  (let [length (if (in paragraphs [1 "one"])
-                   "no more than a single paragraph"
-                   f"exactly {paragraphs} paragraphs")
-        messages [(system "Your purpose is to generate fun and exciting descriptions of places, in keeping with the information you have. Make the reader feel viscerally like they are present in the place.")
-                  (user f"Story setting:
-'{world}'
-
-Nearby places:
-{nearby-places}
-
-The reader's location is '{placename}'.
+  (let [messages [(system "Your purpose is to generate fun and exciting descriptions of places, in keeping with the information you have. Make the reader feel viscerally like they are present in the place.")
+                  (user f"Story setting:\n'{world}'")
+                  (assistant "I understand the story's environment. Provide some narrative leading up to now.")
+                  #* messages
+                  (assistant "Tell me about where the is reader now.")
+                  (user f"The reader's location is '{placename}'.
 {rooms-str}
 
+Nearby places:
+{nearby-str}
+
 {(news)}")
-                  (assistant "I understand the story's environment.")
-                  (user f"Generate a vivid description of {length} of what the reader ('you') sees, hears, smells and touches from {placename}.")
+                  (user f"Generate a {length}, vivid description of what the reader ('you') sees, hears, smells or touches from {placename}.")
                   (assistant f"The description of '{placename}' is:")]
-        response (respond messages :max-tokens (* (inc paragraphs) 150))]
+        response (respond messages)]
+    (trim-prose response)))
+
+(defn edit-gen-description [nearby-str placename rooms-str [length "short"]]
+  "Make up a short place description from its name."
+  (let [text f"Your purpose is to generate fun and exciting descriptions of places, in keeping with the information you have. Make the reader feel viscerally like they are present in the place.
+Story setting:
+'{world}'
+{(news)}
+
+Nearby places:
+{nearby-str}
+
+The reader's location is '{placename}'.
+{rooms-str}"
+        instruction f"Generate a {length}, vivid description of what the the protagonist sees, hears, smells and touches from {placename}. Write in the second person, using 'you'."
+        response (edit text instruction)]
     (trim-prose response)))
 
 (defn gen-facts [nearby-places placename]
@@ -100,7 +127,7 @@ Place:
             (assistant "I understand the story's environment.")
             (user "Generate a few important facts which won't change about the place.")
             (assistant "The facts are:")]
-           :max-tokens 150))
+           :max-tokens 200))
 
 (defn gen-rooms [placename]
   "Make up some rooms for a place."
@@ -129,6 +156,38 @@ The place is called '{placename}'. List its rooms, if any.")]
               (list))
          1 6)))
 
+(defn guess-room [messages coords]
+  "Guess the player's room."
+  (let [dlg (msgs->dlg "Player" "Narrator" messages)  
+        room-list (rooms coords :as-string False)
+        rooms-str (.join ", " room-list)
+        text f"{dlg}
+The rooms the player might be in are:
+{rooms-str}"]
+    (if rooms-str
+        (->> (edit text "Given the dialogue between player and narrator, which room is the player most likely currently in at the end of the dialogue? Choose only the most probable.")
+             (best-of room-list)) 
+        "")))
+
+;; TODO: could be removed?
+(defn [lru-cache] guess-move [phrase coords]
+  "Guess the player's destination."
+  (let [available (nearby coords :place-dirn True :list-inaccessible False)
+        available-places (list (map first available))
+        available-descriptions (list (map last available))
+        available-names (lfor p available-places p.name)
+        available-str (.join "\n" available-descriptions)
+        text f"The player said '{(:content msg)}'
+
+The accessible places are:
+{available-descriptions}
+"
+        pre-guess (edit text "Given what the player said, which of the accessible places is the player most likely trying to go to?
+Choose only the most probable, giving only the name as the answer")
+        guess (best-of available-names pre-guess) 
+        new-coords (get (dfor p available-places p.name p.coords) guess)]
+    new-coords))
+
 ;;; -----------------------------------------------------------------------------
 ;;; Place functions
 ;;; -----------------------------------------------------------------------------
@@ -146,58 +205,66 @@ The place is called '{placename}'. List its rooms, if any.")]
          #(-1 -1) "southwest"
          #(-1 1)  "northwest"))
 
-(defn go [dirn coords]
-  "Interpret a string as a change in location. Return new coords."
-  ;; TODO: check against accessible places
+(defn go [dirn coords [allow-inaccessible False] [threshold 0.75]] ; str, Coords -> Coords or None
+  "Interpret a string as a change in location.
+Match the string to a compass direction or a nearby place name.
+We cache this both for performance and persistence of place characteristics.
+Return new coords or None."
   (let [d (-> dirn (.lower) (.strip))
         x (:x coords)
         y (:y coords)
         n (inc (:y coords))
         e (inc (:x coords))
         s (dec (:y coords))
-        w (dec (:x coords))]
-    ; remember, eastings then northings
-    (cond (in d ["n" "north"]) (Coords x n)
-          (in d ["ne" "northeast"]) (Coords e n)
-          (in d ["e" "east"]) (Coords e y)
-          (in d ["se" "southeast"]) (Coords e s)
-          (in d ["s" "south"]) (Coords x s)
-          (in d ["sw" "southwest"]) (Coords w s)
-          (in d ["w" "west"]) (Coords w y)
-          (in d ["nw" "northwest"]) (Coords w n))))
-
-(defn is-nearby [coords1 coords2 [distance 1]]
-  "Is coord1 within a distance of coord2 (inclusive)?"
-  (and (<= (abs (- (:x coords1) (:x coords2))) distance)
-       (<= (abs (- (:y coords1) (:y coords2))) distance)))
+        w (dec (:x coords))
+        places (nearby coords
+                       :place True
+                       :list-inaccessible allow-inaccessible)
+        place-names (lfor p places p.name)
+        place-coords (lfor p places p.coords)
+        fuzzy-match-name (fuzzy-in d place-names :threshold threshold)] 
+    ; remember, Coords use eastings then northings
+    (let [new-coords (cond (in d ["n" "north"]) (Coords x n)
+                           (in d ["ne" "northeast"]) (Coords e n)
+                           (in d ["e" "east"]) (Coords e y)
+                           (in d ["se" "southeast"]) (Coords e s)
+                           (in d ["s" "south"]) (Coords x s)
+                           (in d ["sw" "southwest"]) (Coords w s)
+                           (in d ["w" "west"]) (Coords w y)
+                           (in d ["nw" "northwest"]) (Coords w n)
+                           fuzzy-match-name (get (dfor p places p.name p.coords) fuzzy-match-name))]
+      (when (in new-coords place-coords) new-coords))))
 
 (defn get-offset-place [coords dx dy]
   (get-place (Coords (+ (:x coords) dx) (+ (:y coords) dy))))
 
-(defn nearby-list [coords [direction True] [return-place False]]
+(defn nearby [_coords [name False] [place False] [coords False] [place-dirn False]
+              [list-inaccessible False]]
   "A list of all existing [place names + directions]
 in adjacent cells, accessible or not."
-  (let [cx (:x coords)
-        cy (:y coords)]
-    (lfor dx (range -1 2)
-          dy (range -1 2)
-          :setv nearby-place (get-offset-place coords dx dy)
-          :if (and nearby-place (+ (abs dx) (abs dy)))
-          (cond direction (.join ", "
-                                 [f"{nearby-place.name}"
-                                  ;f"at [{(+ cx dx)} {(+ cy dy)}]"
-                                  f"to the {(rose dx dy)}"])
-                return-place nearby-place
-                :else f"{nearby-place.name}"))))
+  (let [cx (:x _coords)
+        cy (:y _coords)
+        accessible-places (unless list-inaccessible (accessible _coords :min-places 3))]
+    (lfor dx [-1 0 1]
+          dy [-1 0 1]
+          :setv nearby-place (get-offset-place _coords dx dy)
+          :if (and nearby-place
+                   (+ (abs dx) (abs dy))
+                   (or list-inaccessible (in nearby-place accessible-places)))
+          (cond name nearby-place.name
+                place nearby-place
+                coords nearby-place.coords
+                place-dirn [nearby-place f"{nearby-place.name}, to the {(rose dx dy)}"]
+                :else f"{nearby-place.name}, to the {(rose dx dy)}"))))
 
-(defn nearby-str [coords [direction True]]
+(defn nearby-str [coords #** kwargs]
   "A table of all existing [place names, directions]
 in adjacent cells, accessible or not."
-  (.join "\n" (nearby-list coords :direction direction)))
+  (.join "\n" (nearby coords #** kwargs)))
   
 (defn new [coords]
   "Add a description etc... to a place."
-  (let [near-places (nearby-str coords)
+  (let [near-places (nearby-str coords :list-inaccessible True)
         placename (gen-name near-places)
         rooms (gen-rooms placename)
         place (Place :coords coords
@@ -206,22 +273,31 @@ in adjacent cells, accessible or not."
     (set-place place)
     place))
 
-(defn accessible [coords]
+(defn accessible [coords * min-places]
   "A list of the accessible Places the player can move to.
-If none are naturally accessible, pick a nearby one at random."
+If none are naturally accessible, pick a nearby few at random.
+This function is not deterministic, because we ask the model to decide."
   (let [place (get-place coords)
-        near-places (nearby-list coords :direction False :return-place True)
+        near-places (nearby coords :place True :list-inaccessible True)
         dests (lfor dest near-places
                     :if (and place (accessible? place.name dest.name))
                     dest)]
-    (or dests (choice near-places))))
+    (or dests
+        (cut (sorted near-places
+                     :key (fn [p] (hash-id p.name)))
+             min-places))))
+
+(defn accessible-coords [coords [min-places 3]]
+  "A list of all existing Coords that are accessible from here."
+  (lfor a (accessible coords :min-places min-places)
+        a.coords))
 
 (defn extend-map [coords]
   "Extend the map so neighbouring places exist."
   (let [cx (:x coords)
         cy (:y coords)]
-    (lfor dx (range -1 2)
-          dy (range -1 2)
+    (lfor dx [-1 0 1]
+          dy [-1 0 1]
           :setv _coords (Coords (+ cx dx) (+ cy dy))
           (or (get-place _coords)
               (new _coords)))))
@@ -236,15 +312,22 @@ If none are naturally accessible, pick a nearby one at random."
         room-str
         place.rooms)))
 
-(defn describe [coords [paragraphs 1]]
+(defn describe [coords [messages None] [length "short"]]
   "Return a description of the location."
   (let [place (get-place coords)]
     (if place
-        (gen-description (nearby-str coords)
-                         place.name
-                         (rooms coords)
-                         :paragraphs paragraphs)
-        "I can't even being to tell you how completely lost you are. How did you get here?")))
+        (if messages
+            (chat-gen-description (nearby-str coords :list-inaccessible False)
+                                  place.name
+                                  (rooms coords)
+                                  messages
+                                  :length length)
+            (chat-gen-description (nearby-str coords :list-inaccessible False)
+                                  place.name
+                                  (rooms coords)
+                                  [(user "This is the first scene in the story.")]
+                                  :length length))
+        "I can't even begin to tell you how completely lost you are. How did you get here?")))
 
 (defn name [coords]
   (. (get-place coords) name))

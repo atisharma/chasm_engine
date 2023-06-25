@@ -3,6 +3,7 @@
 
 (import chasm [log])
 
+(import functools [partial lru-cache])
 (import importlib)
 (import os)
 (import re)
@@ -179,17 +180,41 @@ force to lowercase, remove 'the' from start of line."
   "Remove any incomplete sentence."
   (let [paras (-> s
                   (.strip)
+                  (->> (re.sub r"\n{3,}" r"\n" :flags re.M))
+                  ;(.replace "\n\n\n" "\n\n")
                   (.split "\n\n")
+                  (->> (filter (fn [x] (not (= x "."))))
+                       (map (fn [x] (.strip x "\n\t\"'"))))
                   (sieve)
                   (list))]
     (.join "\n\n"
-           (if (in (last (last paras)) ".?!")
+           (if (in (last (.strip (last paras))) ".?!")
                paras
-               (cut paras -1)))))
+               (+ (cut paras -1)
+                  ; cut off last incomplete sentence
+                  [(+ (.join "." (-> (last paras) (.split ".") (cut -1))) ".")])))))
+
+(defn is-last-word [s1 s2]
+  (or (= s1 (last (.split s2)))
+      (= s2 (last (.split s1)))))
 
 (defn similar [s1 s2 [threshold 0.8]] ; -> bool
-  "Two strings are similar, based on Jaro-Winkler algorithm."
+  "Two strings are heuristically similar, based on Jaro-Winkler algorithm and/or being the last word."
   (let [cs1 (sstrip s1)
         cs2 (sstrip s2)
-        score (jaro.jaro-winkler-metric cs1 cs2)]
+        score (let [jw-score (jaro.jaro-winkler-metric cs1 cs2)]
+                (if (last-word? cs1 cs2)
+                    (+ jw-score 0.4)
+                    jw-score))]
     (> score threshold)))
+
+(defn best-of [l s]
+  "Pick from l the most similar to s, based on Jaro-Winkler algorithm."
+  (let [cs (sstrip s)
+        scores (sorted (lfor x l [(jaro.jaro-winkler-metric cs (sstrip x)) x]))]
+    (last (last scores))))
+
+(defn fuzzy-in [s l #** kwargs]
+  "Fuzzy match to any of the items. Return best match or None."
+  (when (any (map (partial similar s #** kwargs) l))
+        (best-of l s)))

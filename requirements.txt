@@ -4,3 +4,4 @@ sqlitedict
 openai
 tiktoken
 tomli
+jaro-winkler

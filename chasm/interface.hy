@@ -91,19 +91,13 @@ Functions that relate to output on the screen.
   "Print a status line at the bottom of the screen."
   ;(print "\033[s" :end "") ; save cursor position
   ;(print "\033[u" :end "") ; restore cursor position
-  ;(print) ; move on one line
   (print) ; move on one line
   (console.rule)
-  ; cropping not working :(
-  (let [max-length-s (+ console.width 24)
-        s-without-markup (re.sub r"\[[/\w ]*\]" "" s)
-        truncated-s (if (> (len s-without-markup) max-length-s)
-                        (+ (cut s 0 max-length-s) "…")
-                        s)]
-    (console.print truncated-s
-                   :end "\r"
-                   :overflow "ellipsis"
-                   :crop True))
+  ; s-without-markup (re.sub r"\[[/\w ]*\]" "" s)
+  (console.print s
+                 :end "\r"
+                 :overflow "ellipsis"
+                 :crop True)
   (for [n (range (+ 2 (.count s "\n")))]
     (print "\033[1A" :end "")) ; up one line
   (print "\033[K" :end "")) ; clear to end of line for new input
@@ -168,7 +162,7 @@ Functions that relate to output on the screen.
   "Prepare a generic string for markdown rendering."
   ;; Markdown swallows single newlines.
   ;; and defines the antipattern of preserving them with a double space.
-  (.replace s "\n" "  \n"))
+  (.replace (.strip s) "\n" "  \n"))
 
 (defn format-msg [message] 
   "Format a chat message for display."

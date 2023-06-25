@@ -7,7 +7,7 @@ Chat management functions.
 
 (import functools [partial])
 
-(import openai [ChatCompletion])
+(import openai [ChatCompletion Edit])
 (import tiktoken)
 
 (import chasm.stdlib *)
@@ -102,12 +102,32 @@ Return modified messages."
 ;;; Remote API calls
 ;;; -----------------------------------------------------------------------------
 
+(defn edit [text instruction #** kwargs]
+  "Follow an instruction.
+`input`: The input text to use as a starting point for the edit.
+`instruction`: how the model should edit the prompt."
+  (let [params (config "OpenAI")
+        chat-model (.pop params "chat_model")
+        completion-model (.pop params "completion_model")
+        response (Edit.create
+                   :input text
+                   :instruction instruction
+                   :model completion-model
+                   #** (| params kwargs))]
+    (-> response.choices
+        (first)
+        (:text))))
+
 (defn respond [messages #** kwargs]
   "Reply to a list of messages and return just content.
 The messages should already have the standard roles."
-  (let [response (ChatCompletion.create
+  (let [params (config "OpenAI")
+        chat-model (.pop params "chat_model")
+        completion-model (.pop params "completion_model")
+        response (ChatCompletion.create
                    :messages messages
-                   #** (| (config "OpenAI") kwargs))]
+                   :model chat-model
+                   #** (| params kwargs))]
     (-> response.choices
         (first)
         (:message)
@@ -154,20 +174,21 @@ The text should not be so long as to cause context length problems, so summarise
 Consider the following additional context before responding:
 {context}")]))
 
-(defn true-false [messages context query]
-  "Respond with Boolean to a query."
-  (let [response (respond [(system "You are a helpful assistant who follows instructions carefully. You reply to the query with either 'True' or 'False' as best you can based on the truth of the query.")
+(defn yes-no [messages context query]
+  "Respond with yes or no to a query."
+  (let [response (respond [(system "Reply to the query with either 'yes' or 'no' as best you can based on the context and conversation.
+Below is the conversation or story.")
                            #* messages
-                           (user f"The query is:
-{query}
+                           (user f"The query to evaluate is:
+'{query}'
 
-Consider the following additional context in your evaluation:
+Consider the following important context in your evaluation:
 {context}
 
-Respond with only one boolean, either 'True' or 'False'.")
-                           (assistant "My single-word boolean response is:")])]
-    (or (similar response "True")
-        (in "true" (.lower response)))))
+Respond with only one word, either 'yes' or 'no'.")
+                           (assistant "My single-word yes/no response is:")])]
+    (or (similar response "yes")
+        (in "yes" (.lower response)))))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Prompts over paragraphs of text -> text

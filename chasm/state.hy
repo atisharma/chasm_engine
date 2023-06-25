@@ -38,7 +38,7 @@ Thing in themselves and relationships between things.
 
 (defn news []
   "Up-to-date info about the universe."
-  f"It is now {(.strftime (datetime.now timezone.utc) "%H:%M, %a %d %h")}.")
+  f"It is {(.strftime (datetime.now timezone.utc) "%H:%M, %a %d %h")}.")
 
 ;;; -----------------------------------------------------------------------------
 

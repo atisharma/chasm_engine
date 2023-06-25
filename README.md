@@ -1,6 +1,9 @@
 # CHASM - CHAracter State Manager
 
-Chasm is a *generative text adventure game*. It uses generative artificial intelligence to generate scenes and characters as you play. Unlike role-playing in ChatGPT or similar, important state persists (locations, characters, dialogue etc.)
+Chasm is a *generative text adventure game*. It uses generative
+artificial intelligence to generate scenes and characters as you
+play. Unlike role-playing in ChatGPT or similar, important state
+persists (locations, characters, dialogue etc.)
 
 It is still being written.
 
@@ -18,6 +21,12 @@ It is still being written.
 
 
 ## State
+
+### World information
+
+The world information (text file) should contain two or three
+sentences about the world that won't change.  They are universal and
+invariant context for your journey.
 
 ### Persistent state
 
@@ -68,6 +77,10 @@ new-character: coords -> character
 - Management done by config file
 - Map display
 
+
+## Installing and running
+
+Place a text file named after your world in a subdirectory called "worlds" (see the config file).
 
 ## Problems
 

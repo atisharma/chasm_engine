@@ -35,6 +35,8 @@ Various types used throughout.
                                          "name"
                                          "appearance"
                                          "occupation"
+                                         "backstory"
+                                         "voice"
                                          "personality"
                                          ; mutable traits
                                          "inventory"
