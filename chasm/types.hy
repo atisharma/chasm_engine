@@ -18,38 +18,39 @@ Various types used throughout.
   "Just a dict of eastings and northings."
   {"x" x "y" y})
 
+(defn is-at [coords1 coords2]
+  "Equality in location. Example usage: `(at? item.coords character.coords)`."
+  (and (= (:x coords1) (:x coords2))
+       (= (:y coords1) (:y coords2))))
+
 (setv Place (namedtuple "Place" ["coords"
                                  "name"
                                  "rooms"]))
 
 (setv Item (namedtuple "Item" ["name"
-                               "item_type"
-                               "facts"
+                               "type"
+                               "appearance"
+                               "usage"
                                "owner" ; None if no character has in their inventory
-                               "coords" ; None if it's being carried
-                               "is_fixed" ; bool, is fixed in place at a location or not
-                               "abilities"]))
+                               "coords"])) ; None if it's being carried
 
 ;; TODO: reduce number of fields
 (setv Character (namedtuple "Character" [; immutable traits
                                          "name"
                                          "appearance"
-                                         "occupation"
                                          "backstory"
                                          "voice"
-                                         "personality"
+                                         "traits"
+                                         "motivation"
+                                         "dislikes"
                                          ; mutable traits
-                                         "inventory"
-                                         "memories" ; db of chats? Events?
                                          "coords"
+                                         "quest"
+                                         "score"
+                                         "memories" ; db of chats? Events?
                                          "health"
                                          "skills"
-                                         "quests"
-                                         "emotions"
-                                         "goals"
-                                         "anti_goals"
-                                         "intention"]))
-
+                                         "emotions"]))
 
 ;; should be an event db? sqlite table or vectordb?
 (setv Event (namedtuple "Event" ["name"

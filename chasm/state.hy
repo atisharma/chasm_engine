@@ -48,15 +48,6 @@ Thing in themselves and relationships between things.
     (print r)))
 
 ;;; -----------------------------------------------------------------------------
-;;; Relationships between things
-;;; -----------------------------------------------------------------------------
-
-;; key is item name, value is its location or character name as loc:place-name or cha:character-name
-;; should we have location as part of Item?
-
-(setv geo-index {})
-
-;;; -----------------------------------------------------------------------------
 ;;; Characters
 ;;; key is character name, value is Character
 ;;; -----------------------------------------------------------------------------

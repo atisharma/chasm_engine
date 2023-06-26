@@ -1,9 +1,12 @@
 (require hyrule.argmove [-> ->>])
 (require hyrule.control [unless])
+(import hyrule [inc dec])
+
+(import functools [partial cache lru-cache])
+(import itertools *)
 
 (import chasm [log])
 
-(import functools [partial lru-cache])
 (import importlib)
 (import os)
 (import re)
@@ -50,6 +53,10 @@
 (defn sieve [xs]
   (filter None xs))
 
+(defn pairs [xs]
+  "Split into pairs. So ABCD -> AB CD."
+  (zip (islice xs 0 None 2) (islice xs 1 None 2)))
+  
 ;;; -----------------------------------------------------------------------------
 ;;; config functions
 ;;; -----------------------------------------------------------------------------
@@ -178,17 +185,18 @@ force to lowercase, remove 'the' from start of line."
   
 (defn trim-prose [s]
   "Remove any incomplete sentence."
+  ; TODO: test handling of quotes and dialogue
   (let [paras (-> s
                   (.strip)
-                  (->> (re.sub r"\n{3,}" r"\n" :flags re.M))
+                  (->> (re.sub r"\n{3,}" r"\n\n" :flags re.M))
                   ;(.replace "\n\n\n" "\n\n")
                   (.split "\n\n")
                   (->> (filter (fn [x] (not (= x "."))))
-                       (map (fn [x] (.strip x "\n\t\"'"))))
+                       (map (fn [x] (.strip x "\n\t"))))
                   (sieve)
                   (list))]
     (.join "\n\n"
-           (if (in (last (.strip (last paras))) ".?!")
+           (if (in (last (.strip (last paras))) ".?!\"'")
                paras
                (+ (cut paras -1)
                   ; cut off last incomplete sentence

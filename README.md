@@ -1,23 +1,29 @@
-# CHASM - CHAracter State Manager
+# Chasm - CHAracter State Manager
 
 Chasm is a *generative text adventure game*. It uses generative
 artificial intelligence to generate scenes and characters as you
 play. Unlike role-playing in ChatGPT or similar, important state
 persists (locations, characters, dialogue etc.)
 
-It is still being written.
+You can use it with a local model (LLaMA derivative like
+Wizard-Vicuna) or OpenAI's models. See the config file for examples.
+
+Chasm is still being written.
 
 ## Features
 
-- specify initial world with a short description
-- persistent world / locations
-- persistent global event memory (vector db) (TBD)
-- per character event memory (vector db) (TBD)
-- per character dialogue memory (vector db) (TBD)
-- character inventory (current state only; toml?) (TBD)
-- protagonist is just another player but with a "human" model (TBD)
-- thus it could generalise to MMP worlds (TBD)
-  * how should many people access at the same time?
+[x] specify initial world with a short description
+[ ] continue / save file for dialogue
+[x] persistent world / locations
+[x] fuzzy matching names of locations
+[ ] persistent items
+[ ] persistent global event memory (vector db)
+[ ] per character event memory (vector db)
+[ ] per character dialogue memory (vector db)
+[ ] character inventory (current state only; toml?)
+  * [x] [ ] protagonist is just another player but with a "human" model
+[ ] thus it could generalise to MMP worlds
+    * how should many people access at the same time?
 
 
 ## State
@@ -25,8 +31,9 @@ It is still being written.
 ### World information
 
 The world information (text file) should contain two or three
-sentences about the world that won't change.  They are universal and
-invariant context for your journey.
+sentences about the world (not specific places, characters or items)
+that won't change, such as general location or the decade.  They are
+universal and invariant context for your journey.
 
 ### Persistent state
 
@@ -85,10 +92,9 @@ Place a text file named after your world in a subdirectory called "worlds" (see 
 ## Problems
 
 - consistent naming of generated location names
-- fuzzy matching names of characters/locations (jaro-winkler)
 
 
 ### Inspiration
 
-https://github.com/QuangBK/generativeAgent_LLM
-https://github.com/atisharma/llama_farm
+- https://github.com/QuangBK/generativeAgent_LLM
+- https://github.com/atisharma/llama_farm

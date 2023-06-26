@@ -1,18 +1,18 @@
 "
 Functions that manage place.
 "
+;; TODO: the code in item.hy is cleaner due to lessons learned writing this module.
+;; Incorporate those lessons here.
+
 (require hyrule.argmove [-> ->>])
 (require hyrule.control [unless])
 
 (import chasm [log])
 
-(import hyrule [inc dec])
-(import functools [partial lru-cache])
-(import json)
-(import re)
 (import random [choice])
 (import string [capwords])
 
+(import chasm [state item])
 (import chasm.stdlib *)
 (import chasm.state [news world get-place set-place update-place])
 (import chasm.types [Coords Place])
@@ -39,8 +39,9 @@ Functions that manage place.
   (and (<= (abs (- (:x coords1) (:x coords2))) distance)
        (<= (abs (- (:y coords1) (:y coords2))) distance)))
 
-(defn [lru-cache] is-accessible [placename destination]
-  "Is a destination accessible to the player?"
+(defn [cache] is-accessible [placename destination]
+  "Is a destination accessible to the player?
+We cache this both for performance and persistence of place characteristics."
   (let [response (respond [(system world)
                            (user f"Your place is {placename}. Would you expect to be able to reach {destination} from here in one or two moves?
 Respond with only either 'Yes' or 'No'.")
@@ -54,7 +55,8 @@ Respond with only either 'Yes' or 'No'.")
 
 (defn gen-name [nearby-places]
   "Make up a place from its neighbours."
-  (let [terrain (choice ["a small building"
+  (let [seed (choice "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
+        terrain (choice ["a small building"
                          "a large building"
                          "a small outdoor space"
                          "a large outdoor space"
@@ -64,19 +66,25 @@ Respond with only either 'Yes' or 'No'.")
                   (user f"Nearby places:
 {nearby-places}
 
-Your task is to generate a single, interesting name for {terrain} that you want to explore, that's not one nearby, in keeping with the story's setting. Avoid adjectives used in nearby places. Reply with just the name.
+Your task is to generate a single name for {terrain} that you want to explore, that's different from those nearby, but that's in keeping with the story's setting. Avoid adjectives used in nearby places, be interesting and imaginative. Reply with just the name.
 Examples:
-'Mysterious ruins'
-'Enchanted forest'
-'Residential buildings'
-'Corner shop'
-'Small White House'
+'Residential Buildings'
+'Mysterious Ruins'
 'Junction'
+'Inn'
+'Architect's Office'
+'Corner Shop'
+'Palace'
+'Nightclub'
+'Small White House'
 'Ship'
 'Castle'
-'Secret Cave'")]
+'Secret Cave'
+
+The name should have '{seed}' in the first few letters.")]
         response (-> (respond messages :max-tokens 50))
         m (re.search r"[\"']([\w\d][\w\d ']+[\w\d])[\"']" response)]
+    (print seed)
     (-> (if m (m.group) response) 
         sstrip
         capwords)))
@@ -102,7 +110,7 @@ Nearby places:
 
 (defn edit-gen-description [nearby-str placename rooms-str [length "short"]]
   "Make up a short place description from its name."
-  (let [text f"Your purpose is to generate fun and exciting descriptions of places, in keeping with the information you have. Make the reader feel viscerally like they are present in the place.
+  (let [text f"Your purpose is to generate fun and imaginative descriptions of places, in keeping with the information you have. Make the reader feel viscerally like they are present in the place.
 Story setting:
 '{world}'
 {(news)}
@@ -110,7 +118,7 @@ Story setting:
 Nearby places:
 {nearby-str}
 
-The reader's location is '{placename}'.
+The protagonist's location is '{placename}'.
 {rooms-str}"
         instruction f"Generate a {length}, vivid description of what the the protagonist sees, hears, smells and touches from {placename}. Write in the second person, using 'you'."
         response (edit text instruction)]
@@ -158,6 +166,7 @@ The place is called '{placename}'. List its rooms, if any.")]
 
 (defn guess-room [messages coords]
   "Guess the player's room."
+  ;; FIXME: it's a bit flakey
   (let [dlg (msgs->dlg "Player" "Narrator" messages)  
         room-list (rooms coords :as-string False)
         rooms-str (.join ", " room-list)
@@ -168,25 +177,6 @@ The rooms the player might be in are:
         (->> (edit text "Given the dialogue between player and narrator, which room is the player most likely currently in at the end of the dialogue? Choose only the most probable.")
              (best-of room-list)) 
         "")))
-
-;; TODO: could be removed?
-(defn [lru-cache] guess-move [phrase coords]
-  "Guess the player's destination."
-  (let [available (nearby coords :place-dirn True :list-inaccessible False)
-        available-places (list (map first available))
-        available-descriptions (list (map last available))
-        available-names (lfor p available-places p.name)
-        available-str (.join "\n" available-descriptions)
-        text f"The player said '{(:content msg)}'
-
-The accessible places are:
-{available-descriptions}
-"
-        pre-guess (edit text "Given what the player said, which of the accessible places is the player most likely trying to go to?
-Choose only the most probable, giving only the name as the answer")
-        guess (best-of available-names pre-guess) 
-        new-coords (get (dfor p available-places p.name p.coords) guess)]
-    new-coords))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Place functions
@@ -208,7 +198,6 @@ Choose only the most probable, giving only the name as the answer")
 (defn go [dirn coords [allow-inaccessible False] [threshold 0.75]] ; str, Coords -> Coords or None
   "Interpret a string as a change in location.
 Match the string to a compass direction or a nearby place name.
-We cache this both for performance and persistence of place characteristics.
 Return new coords or None."
   (let [d (-> dirn (.lower) (.strip))
         x (:x coords)
@@ -263,7 +252,7 @@ in adjacent cells, accessible or not."
   (.join "\n" (nearby coords #** kwargs)))
   
 (defn new [coords]
-  "Add a description etc... to a place."
+  "Add a description etc. and an item to a place."
   (let [near-places (nearby-str coords :list-inaccessible True)
         placename (gen-name near-places)
         rooms (gen-rooms placename)
@@ -271,6 +260,8 @@ in adjacent cells, accessible or not."
                      :name placename
                      :rooms rooms)]
     (set-place place)
+    (when (< (/ (len state.items) (inc (len state.places))) 0.25) ; the items:places ratio we're aiming for
+      (item.new coords)) ; has to occur *after* place has been set
     place))
 
 (defn accessible [coords * min-places]

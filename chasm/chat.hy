@@ -5,8 +5,6 @@ Chat management functions.
 
 (import chasm [log])
 
-(import functools [partial])
-
 (import openai [ChatCompletion Edit])
 (import tiktoken)
 
@@ -106,14 +104,15 @@ Return modified messages."
   "Follow an instruction.
 `input`: The input text to use as a starting point for the edit.
 `instruction`: how the model should edit the prompt."
-  (let [params (config "OpenAI")
-        chat-model (.pop params "chat_model")
-        completion-model (.pop params "completion_model")
+  (let [max_tokens (config "max_tokens")
+        params (config "models" (config "model"))
+        chat-model (.pop params "chat_model" "gpt-3.5-turbo")
+        completion-model (.pop params "completion_model" "text-davinci-edit-001")
         response (Edit.create
                    :input text
                    :instruction instruction
                    :model completion-model
-                   #** (| params kwargs))]
+                   #** (| {"max_tokens" max_tokens} params kwargs))]
     (-> response.choices
         (first)
         (:text))))
@@ -121,13 +120,14 @@ Return modified messages."
 (defn respond [messages #** kwargs]
   "Reply to a list of messages and return just content.
 The messages should already have the standard roles."
-  (let [params (config "OpenAI")
-        chat-model (.pop params "chat_model")
-        completion-model (.pop params "completion_model")
+  (let [max_tokens (config "max_tokens")
+        params (config "models" (config "model"))
+        chat-model (.pop params "chat_model" "gpt-3.5-turbo")
+        completion-model (.pop params "completion_model"  "text-davinci-edit-001")
         response (ChatCompletion.create
                    :messages messages
                    :model chat-model
-                   #** (| params kwargs))]
+                   #** (| {"max_tokens" max_tokens} params kwargs))]
     (-> response.choices
         (first)
         (:message)
