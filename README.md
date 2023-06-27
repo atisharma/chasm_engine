@@ -13,18 +13,16 @@ Chasm is still being written. It's already pretty great though.
 
 ## Features
 
-[x] specify initial world with a short description
-[x] continue / save file for dialogue
-[x] persistent world / locations
-[x] fuzzy matching names of locations
-[x] persistent items
-[ ] persistent global event memory (vector db)
-[ ] per character event memory (vector db)
-[ ] per character dialogue memory (vector db)
-[.] character inventory (current state only; toml?)
-  * [x] protagonist is just another player but with a "human" model
-[ ] thus it could generalise to MMP worlds
-    * how should many people access at the same time?
+* [x] specify initial world with a short description
+* [x] continue / save file for dialogue
+* [x] persistent world / locations
+* [x] fuzzy matching names of locations
+* [x] persistent items
+* [ ] persistent global event memory (vector db)
+* [ ] per character event memory (vector db)
+* [ ] per character dialogue memory (vector db)
+* [.] character inventory (current state only; toml?)
+* [x] protagonist is just another player but with a "human" model
 
 
 ## State
