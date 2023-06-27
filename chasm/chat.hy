@@ -9,6 +9,7 @@ Chat management functions.
 (import tiktoken)
 
 (import chasm.stdlib *)
+(import chasm [state])
 
 
 ;;; -----------------------------------------------------------------------------
@@ -96,6 +97,12 @@ Return modified messages."
 (defn flip-roles [messages]
   (dlg->msgs "assistant" "user" messages))
 
+(defn load-messages []
+  (load (.join "/" [state.path "messages.json"])))
+
+(defn save-messages [messages]
+  (save messages (.join "/" [state.path "messages.json"])))
+
 ;;; -----------------------------------------------------------------------------
 ;;; Remote API calls
 ;;; -----------------------------------------------------------------------------
@@ -104,15 +111,14 @@ Return modified messages."
   "Follow an instruction.
 `input`: The input text to use as a starting point for the edit.
 `instruction`: how the model should edit the prompt."
-  (let [max_tokens (config "max_tokens")
-        params (config "models" (config "model"))
+  (let [params (config "models" (config "model"))
         chat-model (.pop params "chat_model" "gpt-3.5-turbo")
         completion-model (.pop params "completion_model" "text-davinci-edit-001")
         response (Edit.create
                    :input text
                    :instruction instruction
                    :model completion-model
-                   #** (| {"max_tokens" max_tokens} params kwargs))]
+                   #** (| params kwargs))]
     (-> response.choices
         (first)
         (:text))))
@@ -231,4 +237,3 @@ Please concisely rewrite the following text, extracting the points most interest
 ;;; -----------------------------------------------------------------------------
 ;;; Combined text and messages -> text
 ;;; -----------------------------------------------------------------------------
-

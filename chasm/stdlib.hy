@@ -15,6 +15,7 @@
 (import pathlib [Path])
 (import hashlib [sha1 pbkdf2-hmac])
 (import hmac [compare-digest])
+(import random [randint choice])
 
 (import jaro)
 
@@ -226,3 +227,19 @@ force to lowercase, remove 'the' from start of line."
   "Fuzzy match to any of the items. Return best match or None."
   (when (any (map (partial similar s #** kwargs) l))
         (best-of l s)))
+
+(defn grep-attribute [s attribute]
+  "Get an attribute from a string. Return as k-v tuple.
+The attribute should be on its own line as:
+`attribute: value`."
+  #(attribute (first
+                (lfor l (.split s "\n")
+                      :if (.startswith (.lower (.strip l))
+                            f"{attribute}:")
+                      (.strip (last (.partition l ":"))
+                              "\"' \n\t")))))
+
+(defn grep-attributes [s attributes]
+  "Get named attributes from a string. Return as dict."
+  (dict (map (partial grep-attribute s) attributes)))
+  

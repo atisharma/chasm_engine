@@ -15,10 +15,10 @@ An Item describes:
 
 (import chasm [log])
 
-(import random [choice])
 (import string [capwords])
 
 (import chasm.stdlib *)
+(import chasm.constants [alphanumeric])
 (import chasm [place])
 (import chasm.types [Item Coords at?])
 (import chasm.state [news world get-item set-item update-item items])
@@ -27,29 +27,32 @@ An Item describes:
 
 (defn gen [place]
   "Make up some fantastical item."
-  (let [seed (choice "ABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890")
+  (let [seed (choice alphanumeric)
         kvs (-> (edit f"name: item name (has '{seed}' in the first few letters)
 type: item type
 appearance: item's appearance
 usage: what the item does"
-                      f"Complete the template for a single portable object you would expect to find in the {place.name}. Make up a name, type, appearance, usage. Write a very short sentence for appearance and another for usage. Be very specific. Give no commentary, just the updated template with the details.")
-                (.strip)
-                (.split "\n"))
-        details (dict (lfor kv kvs
-                            (let [[k v] (.split kv ": ")]
-                              (map (fn [s] (.strip s))
-                                   [(.lower k) v]))))]
+                      f"Story setting: {world}
+
+Complete the template for a single portable object you would expect to find in the {place.name}.
+Give one attribute per line, with no commentary or other notes, just the updated template with the details.
+Make up a name, type, appearance, usage.
+Write a very short sentence for appearance and another for usage. Be very specific."))
+        details (grep-attributes kvs ["name" "appearance" "type" "usage"])]
     (try
-      (Item #** (| {"usage" "Usage unknown."} details)
+      (Item #** (| {"usage" "Usage unknown." "type" "generic object" "appearance" "generic"} details)
             :coords place.coords
             :owner None)
       (except [e [Exception]]
         ; generating to template sometimes fails 
-        (print "Bad new item:" (json.dumps details :indent 4))
-        (print e)))))
+        (log.error e)
+        (log.error "Bad new item:")
+        (log.error place)
+        (log.error seed)
+        (log.error kvs)))))
 
-(defn new [coords]
-  "Invent a new item from a place name and return it.
+(defn spawn [coords]
+  "Invent a new item from a place name, store it and return it.
 None if the place doesn't exist."
   (let [p (place.get-place coords)]
     (when p
@@ -59,12 +62,12 @@ None if the place doesn't exist."
           item)))))
 
 (defn get-items [coords]
-  "Set of (unowned) items at a location"
+  "List of (unowned) items at a location"
   (lfor item (map get-item items)
         :if (at? coords item.coords)
         item)) 
 
-(defn get-items-str [coords]
+(defn describe-at [coords]
   "The prosaic version of get-items."
   (let [items (get-items coords)
         items-str (.join ", " (lfor i items i.name))]
@@ -80,18 +83,20 @@ None if the place doesn't exist."
         "")))
 
 (defn unclaimed-items []
-  "Set of all items (globally) without an owner."
+  "List of all items (globally) without an owner.
+If you just want those at a location, use `get-items`."
   (lfor item (map get-item items)
         :if (not item.owner)
         item))
 
 (defn inventory [owner]
-  "Set of items with a specific owner."
+  "List of items with a specific owner.
+Usually better to use `Character.inventory`."
   (lfor item (map get-item items)
         :if (= item.owner owner.name)
         item))
 
-(defn is-carried-by [item character]
+(defn carried-by? [item character]
   "Is an item carried by a specific owner?"
   (= item.owner character.name))
 

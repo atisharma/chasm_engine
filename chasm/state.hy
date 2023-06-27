@@ -1,5 +1,5 @@
 "
-The global state.
+The global (mostly) mutable state.
 
 Thing in themselves and relationships between things.
 "
@@ -14,6 +14,7 @@ Thing in themselves and relationships between things.
 
 (import atexit)
 (import sqlitedict [SqliteDict])
+; consider using diskcache
 
 (import chasm.stdlib *)
 (import chasm.types [Place Item Character])
@@ -24,13 +25,17 @@ Thing in themselves and relationships between things.
 ;;; -----------------------------------------------------------------------------
 
 (setv path (config "world"))
+(setv username (config "name"))
 
 (setv world-name (-> path
                      (.split "/")
                      (last)
                      (capwords)))
 
-(.mkdir (Path path) :parents True :exist-ok True)
+; create world folder and subfolders
+(.mkdir (Path (.join "/" [path "characters"]))
+        :parents True
+        :exist-ok True)
 
 (setv world (-> (Path f"{path}.txt")
                 (.read-text)
@@ -60,16 +65,20 @@ Thing in themselves and relationships between things.
 (.register atexit characters.close)
 
 (defn get-character [char-name]
-  (try
-    (Character #* (get characters char-name))
-    (except [KeyError])))
+  (log.debug f"Recalling character {char-name}.")
+  (when char-name
+    (try
+      (Character #* (get characters char-name))
+      (except [KeyError]))))
 
 (defn set-character [char]
+  (log.debug f"Setting character {char.name}.")
   (setv (get characters char.name) char)
   (.commit characters))
 
 (defn update-character [char #** kwargs]
   "Update a character's details. You cannot change the name."
+  (log.debug f"Updating character {char.name}, {kwargs}.")
   (let [new-char { #** (._asdict char) #** kwargs}]
     (setv (get characters (:name new-char))
           (Character #** new-char))
@@ -120,9 +129,10 @@ Thing in themselves and relationships between things.
 (.register atexit items.close)
 
 (defn get-item [item-name]
-  (try
-    (Item #* (get items item-name))
-    (except [KeyError])))
+  (when item-name
+    (try
+      (Item #* (get items item-name))
+      (except [KeyError]))))
 
 (defn set-item [item]
   (setv (get items item.name) item)

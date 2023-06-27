@@ -1,100 +1,129 @@
 "
 Functions that deal with characters.
-
-immutable traits:
-- name
-- appearance
-- backstory
-- voice
-- traits
-- dislikes
-
-mutable traits:
-- coords
-- inventory
-- quest
-- score
-- memories ; db of chats? Events?
-- health
-- skills
-- emotions
-
 "
 
 (require hyrule.argmove [-> ->>])
 (require hyrule.control [unless])
 
-(import random [randint choice])
+(import chasm [log])
 
 (import chasm.stdlib *)
+(import chasm.constants [alphabet appearances default-character])
 (import chasm.types [Coords Character Item at?])
 (import chasm [place])
 
-(import chasm.state [news world
+(import chasm.state [news world path username
+                     characters
                      get-item update-item
                      get-place
                      get-character set-character update-character])
 (import chasm.chat [edit respond])
 
 
-(setv default-character (Character
-                          :name None
-                          :appearance "a generic NPC"
-                          :backstory "Unknown"
-                          :voice "Unknown"
-                          :traits "Unknown"
-                          :motivation "Unknown"
-                          :dislikes "Unknown"
-                          :coords None
-                          :quest None
-                          :score None
-                          :memories None
-                          :health None
-                          :skills None
-                          :emotions None))
-                          
+(defn spawn [[name None] [coords None]] ; -> Character
+  "Spawn a character from card, db, or just generated."
+  (try
+    (let [loaded (or (load (.join "/"[path
+                                      "characters"
+                                      f"{name}.json"]))
+                     {})
+          sanitised {"name" (or name (:name loaded None))
+                     "appearance" (:appearance loaded None)
+                     "backstory" (:backstory loaded None)
+                     "voice" (:voice loaded None)
+                     "traits" (:traits loaded None)
+                     "dislikes" (:dislikes loaded None)
+                     "motivation" (:motivation loaded None)}
+          coords (or coords (place.random-coords #(-1 1)))
+          char (or (get-character name) (gen coords name) default-character)
+          filtered (dfor [k v] (.items sanitised) :if v k v)
+          character (Character #** (| (._asdict default-character)
+                                      (._asdict char)
+                                      filtered))]
+      (when character.name
+        (set-character character)
+        character))
+    (except [e [Exception]]
+      (log.error f"Spawn failed for {name} at {coords}.")
+      (log.error e))))
 
-(defn spawn [name [box #(-3 3)]]
-  "Spawn at random coordinates."
-  ;; TODO: save previous location (in character's state)
-  (let [character (or (get-character name) (new name))
-        coords (Coords (randint #* box) (randint #* box))]
-    (place.extend-map coords)
-    coords))
-
-(defn gen [coords [name None]]
+(defn gen [coords [name None]] ; -> Character or None
   "Make up some plausible character based on a name."
-  (let [seed (choice "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-        name-str (or name f"the character (whose name begins with '{seed}')")
+  (let [seed (choice alphabet)
+        name-str (or name f"the character (whose given name begins with '{seed}')")
         name-dict (if name {"name" name} {})
         place (get-place coords)
-        place-name (if place place.name "typical place")
-        kvs (-> (edit f"name: {name-str}
-appearance: {name-str}'s appearance
-backstory: their backstory
-voice: their manner of speaking
-traits: shapes their behaviour
-motivation: drives their behaviour
-dislikes: their fears and aversions"
+        place-name (if place place.name "a typical place in this world")
+        kvs (-> (edit f"name: '{name-str}'
+appearance: '{name-str}'s appearance, {(choice appearances)}, {(choice appearances)} etc'
+backstory: 'their backstory'
+voice: 'their manner of speaking'
+traits: 'shapes their behaviour'
+motivation: 'drives their behaviour'
+dislikes: 'their fears and aversions'"
                       f"Story setting: {world}
 
-Complete the template for {name-str} whom is found in the story at {place.name}. Make up appearance and so on. Be very brief (a few words each) but very specific. Give no commentary or other notes, just the updated template with the details.")
-                (.strip)
-                (.split "\n"))
-        details (dict (lfor kv kvs
-                            (let [[k v] (.split kv ": ")]
-                              (map (fn [s] (.strip s))
-                                   [(.lower k) v]))))]
+Complete the character card for {name-str} whom is found in the story at {place.name}.
+Give one attribute per line, with no commentary or other notes, just the updated template with the details.
+Make up a brief few words for each attribute but be very specific.
+"))]
     (try
-      (print place seed name-str)
-      (Character #** (| (._asdict default-character) details name-dict {"coords" coords}))
+      (let [details (grep-attributes kvs ["name" "appearance" "backstory" "voice" "traits" "motivation" "dislikes"])]
+        (log.info place)
+        (log.info seed)
+        (log.info name-str)
+        (Character #** (| (._asdict default-character)
+                          details
+                          name-dict
+                          {"coords" coords})))
       (except [e [Exception]]
         ; generating to template sometimes fails 
-        (print "Bad new character:" (json.dumps details :indent 4))
-        (print e)))))
+        (log.error e)
+        (log.error "Bad new character:")
+        (log.error place)
+        (log.error seed)
+        (log.error name-str)
+        (log.error kvs)))))
 
-(defn new [place])
+(defn describe [character [long False]]
+  "A string that briefly describes the character."
+  (if character
+    (let [attributes (._asdict character)]
+      (.pop attributes "coords")
+      (if long
+          (str (dfor #(k v) (.items attributes)
+                     :if v
+                     k v))
+          f"{character.name} - {character.appearance}"))
+    ""))
 
-(defn teleport [cha coords]
+(defn describe-at [coords [long False]]
+  "A string describing any characters at a location."
+  (let [all-at (get-at coords)]
+    (if all-at
+        (.join "\n" ["The following characters (and nobody else) are here:"
+                     #* (map (fn [c] (describe c :long long)) all-at)])
+        "")))
+  
+(defn get-at [coords]
+  "List of characters at a location"
+  (let [cs (map get-character characters)]
+    (if cs
+      (lfor character cs
+            :if (and (at? coords character.coords)
+                     (not (= character.name username)))
+            character)
+      []))) 
+
+(defn move [character coords]
   "Just set a location."
-  (update-character cha :coords coords))
+  (update-character character :coords coords)
+  coords)
+
+(defn inventory [character]
+  "A string of the character's inventory."
+  (.join ", " character.inventory))
+
+(defn converse [c1 c2 [dialogue None]]
+  "Carry on a conversation between two characters.
+Save and recall relevant bits.")

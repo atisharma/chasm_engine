@@ -9,11 +9,11 @@ Functions that manage place.
 
 (import chasm [log])
 
-(import random [choice])
 (import string [capwords])
 
-(import chasm [state item])
+(import chasm [state item character])
 (import chasm.stdlib *)
+(import chasm.constants [compass-directions alphanumeric character-density item-density])
 (import chasm.state [news world get-place set-place update-place])
 (import chasm.types [Coords Place])
 (import chasm.chat [respond edit yes-no
@@ -21,25 +21,16 @@ Functions that manage place.
                     system user assistant])
 
 
-(setv compass-directions ["n" "north"
-                          "ne" "northeast"
-                          "e" "east"
-                          "se" "southeast"
-                          "s" "south"
-                          "sw" "southwest"
-                          "w" "west"
-                          "nw" "northwest"])
-
 ;;; -----------------------------------------------------------------------------
 ;;; Anything -> bool
 ;;; -----------------------------------------------------------------------------
 
-(defn is-nearby [coords1 coords2 [distance 1]]
+(defn nearby? [coords1 coords2 [distance 1]]
   "Is coord1 within a distance of coord2 (inclusive)?"
   (and (<= (abs (- (:x coords1) (:x coords2))) distance)
        (<= (abs (- (:y coords1) (:y coords2))) distance)))
 
-(defn [cache] is-accessible [placename destination]
+(defn [cache] accessible? [placename destination]
   "Is a destination accessible to the player?
 We cache this both for performance and persistence of place characteristics."
   (let [response (respond [(system world)
@@ -55,7 +46,7 @@ Respond with only either 'Yes' or 'No'.")
 
 (defn gen-name [nearby-places]
   "Make up a place from its neighbours."
-  (let [seed (choice "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
+  (let [seed (choice alphanumeric)
         terrain (choice ["a small building"
                          "a large building"
                          "a small outdoor space"
@@ -84,7 +75,6 @@ Examples:
 The name should have '{seed}' in the first few letters.")]
         response (-> (respond messages :max-tokens 50))
         m (re.search r"[\"']([\w\d][\w\d ']+[\w\d])[\"']" response)]
-    (print seed)
     (-> (if m (m.group) response) 
         sstrip
         capwords)))
@@ -96,7 +86,7 @@ The name should have '{seed}' in the first few letters.")]
                   (assistant "I understand the story's environment. Provide some narrative leading up to now.")
                   #* messages
                   (assistant "Tell me about where the is reader now.")
-                  (user f"The reader's location is '{placename}'.
+                  (user f"The reader's location is 'The {placename}'.
 {rooms-str}
 
 Nearby places:
@@ -104,28 +94,27 @@ Nearby places:
 
 {(news)}")
                   (user f"Generate a {length}, vivid description of what the reader ('you') sees, hears, smells or touches from {placename}.")
-                  (assistant f"The description of '{placename}' is:")]
+                  (assistant f"The description of 'The {placename}' is:")]
         response (respond messages)]
     (trim-prose response)))
 
-(defn edit-gen-description [nearby-str placename rooms-str [length "short"]]
+(defn [cache] edit-gen-description [nearby-str placename rooms-str [length "short"] [world-str world]]
   "Make up a short place description from its name."
   (let [text f"Your purpose is to generate fun and imaginative descriptions of places, in keeping with the information you have. Make the reader feel viscerally like they are present in the place.
 Story setting:
-'{world}'
-{(news)}
+'{world-str}'
 
 Nearby places:
 {nearby-str}
 
-The protagonist's location is '{placename}'.
+The protagonist's location is 'The {placename}'.
 {rooms-str}"
         instruction f"Generate a {length}, vivid description of what the the protagonist sees, hears, smells and touches from {placename}. Write in the second person, using 'you'."
         response (edit text instruction)]
     (trim-prose response)))
 
 (defn gen-facts [nearby-places placename]
-  "Make up invariant facts about a place."
+  "Make up a few invariant facts about a place."
   (respond [(system world)
             (user f"Nearby places:
 {nearby-places}
@@ -164,9 +153,9 @@ The place is called '{placename}'. List its rooms, if any.")]
               (list))
          1 6)))
 
+;; FIXME: it's a bit flakey
 (defn guess-room [messages coords]
   "Guess the player's room."
-  ;; FIXME: it's a bit flakey
   (let [dlg (msgs->dlg "Player" "Narrator" messages)  
         room-list (rooms coords :as-string False)
         rooms-str (.join ", " room-list)
@@ -181,6 +170,12 @@ The rooms the player might be in are:
 ;;; -----------------------------------------------------------------------------
 ;;; Place functions
 ;;; -----------------------------------------------------------------------------
+
+(defn random-coords [[box #(-3 3)]] ; -> coords
+  "Extend the map at random coordinates."
+  (let [coords (Coords (randint #* box) (randint #* box))]
+    (extend-map coords)
+    coords))
 
 (defn rose [dx dy]
   "The word for the compass direction.
@@ -252,7 +247,7 @@ in adjacent cells, accessible or not."
   (.join "\n" (nearby coords #** kwargs)))
   
 (defn new [coords]
-  "Add a description etc. and an item to a place."
+  "Add a description etc, item, character to a place."
   (let [near-places (nearby-str coords :list-inaccessible True)
         placename (gen-name near-places)
         rooms (gen-rooms placename)
@@ -260,8 +255,11 @@ in adjacent cells, accessible or not."
                      :name placename
                      :rooms rooms)]
     (set-place place)
-    (when (< (/ (len state.items) (inc (len state.places))) 0.25) ; the items:places ratio we're aiming for
-      (item.new coords)) ; has to occur *after* place has been set
+    ; adding item, character has to occur *after* place has been set
+    (when (< (/ (len state.items) (inc (len state.places))) item-density)
+      (item.spawn coords))
+    (when (< (/ (len state.characters) (inc (len state.places))) character-density)
+      (character.spawn :name None :coords coords))
     place))
 
 (defn accessible [coords * min-places]

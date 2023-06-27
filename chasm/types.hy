@@ -34,7 +34,6 @@ Various types used throughout.
                                "owner" ; None if no character has in their inventory
                                "coords"])) ; None if it's being carried
 
-;; TODO: reduce number of fields
 (setv Character (namedtuple "Character" [; immutable traits
                                          "name"
                                          "appearance"
@@ -48,6 +47,7 @@ Various types used throughout.
                                          "quest"
                                          "score"
                                          "memories" ; db of chats? Events?
+                                         "inventory"
                                          "health"
                                          "skills"
                                          "emotions"]))

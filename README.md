@@ -8,20 +8,21 @@ persists (locations, characters, dialogue etc.)
 You can use it with a local model (LLaMA derivative like
 Wizard-Vicuna) or OpenAI's models. See the config file for examples.
 
-Chasm is still being written.
+Chasm is still being written. It's already pretty great though.
+
 
 ## Features
 
 [x] specify initial world with a short description
-[ ] continue / save file for dialogue
+[x] continue / save file for dialogue
 [x] persistent world / locations
 [x] fuzzy matching names of locations
-[ ] persistent items
+[x] persistent items
 [ ] persistent global event memory (vector db)
 [ ] per character event memory (vector db)
 [ ] per character dialogue memory (vector db)
-[ ] character inventory (current state only; toml?)
-  * [x] [ ] protagonist is just another player but with a "human" model
+[.] character inventory (current state only; toml?)
+  * [x] protagonist is just another player but with a "human" model
 [ ] thus it could generalise to MMP worlds
     * how should many people access at the same time?
 
@@ -31,13 +32,16 @@ Chasm is still being written.
 ### World information
 
 The world information (text file) should contain two or three
-sentences about the world (not specific places, characters or items)
-that won't change, such as general location or the decade.  They are
-universal and invariant context for your journey.
+sentences about the world that won't change (not specific places,
+characters or items), such as general location or the period in
+history. They are universal and invariant context for your journey.
 
 ### Persistent state
 
-- locations, characters, items. See `types.hy` and `state.hy`
+- locations
+- characters
+- items
+- events
 
 
 ### Generated
@@ -50,48 +54,38 @@ universal and invariant context for your journey.
 
 ### Actions
 
-Functions which modify state.
-
-```
-move: modifies a character's coords
-use: character, item -> event
-interact-location: cstate, lstate -> event
-interact-character: [cstate] -> [cstate]
-say: dialogue, cstate -> dialogue, cstate
-```
-
-
-### Matching
-
-We need functions which determine if a reference refers to an existing object or a new one.
-
 
 ### Generation
-
-Functions which generate a new NPC or location
-
-```
-new-location: coords -> location
-new-character: coords -> character
-```
-
-`location.new` grafts in available locations at each direction. Like an 8-way linked list.
 
 
 ## Interface
 
 - Web chat interface, since should be remotely available?
-- Management done by config file
-- Map display
+- Management done by config files
+- Map display?
 
 
 ## Installing and running
 
 Place a text file named after your world in a subdirectory called "worlds" (see the config file).
+Optionally, place character cards in a characters subdirectory within the created game folder.
+E.g. `worlds/mygame/characters/Alice.json`, which would contain something like this
+```json
+{
+    "name": "Alice",
+    "appearance": "...",
+    "backstory": "...",
+    "voice": "...",
+    "traits": "...",
+    "motivation": "...",
+    "dislikes": "..."
+}
+```
+with the desired values. Leave out fields and they'll be automatically generated.
 
 ## Problems
 
-- consistent naming of generated location names
+There are lots still.
 
 
 ### Inspiration
