@@ -1,11 +1,9 @@
 (require hyrule.argmove [-> ->>])
 (require hyrule.control [unless])
-(import hyrule [inc dec])
+(import hyrule [inc dec rest butlast starmap distinct])
 
 (import functools [partial cache lru-cache])
 (import itertools *)
-
-(import chasm [log])
 
 (import importlib)
 (import os)
@@ -38,18 +36,11 @@
          (except [e [ImportError]] 
             (print e)))))
 
-; TODO: rewrite as macros
 (defn first [xs]
-  (get xs 0))
-
-(defn rest [xs]
-  (cut xs 1 None))
+  (next (iter xs)))
 
 (defn last [xs]
-  (get xs -1))
-
-(defn butlast [xs]
-  (cut xs 0 -1))
+  (next (reversed xs)))
 
 (defn sieve [xs]
   (filter None xs))
@@ -203,9 +194,11 @@ force to lowercase, remove 'the' from start of line."
                   ; cut off last incomplete sentence
                   [(+ (.join "." (-> (last paras) (.split ".") (cut -1))) ".")])))))
 
-(defn is-last-word [s1 s2]
-  (or (= s1 (last (.split s2)))
-      (= s2 (last (.split s1)))))
+(defn last-word? [s1 s2]
+  (let [ss1 (.split s1)
+        ss2 (.split s2)])
+  (or (and s2 (= s1 (last (.split s2))))
+      (and s1 (= s2 (last (.split s1))))))
 
 (defn similar [s1 s2 [threshold 0.8]] ; -> bool
   "Two strings are heuristically similar, based on Jaro-Winkler algorithm and/or being the last word."
@@ -228,18 +221,23 @@ force to lowercase, remove 'the' from start of line."
   (when (any (map (partial similar s #** kwargs) l))
         (best-of l s)))
 
+(defn fuzzy-substr [s long-s #** kwargs]
+  "Fuzzy match if s is a substring of long-s. Return best match or None."
+  (fuzzy-in s (.split long-s)))
+
 (defn grep-attribute [s attribute]
   "Get an attribute from a string. Return as k-v tuple.
 The attribute should be on its own line as:
 `attribute: value`."
-  #(attribute (first
-                (lfor l (.split s "\n")
-                      :if (.startswith (.lower (.strip l))
-                            f"{attribute}:")
-                      (.strip (last (.partition l ":"))
-                              "\"' \n\t")))))
+  (let [kvs (lfor l (.split s "\n")
+                :if (similar attribute
+                             (first (.partition l ":")))
+                (.strip (last (.partition l ":"))
+                        "\"' \n\t"))]
+    (when kvs
+      #(attribute (first kvs)))))
 
 (defn grep-attributes [s attributes]
   "Get named attributes from a string. Return as dict."
-  (dict (map (partial grep-attribute s) attributes)))
+  (dict (filter None (map (partial grep-attribute s) attributes))))
   

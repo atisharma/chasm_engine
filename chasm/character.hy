@@ -27,6 +27,7 @@ Functions that deal with characters.
                                       "characters"
                                       f"{name}.json"]))
                      {})
+          ; only allow to override some
           sanitised {"name" (or name (:name loaded None))
                      "appearance" (:appearance loaded None)
                      "backstory" (:backstory loaded None)
@@ -50,7 +51,7 @@ Functions that deal with characters.
 (defn gen [coords [name None]] ; -> Character or None
   "Make up some plausible character based on a name."
   (let [seed (choice alphabet)
-        name-str (or name f"the character (whose given name begins with '{seed}')")
+        name-str (or name f"the character (whose first name begins with '{seed}')")
         name-dict (if name {"name" name} {})
         place (get-place coords)
         place-name (if place place.name "a typical place in this world")
@@ -69,17 +70,16 @@ Make up a brief few words for each attribute but be very specific.
 "))]
     (try
       (let [details (grep-attributes kvs ["name" "appearance" "backstory" "voice" "traits" "motivation" "dislikes"])]
-        (log.info place)
-        (log.info seed)
-        (log.info name-str)
+        (log.info f"Creating character '{(:name details)}'")
+        (when (in "the character" (:name details))
+            (raise "AI is too stupid to follow instructions."))
         (Character #** (| (._asdict default-character)
                           details
                           name-dict
                           {"coords" coords})))
       (except [e [Exception]]
         ; generating to template sometimes fails 
-        (log.error e)
-        (log.error "Bad new character:")
+        (log.error "Bad new character" e)
         (log.error place)
         (log.error seed)
         (log.error name-str)
@@ -119,10 +119,6 @@ Make up a brief few words for each attribute but be very specific.
   "Just set a location."
   (update-character character :coords coords)
   coords)
-
-(defn inventory [character]
-  "A string of the character's inventory."
-  (.join ", " character.inventory))
 
 (defn converse [c1 c2 [dialogue None]]
   "Carry on a conversation between two characters.

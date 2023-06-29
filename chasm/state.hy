@@ -74,15 +74,13 @@ Thing in themselves and relationships between things.
 (defn set-character [char]
   (log.debug f"Setting character {char.name}.")
   (setv (get characters char.name) char)
-  (.commit characters))
+  (.commit characters)
+  char)
 
 (defn update-character [char #** kwargs]
   "Update a character's details. You cannot change the name."
   (log.debug f"Updating character {char.name}, {kwargs}.")
-  (let [new-char { #** (._asdict char) #** kwargs}]
-    (setv (get characters (:name new-char))
-          (Character #** new-char))
-    (.commit characters)))
+  (set-character (Character #** (| (._asdict char) kwargs))))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Locations
@@ -105,16 +103,14 @@ Thing in themselves and relationships between things.
 (defn set-place [loc]
   (let [key (str loc.coords)]
     (setv (get places key) loc))
-  (.commit places))
+  (.commit places)
+  loc)
 
 (defn update-place [loc #** kwargs]
   "Update a place's details. You cannot change the coordinates
 (it replaces the place at those coords instead)."
-  (let [new-loc { #** (._asdict loc) #** kwargs}
-        key (str (:coords new-loc))]
-    (setv (get places key)
-          (Place #** new-loc))
-    (.commit places)))
+  (log.debug f"Updating place {loc.name}, {kwargs}.")
+  (set-place (Place #** (| (._asdict loc) kwargs))))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Items
@@ -136,14 +132,13 @@ Thing in themselves and relationships between things.
 
 (defn set-item [item]
   (setv (get items item.name) item)
-  (.commit items))
+  (.commit items)
+  item)
 
 (defn update-item [item #** kwargs]
   "Update an item's details. You cannot change the name."
-  (let [new-item { #** (._asdict item) #** kwargs}]
-    (setv (get items (:name new-item))
-          (Item #** new-loc))
-    (.commit items)))
+  (log.debug f"Updating item {item.name}, {kwargs}.")
+  (set-item (Item #** (| (._asdict item) kwargs))))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Dialogues

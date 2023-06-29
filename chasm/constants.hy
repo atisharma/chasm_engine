@@ -1,5 +1,3 @@
-(import math [inf])
-
 (import chasm.types [Character Coords])
 
 
@@ -16,11 +14,10 @@
                           :traits "Unknown"
                           :motivation "Unknown"
                           :dislikes "Unknown"
-                          :coords (Coords inf inf)
+                          :coords (Coords 0 0)
                           :quest None
                           :score 0
                           :memories []
-                          :inventory []
                           :health 100
                           :skills None
                           :emotions None))
@@ -37,3 +34,9 @@
 ; target number of items / characters per place
 (setv item-density 0.25
       character-density 0.25)
+
+(setv full-inventory-messages
+      ["You've got enough to carry already."
+       "Your inventory is full."
+       "You've got too many items already."
+       "Try dropping something first."])

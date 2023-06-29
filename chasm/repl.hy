@@ -11,15 +11,15 @@ The main REPL where we read output and issue commands.
 (import time [sleep])
 
 (import chasm.stdlib *)
-(import chasm.constants [compass-directions])
+(import chasm.engine *)
 (import chasm [place item character])
 (import chasm.types [Coords])
-(import chasm.state [world world-name news username])
+(import chasm.state [world world-name news username
+                     get-character])
 (import chasm.chat [token-length
                     load-messages save-messages
                     truncate append prepend
                     user assistant system])
-(import chasm.engine [move look hint assess what-if narrate])
 (import chasm.interface [banner
                          clear
                          console
@@ -32,41 +32,6 @@ The main REPL where we read output and issue commands.
                          error
                          exception])
 
-
-(defn command? [line]
-  (.startswith line "/"))
-
-(defn quit? [line]
-  (or (.startswith line "/q")
-      (.startswith line "/exit")))
-
-(defn look? [line]
-  (.startswith line "/l"))
-
-(defn hist? [line]
-  (.startswith line "/hist"))
-
-(defn go? [line] ; -> direction or None
-  "Are you trying to go to a new direction?"
-  (let [[cmd _ dirn] (.partition line " ")]
-    (cond (.startswith (.lower cmd) "/g") dirn
-          (and (command? cmd)
-               (in (rest cmd) compass-directions)) (rest cmd)
-          (= (.lower cmd) "go") (re.sub "^to " "" (sstrip dirn)))))
-
-(defn take? [line] ; -> item or None
-  "Are you trying to pick up an item?"
-  (let [[cmd _ obj] (.partition line " ")]
-    (cond (.startswith cmd "/take") (sstrip obj)
-          (= cmd "take") (sstrip obj)
-          (= cmd "pick") (re.sub "^up " "" (sstrip obj)))))
-
-(defn drop? [line coords] ; -> item or None
-  "Are you trying to drop an item?"
-  (let [[cmd _ obj] (.partition line " ")]
-    (cond (.startswith cmd "/drop") (sstrip obj)
-          (= cmd "drop") (re.sub "^to " "" (sstrip obj))
-          (= cmd "put") (re.sub "^down " "" (sstrip obj)))))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Debugging
@@ -93,18 +58,19 @@ Evaluate a Hy form."
 
 ;;; -----------------------------------------------------------------------------
 
-(defn status [messages player coords]
-  "Show game, place, coords, tokens used."
-  (let [l (+ 30 (len f"{world-name}{(place.name coords)}"))]
+(defn status [messages player]
+  "Show game, place, inventory, tokens used."
+  (let [l (+ 30 (len f"{world-name}{(place.name player.coords)}"))
+        inventory (.join ", " (lfor i (item.inventory player) i.name))]
     (clear-status-line)
     (status-line
       (.join "\n"
              [(.join " | "
                      [f"[italic blue]{world-name}[/italic blue]"
-                      f"[italic cyan]{(place.name coords)}[/italic cyan]"
-                      f"{(:x coords)} {(:y coords)}"
+                      f"[italic cyan]{(place.name player.coords)}[/italic cyan]"
+                      f"{(:x player.coords)} {(:y player.coords)}"
                       f"{(+ (token-length world) (token-length messages))} tkns"])
-              f"[italic magenta]{(character.inventory player)}[italic magenta]"]))))
+              f"[italic magenta]{inventory}[italic magenta]"]))))
 
 (defn run []
   "Launch the REPL, which takes player's input, parses
@@ -119,15 +85,13 @@ it, and passes it to the appropriate action."
              (place.extend-map _coords)) ; ensure there's somwhere to go
         player (with [s (spinner "Spawning...")]
                  (character.spawn :name username :coords _coords))
-        coords player.coords
         _p (with [s (spinner "Building world...")]
-             (place.extend-map coords)) ; ensure there's somwhere to go
+             (place.extend-map player.coords)) ; ensure there's somwhere to go
         messages (or (load-messages)
                      (with [s (spinner "Writing...")]
                        [(assistant (.join "\n\n"
-                                          [f"**{(place.name coords)}**"
-                                           (place.describe coords :length "very short")]))]))]
-    (log.warn player)
+                                          [f"**{(place.name player.coords)}**"
+                                           (place.describe player :length "very short")]))]))]
     (try
       (readline.set-history-length 100)
       (readline.read-history-file history-file)
@@ -139,26 +103,26 @@ it, and passes it to the appropriate action."
                                  :length (- (config "context_length")
                                             (token-length world)
                                             750))) 
-        (status messages player coords)
+        (setv player (get-character player.name)) ; reload every loop to sync from db
+        (status messages player)
         (let [line (.strip (rlinput "> "))
               user-msg (user line)
               result (cond (.startswith line "!") (parse-hy line)
                            (quit? line) (break)
-                           (look? line) (look coords :messages messages)
+                           (look? line) (look player :messages messages)
+                           (take? line) (assistant (item.fuzzy-claim (take? line) player))
+                           (drop? line) (assistant (item.fuzzy-drop (drop? line) player))
                            (hist? line) (print-messages messages)
-                           (.startswith line "/items") (info (item.describe-at coords))
-                           (.startswith line "/characters") (info (or (character.describe-at coords) "Nobody here but you."))
-                           (.startswith line "/map") (print-map coords)
-                           (.startswith line "/assess") (assess messages coords line)
-                           (.startswith line "/what-if") (what-if messages coords line)
-                           (.startswith line "/hint") (hint messages coords line)
+                           (.startswith line "/banner") (banner)
+                           (.startswith line "/clear") (clear)
+                           (.startswith line "/items") (info (item.describe-at player.coords))
+                           (.startswith line "/characters") (info (or (character.describe-at player.coords) "Nobody interesting here but you."))
+                           (.startswith line "/map") (print-map player.coords)
+                           (.startswith line "/assess") (assess messages player.coords line)
+                           (.startswith line "/what-if") (what-if messages player.coords line)
+                           (.startswith line "/hint") (hint messages player.coords line)
                            (.startswith line "/forget") (setv messages [])
-                           ;(.startswith line "/system") (print-message (system (.join "\n"[world (news)])))
-                           (go? line) (let [x (move coords (go? line) player :messages messages)]
-                                        (if x
-                                            (do (setv coords (:coords x))
-                                                (:msg x))
-                                            (narrate (append user-msg messages) player)))
+                           (go? line) (move messages player line)
                            (command? line) (error "I didn't understand that command.")
                            line (narrate (append user-msg messages) player))]
           (when result
@@ -169,9 +133,7 @@ it, and passes it to the appropriate action."
           (print)
           (error "**/quit** to exit"))
         (except [e [Exception]]
-          (with [f (open "traceback.log" :mode "w" :encoding "UTF-8")]
-            (import traceback)
-            (traceback.print-exception e :file f))
+          (log.error "REPL error" e :mode "w" :logfile "traceback.log")
           (exception)
           (sleep 5))))
     (save-messages messages)

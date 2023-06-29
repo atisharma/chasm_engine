@@ -20,7 +20,8 @@ Various types used throughout.
 
 (defn is-at [coords1 coords2]
   "Equality in location. Example usage: `(at? item.coords character.coords)`."
-  (and (= (:x coords1) (:x coords2))
+  (and coords1 coords2
+       (= (:x coords1) (:x coords2))
        (= (:y coords1) (:y coords2))))
 
 (setv Place (namedtuple "Place" ["coords"
@@ -47,7 +48,6 @@ Various types used throughout.
                                          "quest"
                                          "score"
                                          "memories" ; db of chats? Events?
-                                         "inventory"
                                          "health"
                                          "skills"
                                          "emotions"]))

@@ -108,6 +108,9 @@ Functions that relate to output on the screen.
   (print)
   (print "\033[K" :end "") ; clear to end of line
   (print)
+  (print "\033[K" :end "") ; clear to end of line
+  (print)
+  (print "\033[1A" :end "") ; up one line
   (print "\033[1A" :end "") ; up one line
   (print "\033[1A" :end "")) ; up one line
   

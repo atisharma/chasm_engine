@@ -18,10 +18,11 @@ Chasm is still being written. It's already pretty great though.
 * [x] persistent world / locations
 * [x] fuzzy matching names of locations
 * [x] persistent items
+* [ ] take, drop, modify-use items
 * [ ] persistent global event memory (vector db)
-* [ ] per character event memory (vector db)
+* [ ] per character event memory
 * [ ] per character dialogue memory (vector db)
-* [.] character inventory (current state only; toml?)
+* [ ] character inventory
 * [x] protagonist is just another player but with a "human" model
 
 
