@@ -7,8 +7,12 @@ persists (locations, characters, dialogue etc.)
 
 You can use it with a local model (LLaMA derivative like
 Wizard-Vicuna) or OpenAI's models. See the config file for examples.
+It works very well with a 30B LLaMA model and acceptably with a 13B
+one. It 'kind-of-works' with a 7B LLaMA model, but the results aren't
+great.
 
-Chasm is still being written. It's already pretty great though.
+Chasm is still being written. It's already pretty great though,
+with a good model.
 
 
 ## Features
@@ -18,76 +22,70 @@ Chasm is still being written. It's already pretty great though.
 * [x] persistent world / locations
 * [x] fuzzy matching names of locations
 * [x] persistent items
-* [ ] take, drop, modify-use items
+* [x] character inventory
+* [x] take, drop items
+* [ ] modify/use items
 * [ ] persistent global event memory (vector db)
 * [ ] per character event memory
 * [ ] per character dialogue memory (vector db)
-* [ ] character inventory
 * [x] protagonist is just another player but with a "human" model
 
 
-## State
+## Installing and running
 
 ### World information
+
+Place a text file named after your world in a subdirectory called
+"worlds" (see the config file).
 
 The world information (text file) should contain two or three
 sentences about the world that won't change (not specific places,
 characters or items), such as general location or the period in
 history. They are universal and invariant context for your journey.
 
-### Persistent state
-
-- locations
-- characters
-- items
-- events
-
-
-### Generated
-
-- scene descriptions
-- map connectivity
-- puzzles
-- chat, per-character dialogue
+For example, set `world = "worlds/New York"` in your config file
+and create a text file `worlds/New York.txt` with the contents
+```
+The setting is 1930's New York, and surrounding areas. There are many buildings specific to the area.
+[genre: realist urban fiction]
+```
+This will create a world called 'New York' and scenes appropriate to it.
 
 
-### Actions
+### Character cards
 
-
-### Generation
+If you want to override your or any other character's attributes permanently,
+create a file `worlds/New York/characters/Hero.json` (for a character name of
+Hero) with the contents
+```
+{
+    "name": "Hero",
+    "appearance": "Heroic.",
+    "backstory": "Comes from a long line of heroes.",
+    "voice": "Heroic."
+    "traits": "Heroism."
+    "dislikes": "Not being heroic."
+    "motivation": "To be heroic."
+}
+```
+reflecting the desired values. Leave out fields and they'll be automatically generated.
 
 
 ## Interface
 
-- Web chat interface, since should be remotely available?
-- Management done by config files
-- Map display?
+- [x] management done by config files
+- [x] terminal interface
+- [ ] web chat interface, since should be remotely available?
+- [ ] map display?
 
 
-## Installing and running
+## Problems / bugs
 
-Place a text file named after your world in a subdirectory called "worlds" (see the config file).
-Optionally, place character cards in a characters subdirectory within the created game folder.
-E.g. `worlds/mygame/characters/Alice.json`, which would contain something like this
-```json
-{
-    "name": "Alice",
-    "appearance": "...",
-    "backstory": "...",
-    "voice": "...",
-    "traits": "...",
-    "motivation": "...",
-    "dislikes": "..."
-}
-```
-with the desired values. Leave out fields and they'll be automatically generated.
-
-## Problems
-
-There are lots still.
+There are still many.
 
 
 ### Inspiration
 
+- Zork-like games. Though I never played Zork.
 - https://github.com/QuangBK/generativeAgent_LLM
 - https://github.com/atisharma/llama_farm
