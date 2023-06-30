@@ -81,7 +81,7 @@ The name should have '{seed}' in the first few letters.")]
         sstrip
         capwords)))
 
-(defn chat-gen-description [nearby-str placename rooms-str player messages [length "short"]]
+(defn chat-gen-description [nearby-str placename rooms-str player messages [length "very short"]]
   "Make up a short place description from its name."
   (let [messages [(system "Your purpose is to generate fun and exciting descriptions of places, in keeping with the information you have. Make the player feel viscerally like they are present in the place.")
                   (user f"Story setting:\n'{world}'")
@@ -102,20 +102,20 @@ Nearby places:
         response (respond messages)]
     (trim-prose response)))
 
-(defn [cache] edit-gen-description [nearby-str placename rooms-str [length "short"] [world-str world]]
-  "Make up a short place description from its name."
-  (let [text f"Your purpose is to generate fun and imaginative descriptions of places, in keeping with the information you have. Make the reader feel viscerally like they are present in the place.
+(defn [cache] edit-gen-description [nearby-str placename rooms-str [world-str world]]
+  "Make up a single-paragraph place description from its name."
+  (let [text f"Your purpose is to generate short, fun, imaginative descsriptions of a place, in keeping with the information you have. Make the reader feel viscerally like they are present in the place. Set the scene. Write in the second person, using 'you'. Be concise. Don't mention any people or characters that may be present here, concentrate on things that won't change.
 Story setting:
 '{world-str}'
-
 Nearby places:
 {nearby-str}
-
-The protagonist's location is 'The {placename}'.
+The protagonist's new location is 'The {placename}'.
 {rooms-str}"
-        instruction f"Generate a {length}, vivid description of what the the protagonist sees, hears, smells and touches from {placename}. Write in the second person, using 'you'."
-        response (edit text instruction)]
-    (trim-prose response)))
+        instruction f"Generate no more than one or two short sentences of vivid description of what the the protagonist sees, hears, smells or touches from {placename}."
+        response (edit text instruction :max-tokens 70)]
+    (.join "\n\n"
+           [f"**{placename}**"
+            (trim-prose response)])))
 
 (defn gen-facts [nearby-places placename]
   "Make up a few invariant facts about a place."
@@ -300,7 +300,7 @@ This function is not deterministic, because we ask the model to decide."
         room-str
         place.rooms)))
 
-(defn describe [player [messages None] [length "short"]]
+(defn describe [player [messages None] [length "very short"]]
   "Return a description of the location."
   (let [coords player.coords
         place (get-place coords)]
@@ -312,12 +312,9 @@ This function is not deterministic, because we ask the model to decide."
                                   player
                                   messages
                                   :length length)
-            (chat-gen-description (nearby-str coords :list-inaccessible False)
+            (edit-gen-description (nearby-str coords :list-inaccessible False)
                                   place.name
-                                  (rooms coords)
-                                  player
-                                  [(user "This is the first scene in the story.")]
-                                  :length length))
+                                  (rooms coords)))
         "I can't even begin to tell you how completely lost you are. How did you get here?")))
 
 (defn name [coords]

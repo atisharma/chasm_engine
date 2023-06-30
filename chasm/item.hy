@@ -111,7 +111,7 @@ If you just want those at a location, use `get-items`."
 
 (defn claim [item owner]
   "Set the owner of the item and remove its coords.
-This implements picking it up, giving, taking etc."
+This implements picking it up, taking etc."
   (update-item item :owner owner.name :coords None))
 
 (defn drop [item owner]
@@ -130,7 +130,7 @@ This implements picking it up, giving, taking etc."
                   i (get items-here-dict item-name)]
               (claim i character)
               f"You picked up the {i.name}.")
-            f"I can't see a '{obj}' here. Are you sure that that's the right name, that it's here and that you can pick it up?"))))
+            f"You can't pick up '{obj}'."))))
 
 (defn fuzzy-drop [obj character]
   "Check `obj` is there, then own it and assign it to character's inventory."
@@ -141,4 +141,15 @@ This implements picking it up, giving, taking etc."
               i (get-item item-name)]
           (drop i character)
           f"You dropped the {i.name}.")
-        f"You don't have a '{obj}' here. Are you sure that's the right name?")))
+        f"You don't have '{obj}' in your inventory.")))
+
+(defn fuzzy-give [obj owner character]
+  "Check `obj` is owned, then assign it to character's inventory."
+  (let [inv (inventory owner)
+        inv-names (lfor i inv i.name)]
+    (if (fuzzy-in obj inv-names)
+      (let [item-name (best-of inv-names obj)
+            i (get inv item-name)]
+        (claim i character)
+        f"You gave the {i.name} to {character.name}.")
+      f"You don't have a '{obj}'.")))

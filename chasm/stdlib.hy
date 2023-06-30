@@ -188,7 +188,7 @@ force to lowercase, remove 'the' from start of line."
                   (sieve)
                   (list))]
     (.join "\n\n"
-           (if (in (last (.strip (last paras))) ".?!\"'")
+           (if (in (last (.strip (last paras))) ".?!\"'*)")
                paras
                (+ (cut paras -1)
                   ; cut off last incomplete sentence
@@ -214,7 +214,8 @@ force to lowercase, remove 'the' from start of line."
   "Pick from l the most similar to s, based on Jaro-Winkler algorithm."
   (let [cs (sstrip s)
         scores (sorted (lfor x l [(jaro.jaro-winkler-metric cs (sstrip x)) x]))]
-    (last (last scores))))
+    (when scores
+      (last (last scores)))))
 
 (defn fuzzy-in [s l #** kwargs]
   "Fuzzy match to any of the items. Return best match or None."
@@ -241,3 +242,18 @@ The attribute should be on its own line as:
   "Get named attributes from a string. Return as dict."
   (dict (filter None (map (partial grep-attribute s) attributes))))
   
+(defn format-msg [message] 
+  "Format a chat or dialogue message as a string."
+  (let [l (-> message
+              (:role)
+              (.capitalize)
+              (+ ":"))
+        content (-> message
+                    (:content)
+                    (.strip))]
+    f"{l :<3} {(.strip (:content message))}"))
+
+(defn format-msgs [messages]
+  "Format a chat or dialogue as a long string."
+  (.join "\n"
+         (map format-msg messages)))

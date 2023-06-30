@@ -1,9 +1,11 @@
 "
 Functions that relate to output on the screen.
 "
-(require hyrule.argmove [-> ->> as->])
 
-(import re)
+(require hyrule.argmove [-> ->> as->])
+(require hyrule.control [case])
+
+(import hashlib [md5])
 
 (import rich.console [Console])
 (import rich.padding [Padding])
@@ -114,6 +116,17 @@ Functions that relate to output on the screen.
   (print "\033[1A" :end "") ; up one line
   (print "\033[1A" :end "")) ; up one line
   
+(defn role-color [role]
+  "The signature color of the role, derived from its name."
+  (let [role (.capitalize role)
+        i (-> (role.encode "utf-8")
+              (md5)
+              (.hexdigest)
+              (int 16)
+              (% 222)
+              (+ 1))]
+    (get colors i)))
+
 (defn print-messages [messages]
   "Format and print messages to the terminal."
   (console.rule)
@@ -124,18 +137,20 @@ Functions that relate to output on the screen.
 
 (defn print-message [msg [padding #(0 3 1 0)]]
   "Format and print a message with role to the screen."
-  (let [output (Table :padding padding
+  (let [color (role-color (:role msg))
+        output (Table :padding padding
                       :expand True
                       :show-header False
                       :show-lines False
                       :box None)
-        role-prompt (match (:role msg)
-                           "assistant" ""
-                           "user" "> "
-                           "system" "")]
+        role-prompt (case (:role msg)
+                          "assistant" ""
+                          "user" "> "
+                          "system" ""
+                          else f"{(:role msg)}: ")]
     (.add-column output :min-width 2)
     (.add-column output :ratio 1 :overflow "fold")
-    (.add-row output f"[bold cyan]{role-prompt}[/bold cyan]"
+    (.add-row output f"[bold {color}]{role-prompt}[/bold {color}]"
               (if render-markdown
                   (Markdown (sanitize-markdown (:content msg)))
                   (:content msg)))
@@ -166,15 +181,3 @@ Functions that relate to output on the screen.
   ;; Markdown swallows single newlines.
   ;; and defines the antipattern of preserving them with a double space.
   (.replace (.strip s) "\n" "  \n"))
-
-(defn format-msg [message] 
-  "Format a chat message for display."
-  (let [l (-> message
-              (:bot)
-              (.capitalize)
-              (+ ":"))
-        content (-> message
-                    (:content)
-                    (.strip))]
-                    ;(.replace "\n" "\n\n"))]
-    f"{l :<3} {(.strip (:content message))}"))

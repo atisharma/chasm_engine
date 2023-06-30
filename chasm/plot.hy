@@ -9,12 +9,18 @@ Develop the plot
 - global quests / mysteries (not character ones)
 "
 
-(defn assign-quest [messages character]
-  "There's a new quest in town.")
+(import chasm.stdlib *)
 
-(defn solve-quest [messages character]
-  "It's solved, remove it and make a record somewhere. Increment score.")
+(import chasm.state [news world username
+                     get-item update-item
+                     get-place
+                     update-character])
+
 
 (defn record-event [messages])
 
-(defn record-dialogue [messages])
+
+(defn extract-plot-points [messages])
+
+
+(defn extract-character-points [messages])

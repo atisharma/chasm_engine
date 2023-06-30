@@ -1,5 +1,7 @@
 "
 Various types used throughout.
+
+N.B. don't change the order of attributes, because the serialisation is order-dependent.
 "
 (require hyrule.argmove [-> ->>])
 
@@ -42,14 +44,15 @@ Various types used throughout.
                                          "voice"
                                          "traits"
                                          "motivation"
+                                         "likes"
                                          "dislikes"
+                                         "skills"
                                          ; mutable traits
                                          "coords"
                                          "quest"
                                          "score"
                                          "memories" ; db of chats? Events?
                                          "health"
-                                         "skills"
                                          "emotions"]))
 
 ;; should be an event db? sqlite table or vectordb?

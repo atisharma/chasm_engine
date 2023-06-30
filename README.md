@@ -1,9 +1,10 @@
 # Chasm - CHAracter State Manager
 
-Chasm is a *generative text adventure game*. It uses generative
-artificial intelligence to generate scenes and characters as you
-play. Unlike role-playing in ChatGPT or similar, important state
-persists (locations, characters, dialogue etc.)
+Chasm is a ***generative text adventure game*** in a ***world you
+specify***. It uses generative artificial intelligence to generate
+scenes and characters as you play. Unlike simply role-playing in
+ChatGPT or similar, important state persists (locations, characters,
+dialogue etc.)
 
 You can use it with a local model (LLaMA derivative like
 Wizard-Vicuna) or OpenAI's models. See the config file for examples.
@@ -18,17 +19,20 @@ with a good model.
 ## Features
 
 * [x] specify initial world with a short description
-* [x] continue / save file for dialogue
 * [x] persistent world / locations
 * [x] fuzzy matching names of locations
+* [x] continue / save file for game
 * [x] persistent items
 * [x] character inventory
 * [x] take, drop items
 * [ ] modify/use items
 * [ ] persistent global event memory (vector db)
-* [ ] per character event memory
-* [ ] per character dialogue memory (vector db)
+* [ ] per-character dialogue memory (vector db)
+* [ ] per-character event memory
+* [ ] per-character quests
 * [x] protagonist is just another player but with a "human" model
+* [ ] command-line parameters to override config
+* [ ] world editor for manual world construction
 
 
 ## Installing and running
@@ -62,13 +66,13 @@ Hero) with the contents
     "name": "Hero",
     "appearance": "Heroic.",
     "backstory": "Comes from a long line of heroes.",
-    "voice": "Heroic."
-    "traits": "Heroism."
-    "dislikes": "Not being heroic."
+    "voice": "Heroic.",
+    "traits": "Heroism.",
+    "dislikes": "Not being heroic.",
     "motivation": "To be heroic."
 }
 ```
-reflecting the desired values. Leave out fields and they'll be automatically generated.
+reflecting the desired values. Leave out fields and they'll be automatically generated. The `name` field is ignored (since it's implicit in the filename).
 
 
 ## Interface

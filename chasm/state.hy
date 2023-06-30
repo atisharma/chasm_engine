@@ -46,34 +46,41 @@ Thing in themselves and relationships between things.
   f"It is {(.strftime (datetime.now timezone.utc) "%H:%M, %a %d %h")}.")
 
 ;;; -----------------------------------------------------------------------------
+;;; db functions
+;;; -----------------------------------------------------------------------------
 
 (defn dumps [db]
   "Print a table of db."
   (for [r (db.values)]
     (print r)))
 
+(defn get-table [tablename]
+  "Make a table in the database."
+  (let [t (SqliteDict f"{path}/{world-name}.sqlite"
+                      :tablename tablename
+                      :autocommit True
+                      :encode json.dumps
+                      :decode json.loads)]
+    (.register atexit t.close)
+    t))
+
 ;;; -----------------------------------------------------------------------------
 ;;; Characters
 ;;; key is character name, value is Character
 ;;; -----------------------------------------------------------------------------
 
-(setv characters (SqliteDict f"{path}/db.sqlite"
-                             :tablename "characters"
-                             :autocommit True
-                             :encode json.dumps
-                             :decode json.loads))
-(.register atexit characters.close)
+(setv characters (get-table "characters"))
 
 (defn get-character [char-name]
   (log.debug f"Recalling character {char-name}.")
   (when char-name
     (try
-      (Character #* (get characters char-name))
+      (Character #** (get characters char-name))
       (except [KeyError]))))
 
 (defn set-character [char]
   (log.debug f"Setting character {char.name}.")
-  (setv (get characters char.name) char)
+  (setv (get characters char.name) (._asdict char))
   (.commit characters)
   char)
 
@@ -87,22 +94,17 @@ Thing in themselves and relationships between things.
 ;;; key is string repr of coords, value is Location
 ;;; -----------------------------------------------------------------------------
 
-(setv places (SqliteDict f"{path}/db.sqlite"
-                         :tablename "places"
-                         :autocommit True
-                         :encode json.dumps
-                         :decode json.loads))
-(.register atexit places.close)
+(setv places (get-table "places"))
 
 (defn get-place [coords]
   (let [key (str coords)]
     (try
-      (Place #* (get places key))
+      (Place #** (get places key))
       (except [KeyError]))))
 
 (defn set-place [loc]
   (let [key (str loc.coords)]
-    (setv (get places key) loc))
+    (setv (get places key) (._asdict loc)))
   (.commit places)
   loc)
 
@@ -117,21 +119,16 @@ Thing in themselves and relationships between things.
 ;;; key is item name, value is Item
 ;;; -----------------------------------------------------------------------------
 
-(setv items (SqliteDict f"{path}/db.sqlite"
-                        :tablename "items"
-                        :autocommit True
-                        :encode json.dumps
-                        :decode json.loads))
-(.register atexit items.close)
+(setv items (get-table "items"))
 
 (defn get-item [item-name]
   (when item-name
     (try
-      (Item #* (get items item-name))
+      (Item #** (get items item-name))
       (except [KeyError]))))
 
 (defn set-item [item]
-  (setv (get items item.name) item)
+  (setv (get items item.name) (._asdict item))
   (.commit items)
   item)
 
@@ -145,8 +142,6 @@ Thing in themselves and relationships between things.
 ;;; -----------------------------------------------------------------------------
 
 ;; a vector db per character?
-
-(setv dialogues {})
 
 ;;; -----------------------------------------------------------------------------
 ;;; Event dbs

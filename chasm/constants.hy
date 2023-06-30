@@ -13,14 +13,15 @@
                           :voice "silent"
                           :traits "Unknown"
                           :motivation "Unknown"
+                          :likes "Unknown"
                           :dislikes "Unknown"
+                          :skills "Unknown"
                           :coords (Coords 0 0)
-                          :quest None
+                          :quest "Unknown"
                           :score 0
                           :memories []
                           :health 100
-                          :skills None
-                          :emotions None))
+                          :emotions "Unknown"))
 
 (setv compass-directions ["n" "north"
                           "ne" "northeast"

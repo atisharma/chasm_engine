@@ -60,8 +60,7 @@ Evaluate a Hy form."
 
 (defn status [messages player]
   "Show game, place, inventory, tokens used."
-  (let [l (+ 30 (len f"{world-name}{(place.name player.coords)}"))
-        inventory (.join ", " (lfor i (item.inventory player) i.name))]
+  (let [inventory (.join ", " (lfor i (item.inventory player) i.name))]
     (clear-status-line)
     (status-line
       (.join "\n"
@@ -80,18 +79,15 @@ it, and passes it to the appropriate action."
   ;(info "Enter **/help** for help\n")
   (console.rule)
   (let [history-file (os.path.join (os.path.expanduser "~") ".chasm_history")
-        _coords (place.random-coords #(-2 2))
-        _p (with [s (spinner "Building world...")]
-             (place.extend-map _coords)) ; ensure there's somwhere to go
+        ;_p (with [s (spinner "Building world...")]
+             ;(place.extend-map _coords) ; ensure there's somewhere to go
         player (with [s (spinner "Spawning...")]
-                 (character.spawn :name username :coords _coords))
+                 (character.spawn :name username))
         _p (with [s (spinner "Building world...")]
-             (place.extend-map player.coords)) ; ensure there's somwhere to go
+             (place.extend-map player.coords)) ; ensure there's somewhere to go
         messages (or (load-messages)
                      (with [s (spinner "Writing...")]
-                       [(assistant (.join "\n\n"
-                                          [f"**{(place.name player.coords)}**"
-                                           (place.describe player :length "very short")]))]))]
+                       [(assistant (place.describe player))]))]
     (try
       (readline.set-history-length 100)
       (readline.read-history-file history-file)
@@ -121,8 +117,12 @@ it, and passes it to the appropriate action."
                            (.startswith line "/assess") (assess messages player.coords line)
                            (.startswith line "/what-if") (what-if messages player.coords line)
                            (.startswith line "/hint") (hint messages player.coords line)
-                           (.startswith line "/forget") (setv messages [])
-                           (go? line) (move messages player line)
+                           (.startswith line "/forget") (do
+                                                          (banner)
+                                                          (setv messages [])
+                                                          (assistant (place.describe player)))
+                           (go? line) (move (append user-msg messages) player)
+                           (talk? line) (converse (append user-msg messages) player)
                            (command? line) (error "I didn't understand that command.")
                            line (narrate (append user-msg messages) player))]
           (when result
