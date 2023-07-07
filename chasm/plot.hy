@@ -25,6 +25,10 @@ Develop the plot / world events
                     msgs->dlg])
 
 
+(defn recall-points [messages player]
+  "Recall the important plot points relating to the player, story thread, characters present.")
+
+
 (defn extract-point [messages player]
   "Scan the recent conversation for plot points and insert them into the record."
   (let [msgs (truncate (cut messages -6 None) :spare-length 500)
@@ -39,11 +43,10 @@ Develop the plot / world events
                           :max_tokens 300)
         sanitised (.replace response "\n" " ")
         classification (re.search r"\[(\w+)\]" sanitised)
-        point (re.search r"\][- ]*([\w ,.]+)" sanitised)]
-    (log.info f"plot/extract-point: {sanitised}")
+        point (re.search r"\][- ]*([\w ,.']+)" sanitised)]
     (when (and point classification)
-      (log.info (first (classification.groups)))
-      (log.info (first (point.groups)))
+      (log.info f"plot/extract-point: {(first (classification.groups))}")
+      (log.info f"plot/extract-point: {(first (point.groups))}")
       (set-event (Event #** {"time" f"{(time):015.2f}"
                              "place" (place.name player.coords)
                              "coords" player.coords

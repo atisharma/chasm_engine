@@ -324,7 +324,8 @@ The setting for the dialogue is:
     (for [c (append (get-character player.name) (character.get-at player.coords))]
       (character.develop c messages))
       ; TODO: a scoring system that actually works
-    (for [c-name (character.get-new messages)]
+    ; Summon characters to the player's location
+    (for [c-name (character.get-new messages player)]
       (let [c (get-character c-name)]
         (if c
             (character.move c player.coords) ; make sure they're here if the narrator says so

@@ -104,7 +104,7 @@ If you just want those at a location, use `get-items`."
   (let [items (inventory character)
         items-str (.join "\n" (lfor i items f"- {(get-desc i.name)}"))]
     (if items-str
-        f"{character.name} is carrying the following items:\n{items-str}\n"
+        f"{character.name} possesses the following items:\n{items-str}\n"
         "{character.name} is not carrying anything important.")))
 
 (defn move [item coords]

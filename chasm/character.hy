@@ -184,11 +184,12 @@ objectives: {character.objectives}
 new_memory: [classification] - any significant or poignant thing worth remembering from the dialogue"
         setting (system f"Story setting: {world}")
         instruction (system f"You will be given a character card for {character.name}, and the transcript of a dialogue involving them, for context.
-Update the character card given the context; for instance, if they must travel to a nearby place, update their single destination.
+Update each attribute in the the character appropriate to the given context.
+Destination should be one from the list (or 'here').
 Objectives should align with the plot, the character's role, and evolve slowly.
 Classify new memories into [significant], [minor] or [forgettable].
 Give one attribute per line, no commentary, examples or other notes, just the card with the updated details.
-Just repeat the original attribute unaltered if there is no reason to change it.
+Just omit the original attribute if there is no reason to change it.
 Use a brief few words, comma separated, for each attribute. Be concise and very specific.")
         length (+ 150 (token-length [instruction setting card card])) ; count card twice to allow the result
         dialogue-str (format-msgs (truncate dialogue :spare-length length))
@@ -209,9 +210,13 @@ The character card to update is as follows:
                               (not (in "[forgettable]" new-memory))
                               (not (in "[classification]" new-memory)))
                          (list (set (append new-memory character.memories))) ; unique ones
-                         character.memories)]
+                         character.memories)
+            score (if (similar character.objectives
+                               (:objectives details ""))
+                      character.score
+                      (inc character.score))]
         (log.info f"character/develop '{character.name}'")
-        (update-character character :memories memories #** details))
+        (update-character character :memories memories :score score #** details))
       (except [e [Exception]]
         ; generating to template sometimes fails 
         (log.error "Bad character" e)
@@ -219,19 +224,21 @@ The character card to update is as follows:
 
 (defn recall [character [keywords None]]
   "Recall memories."
-  (let [memories (.copy character.memories)]
-    (shuffle memories)
+  (let [memories (.copy character.memories)
+        significant (lfor m memories :if (in "significant" m) m)]
+    (shuffle significant)
     ;; ----- ***** -----
     ;; TODO: use vector db to extract most relevant memories rather than random
     ;; ----- ***** -----
-    (cut memories 4)))
+    (cut significant 4)))
 
-(defn get-new [messages]
-  "Are any new or existing characters mentioned in the messages?"
+(defn get-new [messages player]
+  "Are any new or existing characters mentioned in the messages?
+They will appear at the player's location."
   (let [setting (system f"Story setting: {world}")
-        prelude (system "Give a list of people (if any), one per line, that are obviously referred to in the text as being at the current location and time. Do not invent new characters. Exclude places and objects, only people's proper names count. Give the names as they appear in the text. Setting and narrative appear below.")
+        prelude (system f"Give a list of people (if any), one per line, that are obviously referred to in the text as being physically present at the current location ({(place.name player.coords)}) and time. Do not invent new characters. Exclude places and objects, only people's proper names count. Give the names as they appear in the text. Setting and narrative appear below.")
         instruction (user "Now, give the list of characters.")
-        char-list (respond (->> messages
+        char-list (respond (->> (cut messages -6 None)
                                 (prepend setting)
                                 (prepend prelude)
                                 (append instruction)
@@ -245,7 +252,6 @@ The character card to update is as follows:
                                  (sieve)
                                  (filter (fn [x] (not (fuzzy-in x ["None" "You" "###" "."]))))
                                  (filter (fn [x] (< (len (.split x)) 3))) ; exclude long rambling non-names
-                                 ;(filter (fn [x] (not (fuzzy-in x (.keys characters))))) ; exclude existing chars
                                  (list))]
     (log.info f"character/get-new: {filtered-char-list}")
     (cut filtered-char-list 4)))

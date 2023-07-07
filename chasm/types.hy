@@ -38,7 +38,8 @@ N.B. don't change the order of attributes, because the serialisation is order-de
                                "owner" ; None if no character has in their inventory
                                "coords"])) ; None if it's being carried
 
-(setv mutable-character-attributes ["appearance"
+(setv mutable-character-attributes ["name" ; maybe... you discover their surname?
+                                    "appearance"
                                     "health"
                                     "emotions"
                                     "objectives"

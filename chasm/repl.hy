@@ -137,7 +137,10 @@ it, and passes it to the appropriate action."
             (.extend messages [user-msg result])
             (save-messages player messages)
             (move-characters messages player)
-            (when (and messages (not (% (next counter) 2)))
+            (when (and messages
+                       (not (% (next counter) 2))
+                       ; don't develop when moving
+                       (not (go? line)))
               (develop messages player))))
         (except [KeyboardInterrupt]
           (print)

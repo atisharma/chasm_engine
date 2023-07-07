@@ -97,8 +97,8 @@ Nearby places:
 
 (defn [cache] gen-description [nearby-str placename rooms-str [world-str world]]
   "Make up a single-paragraph place description from its name."
-  (let [prelude f"Your purpose is to generate short, fun, imaginative descsriptions of a place, in keeping with the information you have. Make the reader feel viscerally like they are present in the place. Set the scene. Write in the second person, using 'you'. Be concise. Don't mention any people or characters that may be present here, concentrate on things that won't change.
-Generate no more than one or two short sentences of vivid description of what the the protagonist sees, hears, smells or touches from {placename}."
+  (let [prelude f"Your purpose is to generate short, fun, imaginative descriptions of a place, in keeping with the information you have. Make the reader feel viscerally like they are present in the place. Set the scene. Write in the second person, using 'you'. Be concise. Don't mention any people or characters that may be present here, concentrate on things that won't change.
+Generate a few short sentences of vivid description of what the the protagonist sees, hears, smells or touches from {placename}."
         context f"Story setting:
 '{world-str}'
 Nearby places:
