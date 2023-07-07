@@ -10,10 +10,11 @@
 (import re)
 (import json)
 (import readline)
+(import string [capwords])
 (import pathlib [Path])
 (import hashlib [sha1 pbkdf2-hmac])
 (import hmac [compare-digest])
-(import random [randint choice])
+(import random [shuffle randint choice])
 
 (import jaro)
 
@@ -40,7 +41,8 @@
   (next (iter xs)))
 
 (defn last [xs]
-  (next (reversed xs)))
+  (when xs
+    (next (reversed xs))))
 
 (defn sieve [xs]
   (filter None xs))
@@ -49,6 +51,14 @@
   "Split into pairs. So ABCD -> AB CD."
   (zip (islice xs 0 None 2) (islice xs 1 None 2)))
   
+(defn prepend [x #^list l]
+  "Prepend x at the front of list l."
+  (+ [x] l))
+
+(defn append [x #^list l]
+  "Append x to list l."
+  (+ l [x]))
+
 ;;; -----------------------------------------------------------------------------
 ;;; config functions
 ;;; -----------------------------------------------------------------------------
@@ -158,6 +168,14 @@
                                                  :salt salt)))))
 
 ;;; -----------------------------------------------------------------------------
+;;; random things
+;;; -----------------------------------------------------------------------------
+
+(defn dice [n]
+  "True 1/n of the time."
+  (not (randint 0 (- n 1))))
+
+;;; -----------------------------------------------------------------------------
 ;;; String functions
 ;;; -----------------------------------------------------------------------------
 
@@ -178,22 +196,25 @@ force to lowercase, remove 'the' from start of line."
 (defn trim-prose [s]
   "Remove any incomplete sentence."
   ; TODO: test handling of quotes and dialogue
+  ; FIXME: still getting a rogue '.' paragraph at the end of some prose
   (let [paras (-> s
                   (.strip)
                   (->> (re.sub r"\n{3,}" r"\n\n" :flags re.M))
                   ;(.replace "\n\n\n" "\n\n")
                   (.split "\n\n")
-                  (->> (filter (fn [x] (not (= x "."))))
-                       (map (fn [x] (.strip x "\n\t"))))
+                  (->> (filter (fn [x] (> (len x) 3)))
+                       (map (fn [x] (when x (.strip x "\n\t")))))
                   (sieve)
                   (list))]
-    (.join "\n\n"
-           (if (in (last (.strip (last paras))) ".?!\"'*)")
-               paras
-               (+ (cut paras -1)
-                  ; cut off last incomplete sentence
-                  [(+ (.join "." (-> (last paras) (.split ".") (cut -1))) ".")])))))
-
+    (if paras
+        (.join "\n\n"
+               (if (in (last (.strip (last paras))) ".?!\"'*)")
+                   paras
+                   (+ (cut paras -1)
+                      ; cut off last incomplete sentence
+                      [(+ (.join "." (-> (last paras) (.split ".") (cut -1))) ".")])))
+        "")))
+  
 (defn last-word? [s1 s2]
   (let [ss1 (.split s1)
         ss2 (.split s2)])

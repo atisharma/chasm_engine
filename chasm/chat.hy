@@ -5,7 +5,7 @@ Chat management functions.
 
 (import chasm [log])
 
-(import openai [ChatCompletion Edit])
+(import openai [ChatCompletion])
 (import tiktoken)
 
 (import chasm.stdlib *)
@@ -14,14 +14,7 @@ Chat management functions.
 
 ;;; -----------------------------------------------------------------------------
 
-(defn token-length [x]
-  "The number of tokens, roughly, of a chat history (or anything with a meaningful __repr__).
-We use tiktoken because I don't want to install pytorch."
-  (let [encoding (tiktoken.get-encoding "cl100k_base")]
-    (->> x
-         (str)
-         (encoding.encode)
-         (len))))
+(defclass ChatError [Exception])
 
 ;;; -----------------------------------------------------------------------------
 ;;; Message functions
@@ -49,19 +42,31 @@ We use tiktoken because I don't want to install pytorch."
 
 ; TODO: extract and store events of chopped bit
 
-(defn truncate [messages [length 1500]]
-  "Hack until below length."
-  (while (> (token-length messages) length)
-    (setv messages (cut messages 2 None)))
-  messages)
+(defn token-length [x]
+  "The number of tokens, roughly, of a chat history (or anything with a meaningful __repr__).
+We use tiktoken because I don't want to install pytorch."
+  (let [encoding (tiktoken.get-encoding "cl100k_base")]
+    (->> x
+         (str)
+         (encoding.encode)
+         (len))))
 
-(defn prepend [x #^list l]
-  "Prepend x at the front of list l."
-  (+ [x] l))
-
-(defn append [x #^list l]
-  "Append x to list l."
-  (+ l [x]))
+(defn truncate [messages [spare-length None]]
+  "Hack away non-system messages until below length.
+This will fail if the system messages add up to be too long.
+Non-destructive."
+  (let [l (- (config "context_length") (or spare-length (config "max_tokens") 300))
+        ms (.copy messages)
+        roles (set (map (fn [x] (:role x)) ms))
+        too-long (> (token-length (str messages)) l)]
+    (cond (and too-long
+               (= (len roles) 1)) (raise (ChatError f"System messages too long ({(token-length (str ms))} tkns) - nothing left to cut."))
+          too-long (do (for [m ms]
+                         (when (!= (:role m) "system")
+                           (.remove ms m)
+                           (break)))
+                       (truncate ms :spare-length spare-length))
+          :else messages)))
 
 (defn msg->dlg [user-name assistant-name message]
   "Replace standard roles with given names and ignore roles with system messages.
@@ -97,43 +102,32 @@ Return modified messages."
 (defn flip-roles [messages]
   (dlg->msgs "assistant" "user" messages))
 
-(defn load-messages []
-  (load (.join "/" [state.path "messages.json"])))
+(defn load-messages [character]
+  (load (.join "/" [state.path "narratives" f"{(state.character-key character.name)}.json"])))
 
-(defn save-messages [messages]
-  (save messages (.join "/" [state.path "messages.json"])))
+(defn save-messages [character messages]
+  (save messages (.join "/" [state.path "narratives" f"{(state.character-key character.name)}.json"])))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Remote API calls
 ;;; -----------------------------------------------------------------------------
 
 (defn edit [text instruction #** kwargs]
-  "Follow an instruction.
-`input`: The input text to use as a starting point for the edit.
+  "Follow an instruction. Now uses the chat endpoint because the edit one is to be deprecated.
+`text`: The input text to use as a starting point for the edit.
 `instruction`: how the model should edit the prompt."
-  (let [params (config "models" (config "model"))
-        chat-model (.pop params "chat_model" "gpt-3.5-turbo")
-        completion-model (.pop params "completion_model" "text-davinci-edit-001")
-        response (Edit.create
-                   :input text
-                   :instruction instruction
-                   :model completion-model
-                   #** (| params kwargs))]
-    (-> response.choices
-        (first)
-        (:text))))
+  (respond [(system instruction)
+            (user text)]))
 
 (defn respond [messages #** kwargs]
   "Reply to a list of messages and return just content.
 The messages should already have the standard roles."
-  (let [max_tokens (config "max_tokens")
-        params (config "models" (config "model"))
-        chat-model (.pop params "chat_model" "gpt-3.5-turbo")
-        completion-model (.pop params "completion_model"  "text-davinci-edit-001")
+  (let [params (config "providers" (config "provider"))
+        defaults {"max_tokens" (config "max_tokens")
+                  "model" "gpt-3.5-turbo"}
         response (ChatCompletion.create
                    :messages messages
-                   :model chat-model
-                   #** (| {"max_tokens" max_tokens} params kwargs))]
+                   #** (| defaults params kwargs))]
     (-> response.choices
         (first)
         (:message)
@@ -205,15 +199,15 @@ Respond with only one word, either 'yes' or 'no'.")
   (respond [(system "You are a helpful assistant who follows instructions carefully.")
             (user f"Please express the topic of the following text in as few words as possible:
 
-{(text)}")
+{text}")
             (assistant "The topic is as follows:")]))
 
 (defn text->points [text]
   "Create bullet points from text."
   (respond [(system "You are a helpful assistant who follows instructions carefully.")
-            (user "Summarize the following text as a list of bullet points, preserving the most interesting, pertinent and important points.
+            (user f"Summarize the following text as a list of bullet points, preserving the most interesting, pertinent and important points.
 
-{(text)}")
+{text}")
             (assistant "The points are as follows:")]))
 
 (defn text->summary [text]
@@ -221,17 +215,17 @@ Respond with only one word, either 'yes' or 'no'.")
   (respond [(system "You are a helpful assistant who follows instructions carefully.")
             (user f"Please concisely rewrite the following text, preserving the most interesting, pertinent and important points.
 
-{(text)}")
+{text}")
             (assistant "The summary is as follows:")]))
 
 (defn text->extract [query text]
   "Extract points relevant to a query from text."
   (respond [(system "You are a helpful assistant who follows instructions carefully.")
-            (user f"{(query)}
+            (user f"{query}
 
 Please concisely rewrite the following text, extracting the points most interesting, pertinent and important to the preceding query. Don't invent information. If there is no relevant information, be silent.
 
-{(text)}")
+{text}")
             (assistant "The points are as follows:")]))
 
 ;;; -----------------------------------------------------------------------------

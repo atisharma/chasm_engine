@@ -9,13 +9,11 @@ Functions that manage place.
 
 (import chasm [log])
 
-(import string [capwords])
-
 (import chasm.stdlib *)
-(import chasm.constants [compass-directions alphanumeric])
+(import chasm.constants [compass-directions alphanumeric place-types])
 (import chasm.state [news world get-place set-place update-place])
 (import chasm.types [Coords Place])
-(import chasm.chat [respond edit yes-no
+(import chasm.chat [respond yes-no
                     msgs->dlg
                     system user assistant])
 
@@ -46,12 +44,7 @@ Respond with only either 'Yes' or 'No'.")
 (defn gen-name [nearby-places]
   "Make up a place from its neighbours."
   (let [seed (choice alphanumeric)
-        terrain (choice ["a small building"
-                         "a large building"
-                         "a small outdoor space"
-                         "a large outdoor space"
-                         "an underground space"
-                         "a space high up"])
+        terrain (choice place-types)
         messages [(system f"The story's setting is: {world}")
                   (user f"Nearby places:
 {nearby-places}
@@ -102,17 +95,22 @@ Nearby places:
         response (respond messages)]
     (trim-prose response)))
 
-(defn [cache] edit-gen-description [nearby-str placename rooms-str [world-str world]]
+(defn [cache] gen-description [nearby-str placename rooms-str [world-str world]]
   "Make up a single-paragraph place description from its name."
-  (let [text f"Your purpose is to generate short, fun, imaginative descsriptions of a place, in keeping with the information you have. Make the reader feel viscerally like they are present in the place. Set the scene. Write in the second person, using 'you'. Be concise. Don't mention any people or characters that may be present here, concentrate on things that won't change.
-Story setting:
+  (let [prelude f"Your purpose is to generate short, fun, imaginative descsriptions of a place, in keeping with the information you have. Make the reader feel viscerally like they are present in the place. Set the scene. Write in the second person, using 'you'. Be concise. Don't mention any people or characters that may be present here, concentrate on things that won't change.
+Generate no more than one or two short sentences of vivid description of what the the protagonist sees, hears, smells or touches from {placename}."
+        context f"Story setting:
 '{world-str}'
 Nearby places:
 {nearby-str}
 The protagonist's new location is 'The {placename}'.
 {rooms-str}"
-        instruction f"Generate no more than one or two short sentences of vivid description of what the the protagonist sees, hears, smells or touches from {placename}."
-        response (edit text instruction :max-tokens 70)]
+        instruction "Now, generate the description."
+        response (respond
+                   [(system prelude)
+                    (user context)
+                    (user instruction)]
+                   :max-tokens 70)]
     (.join "\n\n"
            [f"**{placename}**"
             (trim-prose response)])))
@@ -162,13 +160,12 @@ The place is called '{placename}'. List its rooms, if any.")]
   "Guess the player's room."
   (let [dlg (msgs->dlg "Player" "Narrator" messages)  
         room-list (rooms coords :as-string False)
-        rooms-str (.join ", " room-list)
-        text f"{dlg}
-The rooms the player might be in are:
-{rooms-str}"]
+        rooms-str (.join ", " room-list)]
     (if rooms-str
-        (->> (edit text "Given the dialogue between player and narrator, which room is the player most likely currently in at the end of the dialogue? Choose only the most probable.")
-             (best-of room-list)) 
+        (->> (respond [(system "Given the dialogue between player and narrator, which room is the player most likely currently in at the end of the dialogue? Choose only the most probable.")
+                       (user dlg)
+                       (user "The rooms the player might be in are: {rooms-str}")])
+             (best-of room-list))
         "")))
 
 ;;; -----------------------------------------------------------------------------
@@ -237,7 +234,7 @@ in adjacent cells, accessible or not."
           dy [-1 0 1]
           :setv nearby-place (get-offset-place _coords dx dy)
           :if (and nearby-place
-                   (+ (abs dx) (abs dy))
+                   (+ (abs dx) (abs dy)) ; not the same place
                    (or list-inaccessible (in nearby-place accessible-places)))
           (cond name nearby-place.name
                 place nearby-place
@@ -312,9 +309,9 @@ This function is not deterministic, because we ask the model to decide."
                                   player
                                   messages
                                   :length length)
-            (edit-gen-description (nearby-str coords :list-inaccessible False)
-                                  place.name
-                                  (rooms coords)))
+            (gen-description (nearby-str coords :list-inaccessible False)
+                             place.name
+                             (rooms coords)))
         "I can't even begin to tell you how completely lost you are. How did you get here?")))
 
 (defn name [coords]

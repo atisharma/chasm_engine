@@ -2,6 +2,8 @@
 
 (import chasm.stdlib *)
 
+;; TODO: per-module log configuration
+
 
 (setv logfile (or (config "logfile") "chasm.log"))
 

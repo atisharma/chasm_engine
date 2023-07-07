@@ -26,10 +26,11 @@ with a good model.
 * [x] character inventory
 * [x] take, drop items
 * [ ] modify/use items
+* [x] per-character event memory
+* [x] per-character quests
+* [ ] NPCs should travel, interact with items and plot, follow quests
 * [ ] persistent global event memory (vector db)
-* [ ] per-character dialogue memory (vector db)
-* [ ] per-character event memory
-* [ ] per-character quests
+* [ ] per-character dialogue memory (snippets, vector db)
 * [x] protagonist is just another player but with a "human" model
 * [ ] command-line parameters to override config
 * [ ] world editor for manual world construction

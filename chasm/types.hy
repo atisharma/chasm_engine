@@ -30,6 +30,7 @@ N.B. don't change the order of attributes, because the serialisation is order-de
                                  "name"
                                  "rooms"]))
 
+; consider adding provenance
 (setv Item (namedtuple "Item" ["name"
                                "type"
                                "appearance"
@@ -37,28 +38,37 @@ N.B. don't change the order of attributes, because the serialisation is order-de
                                "owner" ; None if no character has in their inventory
                                "coords"])) ; None if it's being carried
 
-(setv Character (namedtuple "Character" [; immutable traits
-                                         "name"
-                                         "appearance"
-                                         "backstory"
-                                         "voice"
-                                         "traits"
-                                         "motivation"
-                                         "likes"
-                                         "dislikes"
-                                         "skills"
-                                         ; mutable traits
-                                         "coords"
-                                         "quest"
-                                         "score"
-                                         "memories" ; db of chats? Events?
-                                         "health"
-                                         "emotions"]))
+(setv mutable-character-attributes ["appearance"
+                                    "health"
+                                    "emotions"
+                                    "objectives"
+                                    "destination"
+                                    "memories"]
 
-;; should be an event db? sqlite table or vectordb?
-(setv Event (namedtuple "Event" ["name"
-                                 "facts"
+      initial-character-attributes ["appearance"
+                                    "name"
+                                    "gender"
+                                    "backstory"
+                                    "voice"
+                                    "traits"
+                                    "motivation"
+                                    "likes"
+                                    "dislikes"
+                                    "skills"
+                                    "occupation"
+                                    "objectives"])
+      
+(setv Character (namedtuple "Character" (list (set [#* initial-character-attributes
+                                                    #* mutable-character-attributes
+                                                    "coords"
+                                                    "score"]))))
+
+; basically news items
+(setv Event (namedtuple "Event" ["time"
+                                 "place"
                                  "coords"
-                                 "description"]))
+                                 "characters"
+                                 "point"
+                                 "classification"]))
 
 ;; chats? Similarity search with threshold?

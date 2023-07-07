@@ -10,7 +10,6 @@ Thing in themselves and relationships between things.
 (import json)
 (import pathlib [Path])
 (import datetime [datetime timezone])
-(import string [capwords])
 
 (import atexit)
 (import sqlitedict [SqliteDict])
@@ -36,6 +35,9 @@ Thing in themselves and relationships between things.
 (.mkdir (Path (.join "/" [path "characters"]))
         :parents True
         :exist-ok True)
+(.mkdir (Path (.join "/" [path "narratives"]))
+        :parents True
+        :exist-ok True)
 
 (setv world (-> (Path f"{path}.txt")
                 (.read-text)
@@ -44,6 +46,10 @@ Thing in themselves and relationships between things.
 (defn news []
   "Up-to-date info about the universe."
   f"It is {(.strftime (datetime.now timezone.utc) "%H:%M, %a %d %h")}.")
+
+(defn now []
+  "Up-to-date info about the universe."
+  (.strftime (datetime.now timezone.utc) "%H:%M, %a %d %h"))
 
 ;;; -----------------------------------------------------------------------------
 ;;; db functions
@@ -71,16 +77,20 @@ Thing in themselves and relationships between things.
 
 (setv characters (get-table "characters"))
 
+(defn character-key [char-name]
+  "First name, lowercase."
+  (.lower (first (.split char-name))))
+
 (defn get-character [char-name]
   (log.debug f"Recalling character {char-name}.")
   (when char-name
     (try
-      (Character #** (get characters char-name))
+      (Character #** (get characters (character-key char-name)))
       (except [KeyError]))))
 
 (defn set-character [char]
   (log.debug f"Setting character {char.name}.")
-  (setv (get characters char.name) (._asdict char))
+  (setv (get characters (character-key char.name)) (dict (sorted (.items (._asdict char)))))
   (.commit characters)
   char)
 
@@ -141,8 +151,26 @@ Thing in themselves and relationships between things.
 ;;; Dialogues
 ;;; -----------------------------------------------------------------------------
 
-;; a vector db per character?
+;; a vector db per character? Or just summarisation? Generate on the fly?
 
 ;;; -----------------------------------------------------------------------------
 ;;; Event dbs
 ;;; -----------------------------------------------------------------------------
+
+(setv events (get-table "events"))
+
+(defn get-event [key]
+  (when key
+    (try
+      (Event #** (get events key))
+      (except [KeyError]))))
+
+(defn set-event [event]
+  (setv (get events event.time) (._asdict event))
+  (.commit events)
+  event)
+
+(defn update-event [event #** kwargs]
+  "Update an event's details. You cannot change the time."
+  (log.debug f"Updating event {event.time}, {kwargs}.")
+  (set-event (Event #** (| (._asdict event) kwargs))))

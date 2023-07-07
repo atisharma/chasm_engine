@@ -7,42 +7,48 @@ Functions that deal with items.
 
 (import chasm [log])
 
-(import string [capwords])
-
 (import chasm.stdlib *)
 (import chasm.constants [alphanumeric full-inventory-messages])
 (import chasm [place])
 (import chasm.types [Item Coords at?])
 (import chasm.state [news world get-item set-item update-item items])
-(import chasm.chat [edit respond])
+(import chasm.chat [respond
+                    system user assistant])
 
 
-;; TODO: modify / damage / destroy / use items
+;; TODO: modify / damage / destroy items
 
 (defn gen [place]
   "Make up some fantastical item."
   (let [seed (choice alphanumeric)
-        kvs (-> (edit f"name: item name (has '{seed}' in the first few letters)
+        template f"name: item name (has '{seed}' in the first few letters)
 type: item type
 appearance: item's appearance
 usage: what the item does"
-                      f"Story setting: {world}
-
+        setting f"Story setting: {world}"
+        instruction f"Below is a story setting and a template describing an item in the story.
 Complete the template for a single portable object you would expect to find in the {place.name}.
 Give one attribute per line, with no commentary or other notes, just the updated template with the details.
 Make up a name, type, appearance, usage.
-Write a very short sentence for appearance and another for usage. Be very specific."))]
+Write a very short sentence (max 10 words) for appearance and another for usage. Be very specific."
+        kvs (-> (respond
+                  [(system instruction)
+                   (user setting)
+                   (user template)]))]
     (try
-      (let [details (grep-attributes kvs ["name" "appearance" "type" "usage"])]
-        (log.info f"Creating item '{(:name details)}'")
-        (when (in "item name" (:name details))
-            (raise "AI is too stupid to follow instructions."))
-        (Item #** (| {"type" "object"
-                      "appearance" "Looks like you'd expect."
-                      "usage" "Usage unknown."}
-                     details)
-              :coords place.coords
-              :owner None))
+      (let [details (grep-attributes kvs ["name" "appearance" "type" "usage" "item"])
+            name (:name details (:item details None))]
+        (log.info f"Creating item '{name}'")
+        (when name
+          (.pop details "name" None)
+          (.pop details "item" None)
+          (Item #** (| {"type" "object"
+                        "appearance" "Looks like you'd expect."
+                        "usage" "Usage unknown."}
+                       details)
+                :name name
+                :coords place.coords
+                :owner None)))
       (except [e [Exception]]
         ; generating to template sometimes fails 
         (log.error "item/gen: Bad new item" e)
@@ -70,7 +76,7 @@ None if the place doesn't exist."
   (let [items (get-items coords)
         items-str (.join ", " (lfor i items i.name))]
     (if items
-        f"Only the following portable items are here, which may be taken: {items-str}."
+        f"Only the following portable items are laying around, which may be taken: {items-str}."
         "There are no portable items here.")))
 
 (defn get-desc [item-name] ; -> str
@@ -98,8 +104,8 @@ If you just want those at a location, use `get-items`."
   (let [items (inventory character)
         items-str (.join "\n" (lfor i items f"- {(get-desc i.name)}"))]
     (if items-str
-        f"You're carrying these items:\n{items-str}."
-        "You're not carrying anything important.")))
+        f"{character.name} is carrying the following items:\n{items-str}\n"
+        "{character.name} is not carrying anything important.")))
 
 (defn move [item coords]
  "Move an item to a location."
@@ -121,7 +127,7 @@ This implements picking it up, taking etc."
 
 (defn fuzzy-claim [obj character]
   "Check `obj` is there, then own it and assign it to character's inventory."
-  (if (>= (len (inventory character)) 6)
+  (if (>= (len (inventory character)) 4)
       (choice full-inventory-messages)
       (let [items-here (get-items character.coords)
             items-here-dict (dfor i items-here i.name i)]

@@ -2,6 +2,8 @@ hy
 hyrule
 sqlitedict
 openai
-tiktoken
 tomli
 jaro-winkler
+tiktoken
+faiss-cpu
+retrying

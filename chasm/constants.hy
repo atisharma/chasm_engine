@@ -6,22 +6,32 @@
 
 (setv appearances ["hairstyle" "middle-aged" "young" "old" "tall" "short" "medium height" "average height"])
 
+(setv place-types ["a small building"
+                   "a large building"
+                   "a small outdoor space"
+                   "a large outdoor space"
+                   "an underground space"
+                   "a space high up"])
+
 (setv default-character (Character
                           :name None
-                          :appearance "looks like a generic NPC"
-                          :backstory "Unknown"
-                          :voice "silent"
-                          :traits "Unknown"
-                          :motivation "Unknown"
-                          :likes "Unknown"
-                          :dislikes "Unknown"
-                          :skills "Unknown"
+                          :appearance None
+                          :gender None
+                          :backstory None
+                          :voice None
+                          :traits None
+                          :motivation None
+                          :likes None
+                          :dislikes None
+                          :skills None
+                          :occupation None
                           :coords (Coords 0 0)
-                          :quest "Unknown"
+                          :destination "stay here"
+                          :objectives None
                           :score 0
                           :memories []
                           :health 100
-                          :emotions "Unknown"))
+                          :emotions None))
 
 (setv compass-directions ["n" "north"
                           "ne" "northeast"
