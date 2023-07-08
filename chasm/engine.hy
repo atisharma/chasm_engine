@@ -1,5 +1,5 @@
 "
-The game engine. Handles interaction between Place, Item, Character and Dialogue.
+The game engine. Handles interaction between Place, Item, Character, Event and narrative.
 "
 
 (require hyrule.argmove [-> ->>])
@@ -85,7 +85,7 @@ The game engine. Handles interaction between Place, Item, Character and Dialogue
   "Are you trying to talk to another character?"
   (let [[_cmd _ char] (.partition line " ")
         cmd (.lower _cmd)]
-    (when (.startswith cmd "/talk") (sstrip obj)
+    (when (.startswith cmd "/talk") (sstrip char)
       #_(
           (= cmd "talk") (re.sub "^to " "" (sstrip char))
           (= cmd "talk") (re.sub "^with " "" (sstrip char))
@@ -112,8 +112,6 @@ The game engine. Handles interaction between Place, Item, Character and Dialogue
 
 ;;; TODO: maybe abstract out a standard narrator prompt template.
 
-;;; TODO: maybe abstract out a standard narrator prompt template.
-
 (defn describe-place [char]
   "Short context-free description of a place and its occupants."
   ; don't include context so we force the narrative location to change.
@@ -121,7 +119,7 @@ The game engine. Handles interaction between Place, Item, Character and Dialogue
         chars-here (character.list-at-str char.coords)]
     (assistant (.join "\n\n" [description chars-here]))))
 
-(defn move [messages player] ; -> msg-pair or None
+(defn move [messages player] ; -> msg or None
   "Extend the map. Spawn items and characters. Move the player. Describe.
 `dirn` may be a compass direction like 'n' or a place name like 'Small House'"
   (let [user-msg (last messages)
@@ -232,6 +230,7 @@ These places are accessible:
 {inventory-str}
 
 If the instruction is highly inconsistent in context of the story (for example 'turn into a banana' when that's impossible), just say 'You can't do that' or some humorous variation. Make every effort to keep the story consistent. Otherwise, follow the instruction and develop the story.
+Keep {player.name} at {here.name}.
 Don't give instructions, be descriptive, don't break character, don't describe yourself as an AI assistant or chatbot, maintain the fourth wall."]
     (log.info f"engine/narrate: {player.name} {player.coords}")
     ;(log.info f"{characters-here}\n{items-here-str}")
@@ -245,7 +244,7 @@ Don't give instructions, be descriptive, don't break character, don't describe y
            (trim-prose)
            (assistant)))))
 
-(defn use-item [messages player item]
+(defn consume-item [messages player item]
   "The character changes the narrative and the item based on the usage."
   "Rewrite the item description based on its usage.")
   ; How is it being used?
@@ -256,6 +255,7 @@ Don't give instructions, be descriptive, don't break character, don't describe y
   (let [user-msg (last messages)
         _line (:content user-msg)
         line (talk? _line)
+        recent (text->topic (format-msgs (msgs->dlg player.name "narrator" (cut messages -8 None))))
         here (get-place player.coords)
         items-here-str (item.describe-at player.coords)
         character-names-here (lfor c (character.get-at player.coords)
@@ -265,8 +265,8 @@ Don't give instructions, be descriptive, don't break character, don't describe y
         talk-to-guess (first (.split line))
         talk-to (best-of character-names-here talk-to-guess)]
     (if (and talk-to (similar talk-to talk-to-guess))
-        (let [story-guidance f"This is an improvised dramatisation of one continuous dialogue between {player.name} and {talk-to}. Assistant plays the part of {talk-to} and user plays the part of {player.name}.
-They may speak about their thoughts, feelings, intentions etc. If necessary, indicate acting directions like this: *smiles* or *frowns*. You both must never break the 'fourth wall'.
+        (let [story-guidance f"You are playing the character of {talk-to} in an improvised, continuous dialogue between {player.name} and {talk-to}. The user plays the part of {player.name}.
+{player.name} may speak about their thoughts, feelings, intentions etc. If necessary, indicate acting directions like this: *smiles* or *frowns*. You both must never break the 'fourth wall'.
 
 The setting for the dialogue is:
 {world}
@@ -275,8 +275,9 @@ The setting for the dialogue is:
 {items-here-str}
 
 {player.name} and {talk-to} are talking here at the {here.name}. Do not go anywhere else.
-"
-              late-guidance f"Do not say you're an AI assistant. To end the conversation, just say the codewords 'END CONVERSATION'. {player.name} will speak (played by user), then give your reply playing the part of {talk-to}, keeping in-character."
+Recent events: {recent}
+
+Do not say you're an AI assistant. To end the conversation, just say the codewords 'END CONVERSATION'. {player.name} will speak, then give your reply playing the part of {talk-to}, keeping in-character."
               dialogue [(user f"*Greets {talk-to}*")
                         (assistant f"*Waves back at {player.name}*")]]
           (clear-status-line)
@@ -288,14 +289,12 @@ The setting for the dialogue is:
                       chat-line
                       (not (.startswith chat-line "/q")))
             (.append dialogue (user chat-line))
-            (let [reply-msg (with [s (spinner "Replying...")]
-                              (->> dialogue
-                                   (prepend (system late-guidance))
-                                   (prepend (system story-guidance))
-                                   (append (user line))
-                                   (respond)
-                                   (trim-prose)
-                                   (assistant)))]
+            (let [response (respond [(system story-guidance)
+                                     #* dialogue
+                                     (user line)])
+                  reply-msg (-> response
+                                (trim-prose)
+                                (assistant))]
               (unless (or (similar "END CONVERSATION" (:content reply-msg))
                           (similar "." (:content reply-msg)))
                 (.append dialogue reply-msg)
@@ -304,16 +303,13 @@ The setting for the dialogue is:
                 (talk-status dialogue (get-character talk-to))
                 (setv chat-line (.strip (rlinput f"{player.name}: "))))))
           (when (> (len dialogue) 5)
-            (with [s (spinner "Remembering...")]
-              (character.develop (get-character talk-to) (msgs->dlg player.name talk-to dialogue))
-              (character.develop player (msgs->dlg player.name talk-to dialogue))))
-          (assistant (text->topic (format-msgs (msgs->dlg player.name talk-to dialogue)))))
+            (with [s (spinner "Making memories...")]
+              (character.develop (get-character talk-to) (msgs->dlg player.name talk-to (cut dialogue 2 None)))
+              (character.develop player (msgs->dlg player.name talk-to (cut dialogue 2 None)))))
+          (assistant (text->topic (format-msgs (msgs->dlg player.name talk-to (cut dialogue 2 None))))))
         (assistant (if talk-to
                        f"Why don't you talk to {talk-to} instead?"
                        f"There's nobody available with the name {talk-to-guess}.")))))
-    ;save dialogue
-    ;develop characters
-    ; TODO: add each other to 'have-met-before' list
 
 (defn develop [messages player]
   "Move the plot and characters along."
@@ -323,7 +319,6 @@ The setting for the dialogue is:
     ; all players get developed
     (for [c (append (get-character player.name) (character.get-at player.coords))]
       (character.develop c messages))
-      ; TODO: a scoring system that actually works
     ; Summon characters to the player's location
     (for [c-name (character.get-new messages player)]
       (let [c (get-character c-name)]

@@ -15,6 +15,7 @@ TODO: async loop? Develop characters in the background?
 
 (import chasm.stdlib *)
 (import chasm.engine *)
+; TODO: just expose engine, move calls to these three modules into there.
 (import chasm [place item character])
 (import chasm.types [Coords])
 (import chasm.state [world world-name news username
@@ -114,8 +115,8 @@ it, and passes it to the appropriate action."
               result (cond (.startswith line "!") (parse-hy line)
                            (quit? line) (break)
                            (look? line) (look player :messages messages)
-                           (take? line) (assistant (item.fuzzy-claim (take? line) player))
-                           (drop? line) (assistant (item.fuzzy-drop (drop? line) player))
+                           (take? line) (info (item.fuzzy-claim (take? line) player))
+                           (drop? line) (info (item.fuzzy-drop (drop? line) player))
                            (hist? line) (print-messages messages)
                            (.startswith line "/banner") (banner)
                            (.startswith line "/clear") (clear)

@@ -81,9 +81,10 @@ None if the place doesn't exist."
 
 (defn get-desc [item-name] ; -> str
   "Name, type and appearance of the item."
-  (let [i (get-item item-name)]
+  (let [i (get-item item-name)
+        owner-str (if i.owner f"owned by {i.owner}" "")]
     (if i
-        f"{i.name} ({i.type}) - {i.appearance} {i.usage}"
+        f"{i.name} ({i.type}) - {i.appearance} {i.usage} {owner-str}"
         "")))
 
 (defn unclaimed-items []

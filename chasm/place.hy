@@ -1,8 +1,6 @@
 "
 Functions that manage place.
 "
-;; TODO: the code in item.hy is cleaner due to lessons learned writing this module.
-;; Incorporate those lessons here.
 
 (require hyrule.argmove [-> ->>])
 (require hyrule.control [unless])

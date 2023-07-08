@@ -20,7 +20,7 @@ N.B. don't change the order of attributes, because the serialisation is order-de
   "Just a dict of eastings and northings."
   {"x" x "y" y})
 
-(defn is-at [coords1 coords2]
+(defn at? [coords1 coords2]
   "Equality in location. Example usage: `(at? item.coords character.coords)`."
   (and coords1 coords2
        (= (:x coords1) (:x coords2))
@@ -43,8 +43,7 @@ N.B. don't change the order of attributes, because the serialisation is order-de
                                     "health"
                                     "emotions"
                                     "objectives"
-                                    "destination"
-                                    "memories"]
+                                    "destination"]
 
       initial-character-attributes ["appearance"
                                     "name"
@@ -61,6 +60,7 @@ N.B. don't change the order of attributes, because the serialisation is order-de
       
 (setv Character (namedtuple "Character" (list (set [#* initial-character-attributes
                                                     #* mutable-character-attributes
+                                                    "memories"
                                                     "coords"
                                                     "score"]))))
 

@@ -131,7 +131,7 @@ Make up a brief few words, with comma separated values, for each attribute. Be i
   "A string describing any characters at a location."
   (let [all-at (get-at coords)]
     (if all-at
-        (.join "\n" ["The following characters (and nobody else) are here:"
+        (.join "\n" ["The following characters (and nobody else) are here with you:"
                      #* (map (fn [c] (describe c :long long)) all-at)])
         "")))
   
@@ -184,12 +184,12 @@ objectives: {character.objectives}
 new_memory: [classification] - any significant or poignant thing worth remembering from the dialogue"
         setting (system f"Story setting: {world}")
         instruction (system f"You will be given a character card for {character.name}, and the transcript of a dialogue involving them, for context.
-Update each attribute in the the character appropriate to the given context.
+Update each attribute that has changed in the the character appropriate to the given context.
 Destination should be one from the list (or 'here').
 Objectives should align with the plot, the character's role, and evolve slowly.
 Classify new memories into [significant], [minor] or [forgettable].
 Give one attribute per line, no commentary, examples or other notes, just the card with the updated details.
-Just omit the original attribute if there is no reason to change it.
+Just omit the original attribute if it is unchanged.
 Use a brief few words, comma separated, for each attribute. Be concise and very specific.")
         length (+ 150 (token-length [instruction setting card card])) ; count card twice to allow the result
         dialogue-str (format-msgs (truncate dialogue :spare-length length))
@@ -204,19 +204,30 @@ The character card to update is as follows:
     (try
       (let [details (grep-attributes kvs (append "new_memory" mutable-character-attributes))
             new-memory (.pop details "new_memory" None)
+                         
+            new-name (.join  " "
+                             (-> details
+                                 (.pop "name" character.name)
+                                 (.split)
+                                 (cut  2)))
             memories (if (and new-memory
                               ; ignore failed memories
                               (not (in "significant or poignant thing worth remembering from this dialogue" new-memory))
                               (not (in "[forgettable]" new-memory))
                               (not (in "[classification]" new-memory)))
-                         (list (set (append new-memory character.memories))) ; unique ones
+                         (append new-memory character.memories)
                          character.memories)
-            score (if (similar character.objectives
-                               (:objectives details ""))
+            score (if (and character.objectives
+                           (similar character.objectives
+                                    (:objectives details "")))
                       character.score
                       (inc character.score))]
         (log.info f"character/develop '{character.name}'")
-        (update-character character :memories memories :score score #** details))
+        (update-character character
+                          :memories memories
+                          :score score
+                          :name new-name
+                          #** details))
       (except [e [Exception]]
         ; generating to template sometimes fails 
         (log.error "Bad character" e)
@@ -244,7 +255,7 @@ They will appear at the player's location."
                                 (append instruction)
                                 (truncate :spare-length 200)
                                 (append (assistant "The list of character names is:")))
-                           :max-tokens 20)
+                           :max-tokens 50)
         filtered-char-list (->> char-list
                                  (itemize)
                                  (.split :sep "\n")
