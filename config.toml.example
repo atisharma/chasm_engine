@@ -1,27 +1,28 @@
 name = "Hero"
 world = "worlds/generic-world-name"
 
+# params passed to the model are defined in their own section below
+provider = "local"
 # context_length is the context window of the model.
 context_length = 2000
 max_tokens = 250
 
 loglevel = "info"
 
-# params passed to the model, defined in their own section below
-model = "local"
-
-[storage]
-# this is not used yet
+[vectordb]
+# If you change the embedding your previous data will be unreadable
+# Default to OpenAI embedding to enable switching provider
+# without needing torch installed
+embedding = "text-embedding-ada-002"
 chunk-size-tokens = 380
 sources = 6
 
-[models.OpenAI]
-chat_model = "gpt-3.5-turbo"
-completion_model = "text-davinci-edit-001"
+[providers.OpenAI]
+model = "gpt-3.5-turbo"
 api_base = "https://api.openai.com/v1"
 api_key = "sk-your-super-secret-key"
 
-[models.local]
+[providers.local]
 # Oobabooga's text-generation-webui works well using the "openai" extension
 # and setting the base url appropriately. Exllama is fast.
 # I've been using Guanaco and Wizard-Vicuna-Uncensored, both 30B 4bit, with good results.
