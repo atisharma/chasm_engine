@@ -28,7 +28,10 @@ N.B. don't change the order of attributes, because the serialisation is order-de
 
 (setv Place (namedtuple "Place" ["coords"
                                  "name"
-                                 "rooms"]))
+                                 "rooms"
+                                 "appearance"
+                                 "atmosphere"
+                                 "terrain"]))
 
 ; consider adding provenance
 (setv Item (namedtuple "Item" ["name"

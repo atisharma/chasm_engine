@@ -125,7 +125,7 @@ it, and passes it to the appropriate action."
                            (.startswith line "/spy") (spy (last (.partition line " ")))
                            (.startswith line "/map") (print-map player.coords)
                            (.startswith line "/what-if") (info (narrate (append (user (last (.partition line))) messages) player))
-                           (.startswith line "/hint") (hint messages player.coords line)
+                           (.startswith line "/hint") (hint messages player line)
                            (.startswith line "/forget") (do (banner)
                                                             (setv messages [])
                                                             (describe-place player))

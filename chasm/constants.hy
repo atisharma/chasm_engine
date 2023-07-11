@@ -11,7 +11,10 @@
                    "a small outdoor space"
                    "a large outdoor space"
                    "an underground space"
-                   "a space high up"])
+                   "a space high up"]
+      place-attributes ["name" "appearance" "atmosphere" "terrain"])
+
+(setv item-attributes ["name" "appearance" "type" "usage" "item"])
 
 (setv default-character (Character
                           :name None
@@ -51,3 +54,5 @@
        "Your inventory is full."
        "You've got too many items already."
        "Try dropping something first."])
+
+(setv inventory-capacity 4)

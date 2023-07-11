@@ -158,36 +158,43 @@ The game engine. Handles interaction between Place, Item, Character, Event and n
   (with [s (spinner "Writing...")]
     (assistant (place.describe player :messages messages :length length))))
 
-(defn hint [messages coords line]
+(defn hint [messages player line]
   (let [[cmd _ obj] (.partition line " ")
-        items-here (item.describe-at coords)
-        characters-here (character.describe-at coords :long True)
-        story-guidance f"The assistant is a narrator in a gripping and enjoyable adventure game.
-The user, whose name is {username} and who is playing, interjects with questions, instructions or commands.
-The assistant responds in the narrator's voice.
+        items-here (item.describe-at player.coords)
+        characters-here (character.describe-at player.coords :long True)
+        inventory-str (item.describe-inventory player)
+        story-guidance f"You are a narrator in a gripping and enjoyable adventure game.
+The player, {player.name}, interjects with questions, instructions or commands.
+You respond in the narrator's voice. The narrative is given below.
 
 Story setting: {world}"
         local-guidance f"{(news)}
-The user is at {(place.name coords)}.
-These places are accessible:
-{(place.nearby-str coords)}
-{(place.rooms coords)}
+{player.name} is now at {(place.name player.coords)}.
+{player.name}'s objective: {player.objectives}
 
 {items-here}
-{characters-here}"
-        instruction (+ "Give a single, one-sentence hint to progress the plot. "
+
+These places are accessible:
+{(place.nearby-str player.coords)}
+{(place.rooms player.coords)}
+
+{characters-here}
+
+{inventory-str}
+
+Now give the hint."
+        instruction (+ "Give a single, one-sentence hint to progress the plot and help the player achieve their objective. "
                        (if line
                            f"The hint must relate to the following question: {line}"
                            "The hint should be a riddle."))]
     (with [s (spinner "Writing...")]
-      (->> messages
-           (prepend (system story-guidance))
-           (append (system local-guidance))
-           (append (user instruction))
+      (->> [(system story-guidance)
+            #* messages
+            (system instruction)
+            (user local-guidance)]
            (truncate)
            (respond)
            (trim-prose)
-           (+ "**Hint**: ")
            (info)))))
 
 (defn narrate [messages player]
@@ -236,13 +243,13 @@ Don't give instructions, be descriptive, don't break character, don't describe y
     ;(log.info f"{characters-here}\n{items-here-str}")
     (log.info f"engine/narrate: story: {(token-length story-guidance)}; local {(token-length local-guidance)})")
     (with [s (spinner "Writing...")]
-      (->> messages
-           (prepend (system story-guidance))
-           (append (system local-guidance))
-           (truncate)
-           (respond)
-           (trim-prose)
-           (assistant)))))
+      (-> [(system story-guidance)
+           #* messages
+           (system local-guidance)]
+          (truncate)
+          (respond)
+          (trim-prose)
+          (assistant)))))
 
 (defn consume-item [messages player item]
   "The character changes the narrative and the item based on the usage."
@@ -303,10 +310,11 @@ Do not say you're an AI assistant. To end the conversation, just say the codewor
                 (talk-status dialogue (get-character talk-to))
                 (setv chat-line (.strip (rlinput f"{player.name}: "))))))
           (when (> (len dialogue) 5)
-            (with [s (spinner "Making memories...")]
-              (character.develop (get-character talk-to) (msgs->dlg player.name talk-to (cut dialogue 2 None)))
-              (character.develop player (msgs->dlg player.name talk-to (cut dialogue 2 None)))))
-          (assistant (text->topic (format-msgs (msgs->dlg player.name talk-to (cut dialogue 2 None))))))
+            (with [s (spinner "Making memories...")
+                   dlg (cut dialogue 2 None)]
+              (character.develop-lines (get-character talk-to) (msgs->dlg player.name talk-to dlg))
+              (character.develop-lines player (msgs->dlg player.name talk-to dlg))))
+          (assistant (text->topic (format-msgs (msgs->dlg player.name talk-to dlg)))))
         (assistant (if talk-to
                        f"Why don't you talk to {talk-to} instead?"
                        f"There's nobody available with the name {talk-to-guess}.")))))
@@ -318,7 +326,7 @@ Do not say you're an AI assistant. To end the conversation, just say the codewor
   (with [s (spinner "Developing characters...")]
     ; all players get developed
     (for [c (append (get-character player.name) (character.get-at player.coords))]
-      (character.develop c messages))
+      (character.develop-lines c messages))
     ; Summon characters to the player's location
     (for [c-name (character.get-new messages player)]
       (let [c (get-character c-name)]

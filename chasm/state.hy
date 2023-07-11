@@ -65,7 +65,7 @@ Thing in themselves and relationships between things.
   (let [t (SqliteDict f"{path}/{world-name}.sqlite"
                       :tablename tablename
                       :autocommit True
-                      :encode json.dumps
+                      :encode (fn [x] (json.dumps x :indent 4))
                       :decode json.loads)]
     (.register atexit t.close)
     t))
@@ -114,7 +114,7 @@ Thing in themselves and relationships between things.
 
 (defn set-place [loc]
   (let [key (str loc.coords)]
-    (setv (get places key) (._asdict loc)))
+    (setv (get places key) (dict (sorted (.items (._asdict loc))))))
   (.commit places)
   loc)
 
@@ -138,7 +138,7 @@ Thing in themselves and relationships between things.
       (except [KeyError]))))
 
 (defn set-item [item]
-  (setv (get items item.name) (._asdict item))
+  (setv (get items item.name) (dict (sorted (.items (._asdict item)))))
   (.commit items)
   item)
 
@@ -166,7 +166,7 @@ Thing in themselves and relationships between things.
       (except [KeyError]))))
 
 (defn set-event [event]
-  (setv (get events event.time) (._asdict event))
+  (setv (get events event.time) (dict (sorted (.items (._asdict event)))))
   (.commit events)
   event)
 

@@ -5,6 +5,8 @@
 (import functools [partial cache lru-cache])
 (import itertools *)
 
+(import retrying [retry])
+
 (import importlib)
 (import os)
 (import re)
@@ -27,7 +29,7 @@
 
 
 ;;; -----------------------------------------------------------------------------
-;;; generic functions
+;;; meta functions
 ;;; -----------------------------------------------------------------------------
 
 (defn mreload [#* modules]
@@ -36,6 +38,10 @@
     (try (importlib.reload m)
          (except [e [ImportError]] 
             (print e)))))
+
+;;; -----------------------------------------------------------------------------
+;;; list functions
+;;; -----------------------------------------------------------------------------
 
 (defn first [xs]
   (next (iter xs)))
@@ -51,11 +57,11 @@
   "Split into pairs. So ABCD -> AB CD."
   (zip (islice xs 0 None 2) (islice xs 1 None 2)))
   
-(defn prepend [x #^list l]
+(defn prepend [x l]
   "Prepend x at the front of list l."
   (+ [x] l))
 
-(defn append [x #^list l]
+(defn append [x l]
   "Append x to list l."
   (+ l [x]))
 
@@ -193,10 +199,21 @@ force to lowercase, remove 'the' from start of line."
        (re.sub r"^[\*\-\.(\[ \])\d]*" "" :flags re.M) ; remove bullet points
        (re.sub r"^([\w ']*\w).*$" r"\1" :flags re.M))) ; get main item
   
+(defn close-quotes [s]
+  "
+  If there is an odd number of quotes in a line, close the quote.
+  "
+  (.join "\n"
+    (lfor line (-> s (.replace "\"\"" "\"") (.splitlines))
+          (if (% (.count line "\"") 2)  ; if an odd number of quotes
+            (if (= (get line -1) "\"")  ; if ends in a quote
+              (+ "\"" line)             ; close at start
+              (+ line "\""))            ; close at end
+            line))))
+
 (defn trim-prose [s]
   "Remove any incomplete sentence."
   ; TODO: test handling of quotes and dialogue
-  ; FIXME: still getting a rogue '.' paragraph at the end of some prose
   (let [paras (-> s
                   (.strip)
                   (->> (re.sub r"\n{3,}" r"\n\n" :flags re.M))
@@ -205,15 +222,11 @@ force to lowercase, remove 'the' from start of line."
                   (->> (filter (fn [x] (> (len x) 3)))
                        (map (fn [x] (when x (.strip x "\n\t")))))
                   (sieve)
-                  (list))]
-    (if paras
-        (.join "\n\n"
-               (if (in (last (.strip (last paras))) ".?!\"'*)")
-                   paras
-                   (+ (cut paras -1)
-                      ; cut off last incomplete sentence
-                      [(+ (.join "." (-> (last paras) (.split ".") (cut -1))) ".")])))
-        "")))
+                  (list))
+        text (.join "\n\n" paras)
+        m (re.match r"(.*[.?!*\"])[^.?!*]+" text :flags re.S)]
+    (when m
+      (first (m.groups)))))
   
 (defn last-word? [s1 s2]
   (let [ss1 (.split s1)
@@ -223,8 +236,8 @@ force to lowercase, remove 'the' from start of line."
 
 (defn similar [s1 s2 [threshold 0.8]] ; -> bool
   "Two strings are heuristically similar, based on Jaro-Winkler algorithm and/or being the last word."
-  (let [cs1 (sstrip s1)
-        cs2 (sstrip s2)
+  (let [cs1 (sstrip (str s1))
+        cs2 (sstrip (str s2))
         score (let [jw-score (jaro.jaro-winkler-metric cs1 cs2)]
                 (if (last-word? cs1 cs2)
                     (+ jw-score 0.4)

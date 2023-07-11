@@ -22,9 +22,13 @@ Functions that deal with characters.
                      get-place
                      get-character set-character update-character])
 (import chasm.chat [respond yes-no
+                    complete-json complete-lines
                     token-length truncate
                     user assistant system
                     msgs->dlg])
+
+
+(defclass CharacterError [Exception])
 
 
 (defn spawn [[name None] [coords None]] ; -> Character
@@ -43,10 +47,10 @@ Functions that deal with characters.
                      "likes" (:likes loaded None)
                      "dislikes" (:dislikes loaded None)
                      "motivation" (:motivation loaded None)}
-          coords (or coords (place.random-coords #(-5 5)))]
+          coords (or coords (Coords 0 0))]
       (place.extend-map coords)
       (let [char (or (get-character name)
-                     (gen coords name)
+                     (gen-lines coords name)
                      default-character)
             filtered (dfor [k v] (.items sanitised) :if v k v)
             character (Character #** (| (._asdict default-character)
@@ -59,12 +63,12 @@ Functions that deal with characters.
           (set-character character)
           character)))
     (except [e [Exception]]
-      (log.error f"Spawn failed for {name} at {coords}.")
+      (log.error f"character/spawn: failed for {name} at {coords}.")
       (log.error e)
       (when (= username name)
-        (raise (ValueError f"Bad main character card for {name}, cannot continue. Check it's valid JSON."))))))
+        (raise (ValueError f"Bad spawn for {name}, cannot continue. Check card is valid JSON."))))))
 
-(defn gen [coords [name None]] ; -> Character or None
+(defn gen-lines [coords [name None]] ; -> Character or None
   "Make up some plausible character based on a name."
   (let [seed (choice alphabet)
         name-str (or name f"the character (whose first name begins with '{seed}')")
@@ -76,39 +80,66 @@ appearance: '{name-str}'s appearance, {(choice appearances)}, {(choice appearanc
 gender: 'their gender'
 backstory: 'their backstory (10 words, memorable)'
 voice: 'their manner of speaking, 2-3 words'
-traits: 'shapes their behaviour, 4-5 words'
+traits: 'shapes behaviour, MBTI, quirks/habits, 4-5 words'
 motivation: 'drives their behaviour, 4-5 words'
-likes: 'their desires, wants and cravings'
+likes: 'their desires, wants, cravings, guiding philosopher'
 dislikes: 'their fears and aversions'
 skills: 'what they are particularly good at'
 occupation: 'their usual job'
 objectives: 'their initial objectives'"
+        setting f"Story setting: {world}"
+        instruction f"Below is a story setting and a template character card.
+Complete the character card for {name-str} whom is found in the story at {place.name}.
+Example motivation and objectives might align with typical archetypes like Hero, Mentor, Villain, Informant, Guardian etc.
+Make up a brief few words, with comma separated values, for each attribute. Be imaginative and very specific."
+        details (complete-lines
+                  :context setting
+                  :template card
+                  :instruction instruction
+                  :attributes initial-character-attributes)]
+    (log.info f"character/gen '{(:name details None)}'")
+    (Character #** (| (._asdict default-character)
+                      details
+                      name-dict
+                      {"coords" coords}))))
+
+(defn gen-json [coords [name None]] ; -> Character or None
+  "Make up some plausible character based on a name."
+  (let [seed (choice alphabet)
+        name-str (or name f"the character (whose first name begins with {seed})")
+        name-dict (if name {"name" name} {})
+        place (get-place coords)
+        place-name (if place place.name "a typical place in this world")
+        card f"{{
+    \"name\": \"{name-str}\",
+    \"appearance\": \"{name-str}'s appearance, {(choice appearances)}, {(choice appearances)}, clothes, style etc (unique and memorable)\",
+    \"gender\": \"their gender\",
+    \"backstory\": \"their backstory (10 words, memorable)\",
+    \"voice\": \"their manner of speaking, 2-3 words\",
+    \"traits\": \"shapes their behaviour, 4-5 words\",
+    \"motivation\": \"drives their behaviour, 4-5 words\",
+    \"likes\": \"their desires, wants and cravings\",
+    \"dislikes\": \"their fears and aversions\",
+    \"skills\": \"what they are particularly good at\",
+    \"occupation\": \"their usual job\",
+    \"objectives\": \"their initial objectives\"
+}}"
         setting f"Story setting: {world}"
         instruction f"Below is a story setting and a character card.
 Complete the character card for {name-str} whom is found in the story at {place.name}.
 Example objectives might align with archetypes Hero, Mentor, Villain, Informant, Guardian.
 Give one attribute per line, no commentary, examples or other notes, just the card with the details updated.
 Make up a brief few words, with comma separated values, for each attribute. Be imaginative and very specific."
-        kvs (-> (respond
-                  [(system instruction)
-                   (user setting)
-                   (user card)]))]
-    (try
-      (let [details (grep-attributes kvs initial-character-attributes)]
-        (log.info f"character/gen '{(:name details None)}'")
-        (when (in "the character" (:name details ""))
-            (raise "AI is too stupid to follow instructions."))
-        (Character #** (| (._asdict default-character)
-                          details
-                          name-dict
-                          {"coords" coords})))
-      (except [e [Exception]]
-        ; generating to template sometimes fails 
-        (log.error "Bad new character" e)
-        (log.error place)
-        (log.error seed)
-        (log.error name-str)
-        (log.error kvs)))))
+        details (complete-json
+                  :template card
+                  :context setting
+                  :instruction instruction)]
+    (when details
+      (log.info f"character/gen '{(:name details None)}'")
+      (Character #** (| (._asdict default-character)
+                        details
+                        name-dict
+                        {"coords" coords})))))
 
 (defn describe [character [long False]]
   "A string that briefly describes the character."
@@ -172,7 +203,7 @@ Make up a brief few words, with comma separated values, for each attribute. Be i
     (log.info f"character/increment-score? {verdict}")
     verdict))
 
-(defn develop [character dialogue]
+(defn develop-lines [character dialogue]
   "Develop a character's attributes based on the dialogue."
   (let [nearby-places (.replace (place.nearby-str character.coords :name True) "\n" ", ")
         card f"name: {character.name}
@@ -182,34 +213,31 @@ emotions: {character.emotions}
 destination: {nearby-places} or 'stay here'
 objectives: {character.objectives}
 new_memory: [classification] - any significant or poignant thing worth remembering from the dialogue"
-        setting (system f"Story setting: {world}")
-        instruction (system f"You will be given a character card for {character.name}, and the transcript of a dialogue involving them, for context.
+        instruction f"You will be given a template character card for {character.name}, and the transcript of a dialogue involving them, for context.
 Update each attribute that has changed in the the character appropriate to the given context.
-Destination should be one from the list (or 'here').
+Destination should be one of those listed or to stay here.
 Objectives should align with the plot, the character's role, and evolve slowly.
 Classify new memories into [significant], [minor] or [forgettable].
-Give one attribute per line, no commentary, examples or other notes, just the card with the updated details.
 Just omit the original attribute if it is unchanged.
-Use a brief few words, comma separated, for each attribute. Be concise and very specific.")
-        length (+ 150 (token-length [instruction setting card card])) ; count card twice to allow the result
+Use a brief few words, comma separated, for each attribute. Be concise and very specific."
+        length (+ 200 (token-length [instruction world card card])) ; count card twice to allow the result
         dialogue-str (format-msgs (truncate dialogue :spare-length length))
-        messages [instruction
-                  setting
-                  (user f"The dialogue is as follows:
-{dialogue-str}
+        context f"Story setting: {world}
 
-The character card to update is as follows:
-{card}")]
-        kvs (respond messages)]
+The dialogue is as follows:
+{dialogue-str}"
+        details (complete-lines
+                  :context context
+                  :template card
+                  :instruction instruction
+                  :attributes (append "new_memory" mutable-character-attributes))]
     (try
-      (let [details (grep-attributes kvs (append "new_memory" mutable-character-attributes))
-            new-memory (.pop details "new_memory" None)
-                         
+      (let [new-memory (.pop details "new_memory" None)
             new-name (.join  " "
                              (-> details
                                  (.pop "name" character.name)
                                  (.split)
-                                 (cut  2)))
+                                 (cut 3)))
             memories (if (and new-memory
                               ; ignore failed memories
                               (not (in "significant or poignant thing worth remembering from this dialogue" new-memory))
@@ -217,21 +245,75 @@ The character card to update is as follows:
                               (not (in "[classification]" new-memory)))
                          (append new-memory character.memories)
                          character.memories)
-            score (if (and character.objectives
-                           (similar character.objectives
-                                    (:objectives details "")))
-                      character.score
-                      (inc character.score))]
-        (log.info f"character/develop '{character.name}'")
+            new-score (if (and character.objectives
+                               (similar character.objectives
+                                        (:objectives details "")))
+                          character.score
+                          (inc character.score))]
+        (log.info f"character/develop-lines '{character.name}'")
         (update-character character
                           :memories memories
-                          :score score
+                          :score new-score
                           :name new-name
                           #** details))
       (except [e [Exception]]
         ; generating to template sometimes fails 
         (log.error "Bad character" e)
-        (log.error kvs)))))
+        (log.error details)))))
+
+(defn develop-json [character dialogue]
+  "Develop a character's attributes based on the dialogue."
+  (let [nearby-places (.join ", " (place.nearby character.coords :name True))
+        card f"{{
+    \"name\": \"{character.name}\",
+    \"appearance\": \"{character.appearance}\",
+    \"health\": \"{character.health}\",
+    \"emotions\": \"{character.emotions}\",
+    \"destination\": \"{character.destination}\",
+    \"objectives\": \"{character.objectives}\",
+    \"new_memory\": \"(classification) - any significant or poignant thing worth remembering from the dialogue\"
+}}"
+        instruction f"You will be given a character card for {character.name}, and the transcript of a dialogue involving them, for context.
+Update each attribute that has changed in the the character appropriate to the given context.
+Destination should be one of {nearby-places} or \"stay here\".
+Objectives (a string) should align with the plot, the character's role, and evolve slowly.
+Classify new memories into (significant), (minor) or (forgettable).
+Give one attribute per line, no commentary, examples or other notes, just the card with the updated details.
+Just omit the original attribute if it is unchanged.
+Use a brief few words, comma separated, for each attribute. Be concise and very specific."
+        length (+ 200 (token-length [instruction world card card])) ; count card twice to allow the result
+        dialogue-str (format-msgs (truncate dialogue :spare-length length))
+        setting f"Story setting: {world}
+The dialogue is as follows:
+{dialogue-str}"
+        kvs (complete-json
+              :template card
+              :instruction instruction
+              :context setting)]
+    (when kvs
+      (let [details (dfor [k v] (.items kvs)
+                          :if (in k (append "new_memory" mutable-character-attributes))
+                          k v)
+            new-memory (.pop details "new_memory" None)
+            new-name (.pop details "name" character.name)
+            memories (if (and new-memory
+                              ; ignore failed memories
+                              (not (in "significant or poignant thing worth remembering from this dialogue" new-memory))
+                              (not (in "(forgettable)" new-memory))
+                              (not (in "(classification)" new-memory)))
+                         (append new-memory character.memories)
+                         character.memories)
+            score (if (and character.objectives
+                           (similar character.objectives
+                                    (:objectives details "")))
+                      character.score
+                      (inc character.score))]
+        (log.info f"character/develop-json '{character.name}'")
+        (update-character character
+                          :memories memories
+                          :score score
+                          :name new-name
+                          #** details)))))
 
 (defn recall [character [keywords None]]
   "Recall memories."

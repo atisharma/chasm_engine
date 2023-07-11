@@ -8,17 +8,56 @@ Functions that deal with items.
 (import chasm [log])
 
 (import chasm.stdlib *)
-(import chasm.constants [alphanumeric full-inventory-messages])
+(import chasm.constants [alphanumeric item-attributes full-inventory-messages inventory-capacity])
 (import chasm [place])
 (import chasm.types [Item Coords at?])
 (import chasm.state [news world get-item set-item update-item items])
-(import chasm.chat [respond
+(import chasm.chat [complete-json complete-lines
                     system user assistant])
 
 
+(defclass ItemError [Exception])
+
 ;; TODO: modify / damage / destroy items
 
-(defn gen [place]
+(defn gen-json [place]
+  "Make up some fantastical item."
+  (let [seed (choice alphanumeric)
+        template f"{{
+    \"name\": \"item name (has '{seed}' in the first few letters)\",
+    \"type\": \"item type\",
+    \"appearance\": \"item's appearance\",
+    \"usage\": \"what the item does\"
+}}"
+        setting f"Story setting: {world}"
+        instruction f"Below is a story setting and a template describing a portable item in the story.
+Complete the template for a single portable object you would expect to find in the {place.name}.
+Give one attribute per line, with no commentary or other notes, just the updated template with the details.
+Make up a name, type, appearance, usage.
+Write a very short sentence (max 10 words) for appearance and another for usage. Be very specific."
+        kvs (complete-json
+              :template template
+              :context setting
+              :instruction instruction)]
+    (when kvs
+      ; sometimes the model likes to make up an "item" field instead of "name".
+      (let [details (dfor [k v] (.items kvs)
+                          :if (in k ["name" "appearance" "type" "usage" "item"])
+                          k v)
+            name (:name details (:item details None))]
+        (log.info f"Creating item '{name}'")
+        (when name
+          (.pop details "name" None)
+          (.pop details "item" None)
+          (Item #** (| {"type" "object"
+                        "appearance" "Looks like you'd expect."
+                        "usage" "Usage unknown."}
+                       details)
+                :name (re.sub r"^[Th]he " "" name)
+                :coords place.coords
+                :owner None))))))
+
+(defn gen-lines [place]
   "Make up some fantastical item."
   (let [seed (choice alphanumeric)
         template f"name: item name (has '{seed}' in the first few letters)
@@ -26,18 +65,18 @@ type: item type
 appearance: item's appearance
 usage: what the item does"
         setting f"Story setting: {world}"
-        instruction f"Below is a story setting and a template describing an item in the story.
+        instruction f"Below is a story setting and a template describing a portable item in the story.
 Complete the template for a single portable object you would expect to find in the {place.name}.
 Give one attribute per line, with no commentary or other notes, just the updated template with the details.
 Make up a name, type, appearance, usage.
 Write a very short sentence (max 10 words) for appearance and another for usage. Be very specific."
-        kvs (-> (respond
-                  [(system instruction)
-                   (user setting)
-                   (user template)]))]
+        details (complete-lines
+                  :context setting
+                  :instruction instruction
+                  :template template
+                  :attributes item-attributes)]
     (try
-      (let [details (grep-attributes kvs ["name" "appearance" "type" "usage" "item"])
-            name (:name details (:item details None))]
+      (let [name (:name details (:item details None))]
         (log.info f"Creating item '{name}'")
         (when name
           (.pop details "name" None)
@@ -58,11 +97,12 @@ Write a very short sentence (max 10 words) for appearance and another for usage.
 
 (defn spawn [coords]
   "Invent a new item from a place name, store it and return it.
-None if the place doesn't exist."
+None if the place doesn't exist or if generation fails."
   (let [p (place.get-place coords)]
     (when p
-      (let [item (gen p)]
-        (when (and item (not (in item.name (.keys items))))
+      (let [item (gen-lines p)]
+        (when (and item
+                   (not (in item.name (.keys items))))
           (set-item item))))))
 
 (defn get-items [coords]
@@ -74,9 +114,10 @@ None if the place doesn't exist."
 (defn describe-at [coords]
   "The prosaic version of get-items."
   (let [items (get-items coords)
-        items-str (.join ", " (lfor i items i.name))]
+        items-str (.join ", " (lfor i items i.name))
+        place-name (place.name coords)]
     (if items
-        f"Only the following portable items are laying around, which may be taken: {items-str}."
+        f"Only the following portable items are laying around at {place-name}, which may be taken: {items-str}."
         "There are no portable items here.")))
 
 (defn get-desc [item-name] ; -> str
@@ -105,8 +146,8 @@ If you just want those at a location, use `get-items`."
   (let [items (inventory character)
         items-str (.join "\n" (lfor i items f"- {(get-desc i.name)}"))]
     (if items-str
-        f"{character.name} possesses the following items:\n{items-str}\n"
-        "{character.name} is not carrying anything important.")))
+        f"{character.name} possesses and is carrying the following items:\n{items-str}"
+        f"{character.name} is not carrying anything.")))
 
 (defn move [item coords]
  "Move an item to a location."
@@ -128,7 +169,7 @@ This implements picking it up, taking etc."
 
 (defn fuzzy-claim [obj character]
   "Check `obj` is there, then own it and assign it to character's inventory."
-  (if (>= (len (inventory character)) 4)
+  (if (>= (len (inventory character)) inventory-capacity)
       (choice full-inventory-messages)
       (let [items-here (get-items character.coords)
             items-here-dict (dfor i items-here i.name i)]
