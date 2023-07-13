@@ -188,17 +188,21 @@
 (defn sstrip [s]
   "Strip surrounding whitespace, quotes, '.',
 force to lowercase, remove 'the' from start of line."
-  (re.sub r"^the " ""
+  (re.sub r"^[tT]he " ""
           (-> s
               (.strip "\n\t .\"'`")
               (.lower))))
 
-(defn itemize [markdown-list] ; -> str
+(defn debullet [markdown-list] ; -> str
   "Get the main items from a markdown list."
   (->> markdown-list
        (re.sub r"^[\*\-\.(\[ \])\d]*" "" :flags re.M) ; remove bullet points
        (re.sub r"^([\w ']*\w).*$" r"\1" :flags re.M))) ; get main item
-  
+
+(defn bullet [l]
+  "Make a markdown bulleted list from l."
+  (.join "\n" (lfor x l f"- {x}")))
+
 (defn close-quotes [s]
   "
   If there is an odd number of quotes in a line, close the quote.

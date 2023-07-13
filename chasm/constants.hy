@@ -32,7 +32,6 @@
                           :destination "stay here"
                           :objectives None
                           :score 0
-                          :memories []
                           :health 100
                           :emotions None))
 

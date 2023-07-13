@@ -17,8 +17,9 @@ N.B. don't change the order of attributes, because the serialisation is order-de
       (json.dumps)))
 
 (defn Coords [x y]
-  "Just a dict of eastings and northings."
-  {"x" x "y" y})
+  "Just a dict of eastings and northings.
+They must be integer."
+  {"x" (int x) "y" (int y)})
 
 (defn at? [coords1 coords2]
   "Equality in location. Example usage: `(at? item.coords character.coords)`."
@@ -63,7 +64,6 @@ N.B. don't change the order of attributes, because the serialisation is order-de
       
 (setv Character (namedtuple "Character" (list (set [#* initial-character-attributes
                                                     #* mutable-character-attributes
-                                                    "memories"
                                                     "coords"
                                                     "score"]))))
 

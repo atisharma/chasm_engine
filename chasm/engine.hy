@@ -10,13 +10,13 @@ The game engine. Handles interaction between Place, Item, Character, Event and n
 (import chasm.stdlib *)
 (import chasm [place item character plot state])
 (import chasm.constants [character-density item-density compass-directions])
-(import chasm.state [world world-name news
+(import chasm.state [world world-name
                      characters
                      username
                      get-place
                      get-character
                      update-character])
-(import chasm.chat [respond msgs->topic text->topic
+(import chasm.chat [respond msgs->topic text->topic msgs->points
                     truncate
                     token-length
                     user assistant system
@@ -168,7 +168,7 @@ The player, {player.name}, interjects with questions, instructions or commands.
 You respond in the narrator's voice. The narrative is given below.
 
 Story setting: {world}"
-        local-guidance f"{(news)}
+        local-guidance f"{(plot.news)}
 {player.name} is now at {(place.name player.coords)}.
 {player.name}'s objective: {player.objectives}
 
@@ -212,17 +212,21 @@ Now give the hint."
         present-str (if character-names-here
                         (+ (.join ", " character-names-here) f" and {player.name} are at the {here.name}.")
                         f"{player.name} is at the {here.name}.")
-        ; TODO: memory system, topic
-        memories (lfor c (character.get-at player.coords)
-                       (if c.memories
-                           f"{c.name} has the memories: {(character.recall c :keywords player.name)}."
-                           ""))
+        plot-points (.join "\n" (plot.recall-points (plot.news)))
+        memories (.join "\n\n" (lfor c (character.get-at player.coords)
+                                     (let [mem (bullet (character.recall c (.join "\n" [#* characters-here
+                                                                                        plot-points
+                                                                                        (plot.news)])
+                                                                           :n 6))]
+                                       (if mem
+                                           f"{c.name} recalls the memories:\n{mem}."
+                                           ""))))
         story-guidance f"You are the narrator in an immersive and enjoyable adventure game.
 The player ({player.name}, 'you' or 'I') interjects with questions, instructions or commands. These commands are always meant in the context of the story, for instance 'Look at X' or 'Ask Y about Z'.
 In your narrative, the player is referred to in the second person ('you do..., you go to...') or 'user' or '{player.name}' - these refer to the same person. Only ever refer to them as {player.name} or 'you'.
 
 Story setting: {world}"
-        local-guidance f"{(news)}
+        local-guidance f"{plot-points}
 {present-str}
 
 These places are accessible:
@@ -241,7 +245,9 @@ Keep {player.name} at {here.name}.
 Don't give instructions, be descriptive, don't break character, don't describe yourself as an AI assistant or chatbot, maintain the fourth wall."]
     (log.info f"engine/narrate: {player.name} {player.coords}")
     ;(log.info f"{characters-here}\n{items-here-str}")
-    (log.info f"engine/narrate: story: {(token-length story-guidance)}; local {(token-length local-guidance)})")
+    (log.info f"engine/narrate: news:\n{(plot.news)}")
+    (log.info f"engine/narrate: memories:\n{memories}")
+    (log.info f"engine/narrate: story: {(token-length story-guidance)}; local {(token-length local-guidance)}")
     (with [s (spinner "Writing...")]
       (-> [(system story-guidance)
            #* messages
@@ -249,6 +255,7 @@ Don't give instructions, be descriptive, don't break character, don't describe y
           (truncate)
           (respond)
           (trim-prose)
+          (or "")
           (assistant)))))
 
 (defn consume-item [messages player item]
@@ -277,12 +284,11 @@ Don't give instructions, be descriptive, don't break character, don't describe y
 
 The setting for the dialogue is:
 {world}
-{(news)}
+{(plot.news)}
 
 {items-here-str}
 
 {player.name} and {talk-to} are talking here at the {here.name}. Do not go anywhere else.
-Recent events: {recent}
 
 Do not say you're an AI assistant. To end the conversation, just say the codewords 'END CONVERSATION'. {player.name} will speak, then give your reply playing the part of {talk-to}, keeping in-character."
               dialogue [(user f"*Greets {talk-to}*")
@@ -310,11 +316,11 @@ Do not say you're an AI assistant. To end the conversation, just say the codewor
                 (talk-status dialogue (get-character talk-to))
                 (setv chat-line (.strip (rlinput f"{player.name}: "))))))
           (when (> (len dialogue) 5)
-            (with [s (spinner "Making memories...")
-                   dlg (cut dialogue 2 None)]
-              (character.develop-lines (get-character talk-to) (msgs->dlg player.name talk-to dlg))
-              (character.develop-lines player (msgs->dlg player.name talk-to dlg))))
-          (assistant (text->topic (format-msgs (msgs->dlg player.name talk-to dlg)))))
+            (with [s (spinner "Making memories...")]
+              (let [dlg (cut dialogue 2 None)]
+                (character.develop-lines (get-character talk-to) (msgs->dlg player.name talk-to dlg))
+                (character.develop-lines player (msgs->dlg player.name talk-to dlg))
+                (assistant (text->topic (format-msgs (msgs->dlg player.name talk-to dlg))))))))
         (assistant (if talk-to
                        f"Why don't you talk to {talk-to} instead?"
                        f"There's nobody available with the name {talk-to-guess}.")))))
@@ -322,6 +328,7 @@ Do not say you're an AI assistant. To end the conversation, just say the codewor
 (defn develop [messages player]
   "Move the plot and characters along."
   (with [s (spinner "Developing plot...")]
+    ; new plot point, record in vdb, db and recent events
     (plot.extract-point messages player))
   (with [s (spinner "Developing characters...")]
     ; all players get developed
@@ -333,7 +340,7 @@ Do not say you're an AI assistant. To end the conversation, just say the codewor
         (if c
             (character.move c player.coords) ; make sure they're here if the narrator says so
             (character.spawn :name c-name :coords player.coords)))))) ; new characters may randomly spawn if mentioned
-
+  
 (defn move-characters [messages player]
   "Move characters to their targets."
   (with [s (spinner "Moving other characters...")]

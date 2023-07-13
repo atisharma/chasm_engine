@@ -11,7 +11,7 @@ Functions that deal with items.
 (import chasm.constants [alphanumeric item-attributes full-inventory-messages inventory-capacity])
 (import chasm [place])
 (import chasm.types [Item Coords at?])
-(import chasm.state [news world get-item set-item update-item items])
+(import chasm.state [world get-item set-item update-item items])
 (import chasm.chat [complete-json complete-lines
                     system user assistant])
 

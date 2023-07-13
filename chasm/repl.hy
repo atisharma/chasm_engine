@@ -18,7 +18,7 @@ TODO: async loop? Develop characters in the background?
 ; TODO: just expose engine, move calls to these three modules into there.
 (import chasm [place item character])
 (import chasm.types [Coords])
-(import chasm.state [world world-name news username
+(import chasm.state [world world-name username
                      get-character])
 (import chasm.chat [token-length
                     load-messages save-messages
@@ -142,6 +142,7 @@ it, and passes it to the appropriate action."
                        (not (% (next counter) 2))
                        ; don't develop when moving
                        (not (go? line)))
+              ;; TODO: async or threaded development to prevent blocking input
               (develop messages player))))
         (except [KeyboardInterrupt]
           (print)

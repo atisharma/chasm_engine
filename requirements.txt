@@ -1,9 +1,9 @@
 hy
 hyrule
 sqlitedict
-openai
+openai[datalib]
 tomli
 jaro-winkler
 tiktoken
-faiss-cpu
+chromadb
 retrying

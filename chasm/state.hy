@@ -9,7 +9,7 @@ Thing in themselves and relationships between things.
 
 (import json)
 (import pathlib [Path])
-(import datetime [datetime timezone])
+(import collections [deque])
 
 (import atexit)
 (import sqlitedict [SqliteDict])
@@ -31,25 +31,19 @@ Thing in themselves and relationships between things.
                      (last)
                      (capwords)))
 
+(defn mksubdir [d]
+  (.mkdir (Path (.join "/" [path d]))
+          :parents True
+          :exist-ok True))  
+
 ; create world folder and subfolders
-(.mkdir (Path (.join "/" [path "characters"]))
-        :parents True
-        :exist-ok True)
-(.mkdir (Path (.join "/" [path "narratives"]))
-        :parents True
-        :exist-ok True)
+(mksubdir "characters")
+(mksubdir "narratives")
+
 
 (setv world (-> (Path f"{path}.txt")
                 (.read-text)
                 (.strip)))
-
-(defn news []
-  "Up-to-date info about the universe."
-  f"It is {(.strftime (datetime.now timezone.utc) "%H:%M, %a %d %h")}.")
-
-(defn now []
-  "Up-to-date info about the universe."
-  (.strftime (datetime.now timezone.utc) "%H:%M, %a %d %h"))
 
 ;;; -----------------------------------------------------------------------------
 ;;; db functions
@@ -60,13 +54,16 @@ Thing in themselves and relationships between things.
   (for [r (db.values)]
     (print r)))
 
-(defn get-table [tablename]
+(defn indented-json [x]
+  (json.dumps x :indent 4))
+
+(defn get-table [tablename [db "world"] [encoder indented-json] [decoder json.loads]]
   "Make a table in the database."
-  (let [t (SqliteDict f"{path}/{world-name}.sqlite"
+  (let [t (SqliteDict f"{path}/{db}.sqlite"
                       :tablename tablename
                       :autocommit True
-                      :encode (fn [x] (json.dumps x :indent 4))
-                      :decode json.loads)]
+                      :encode encoder
+                      :decode decoder)]
     (.register atexit t.close)
     t))
 
@@ -78,8 +75,12 @@ Thing in themselves and relationships between things.
 (setv characters (get-table "characters"))
 
 (defn character-key [char-name]
-  "First name, lowercase."
-  (.lower (first (.split char-name))))
+  "First name, lowercase, no funny business."
+  (->> char-name
+       (.split)
+       (first)
+       (re.sub r"\W+" "")
+       (.lower)))
 
 (defn get-character [char-name]
   (log.debug f"Recalling character {char-name}.")
@@ -146,31 +147,3 @@ Thing in themselves and relationships between things.
   "Update an item's details. You cannot change the name."
   (log.debug f"Updating item {item.name}, {kwargs}.")
   (set-item (Item #** (| (._asdict item) kwargs))))
-
-;;; -----------------------------------------------------------------------------
-;;; Dialogues
-;;; -----------------------------------------------------------------------------
-
-;; a vector db per character? Or just summarisation? Generate on the fly?
-
-;;; -----------------------------------------------------------------------------
-;;; Event dbs
-;;; -----------------------------------------------------------------------------
-
-(setv events (get-table "events"))
-
-(defn get-event [key]
-  (when key
-    (try
-      (Event #** (get events key))
-      (except [KeyError]))))
-
-(defn set-event [event]
-  (setv (get events event.time) (dict (sorted (.items (._asdict event)))))
-  (.commit events)
-  event)
-
-(defn update-event [event #** kwargs]
-  "Update an event's details. You cannot change the time."
-  (log.debug f"Updating event {event.time}, {kwargs}.")
-  (set-event (Event #** (| (._asdict event) kwargs))))

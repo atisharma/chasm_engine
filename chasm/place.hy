@@ -9,7 +9,7 @@ Functions that manage place.
 
 (import chasm.stdlib *)
 (import chasm.constants [compass-directions alphanumeric place-types place-attributes])
-(import chasm.state [news world get-place set-place update-place])
+(import chasm.state [world get-place set-place update-place])
 (import chasm.types [Coords Place])
 (import chasm.chat [respond complete-json complete-lines
                     yes-no
@@ -55,9 +55,7 @@ Respond with only either 'Yes' or 'No'.")
 Nearby places:
 {nearby-str}
 
-The player is sometimes called 'user' or '{player.name}' - these refer to the same person whom is referred to in the second person by the assistant. If naming the player, only ever refer to them as {player.name}.
-
-{(news)}")
+The player is sometimes called 'user' or '{player.name}' - these refer to the same person whom is referred to in the second person by the assistant. If naming the player, only ever refer to them as {player.name}.")
                   (system f"Generate a {length}, vivid description of what the player sees, hears, smells or touches from {place.name}.")
                   (assistant f"The description of 'The {place.name}' is:")]
         response (respond messages)]
@@ -67,7 +65,7 @@ The player is sometimes called 'user' or '{player.name}' - these refer to the sa
   "Make up a single-paragraph place description from its name."
   (let [place (get-place coords)
         prelude f"Your purpose is to generate short, fun, imaginative descriptions of a place, in keeping with the information you have. Make the reader feel viscerally like they are present in the place. Set the scene. Write in the second person, using 'you'. Be concise. Don't mention any people or characters that may be present here, concentrate on things that won't change.
-Generate a few short sentences of vivid description of what the the protagonist sees, hears, smells or touches from {place.name}."
+Generate a short paragraph of vivid description of what the the protagonist sees, hears, smells or touches from {place.name}."
         context f"Story setting:
 '{world-str}'
 Nearby places:
@@ -78,7 +76,8 @@ The protagonist's new location is 'The {place.name}', with attributes:
         response (respond
                    [(system prelude)
                     (user context)
-                    (user instruction)]
+                    (user instruction)
+                    (assistant f"The description of 'The {place.name}' is:")]
                    :max-tokens 100)]
     (.join "\n\n"
            [f"**{place.name}**"
@@ -112,8 +111,7 @@ The name should have {seed} in the first few letters. The place might be {(choic
   "Make up a place from its neighbours."
   (let [seed (choice alphanumeric)
         context f"The story's setting is: {world}
-Nearby places:
-{nearby-places}"
+Nearby places: {nearby-places}"
         template "name: substitute an imaginative and original place name
 appearance: a few keywords to describe
 atmosphere: a few keywords
@@ -150,7 +148,7 @@ cellar")
 Now list its rooms, if any.")]
                            :max-tokens 100)]
     (cut (->> room-list
-              (itemize)
+              (debullet)
               (.split :sep "\n")
               (map capwords)
               (sieve)
@@ -158,7 +156,7 @@ Now list its rooms, if any.")]
               (list))
          1 6)))
 
-;; FIXME: it's a bit flakey
+;; FIXME: it's a bit flaky
 (defn guess-room [messages coords]
   "Guess the player's room."
   (let [dlg (msgs->dlg "Player" "Narrator" messages)  
@@ -246,19 +244,25 @@ in adjacent cells, accessible or not."
   
 (defn new [coords]
   "Add a description etc, item, character to a place."
-  (let [near-places (nearby-str coords :list-inaccessible True)
+  (let [near-places (.join ", " (nearby coords :list-inaccessible True :name True))
         details (gen-lines near-places)]
-    (if (and details
-             (:name details None))
-      (let [place (Place :coords coords
-                         :name (:name details)
-                         :rooms (gen-rooms details)
-                         :atmosphere (:atmosphere details None)
-                         :appearance (:appearance details None)
-                         :terrain (:terrain details None))]
-        (log.info f"place/new: {place.name} @ {coords}")
-        (set-place place))
-      (log.error f"place/new: generation failed @{coords}\n{near-places}\n-> {details}"))))
+    (if (and details (:name details None))
+        (let [m (->> (:name details)
+                     (re.search r"([\w ]+)"))
+              name (when m (-> m
+                               (.groups)
+                               (first)
+                               (sstrip)
+                               (capwords)))
+              place (Place :coords coords
+                           :name name
+                           :rooms (gen-rooms details)
+                           :atmosphere (:atmosphere details None)
+                           :appearance (:appearance details None)
+                           :terrain (:terrain details None))]
+          (log.info f"place/new: {place.name} @ {coords}")
+          (set-place place))
+      (log.error f"place/new: generation failed @ {coords}\n{near-places}\n-> {details}"))))
 
 (defn accessible [coords * min-places]
   "A list of the accessible Places the player can move to.
@@ -287,11 +291,11 @@ This function is not deterministic, because we ask the model to decide."
                      dy [-1 0 1]
                      :setv _coords (Coords (+ cx dx) (+ cy dy))
                      (or (get-place _coords)
+                         (new _coords)
                          (new _coords)))]
-    (unless (all places)
-      (raise (PlaceError "place/extend-map: retrying generation.")))))
+    (unless (get-place coords)
+      (raise (PlaceError f"place/extend-map: unable to generate at {coords}")))))
     
-
 (defn rooms [coords [as-string True]]
   (let [place (get-place coords)
         rooms-str (.join ", " place.rooms)

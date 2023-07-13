@@ -14,13 +14,13 @@ Functions that deal with characters.
 (import chasm.types [Coords Character Item at?
                      mutable-character-attributes
                      initial-character-attributes])
-(import chasm [place])
+(import chasm [place memory])
 
-(import chasm.state [news now world path username
-                     characters
+(import chasm.state [world path username
                      get-item update-item
                      get-place
-                     get-character set-character update-character])
+                     get-character set-character update-character character-key
+                     characters])
 (import chasm.chat [respond yes-no
                     complete-json complete-lines
                     token-length truncate
@@ -30,6 +30,8 @@ Functions that deal with characters.
 
 (defclass CharacterError [Exception])
 
+(defn valid-key? [s]
+  (re.match "^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$" s))
 
 (defn spawn [[name None] [coords None]] ; -> Character
   "Spawn a character from card, db, or just generated."
@@ -58,7 +60,7 @@ Functions that deal with characters.
                                         filtered))]
         (log.info f"character/spawn {char.name}")
         (when loaded (log.info f"character/spawn loaded: {sanitised}"))
-        (when character.name
+        (when (and character.name (valid-key? (character-key character.name)))
           (place.extend-map character.coords)
           (set-character character)
           character)))
@@ -97,7 +99,7 @@ Make up a brief few words, with comma separated values, for each attribute. Be i
                   :template card
                   :instruction instruction
                   :attributes initial-character-attributes)]
-    (log.info f"character/gen '{(:name details None)}'")
+    (log.info f"character/gen-lines '{(:name details None)}'")
     (Character #** (| (._asdict default-character)
                       details
                       name-dict
@@ -146,7 +148,6 @@ Make up a brief few words, with comma separated values, for each attribute. Be i
   (if character
       (let [attributes (._asdict character)]
         ; pop off the things we don't want to inject
-        (.pop attributes "memories")
         (.pop attributes "coords")
         (.pop attributes "destination")
         (if long
@@ -205,17 +206,18 @@ Make up a brief few words, with comma separated values, for each attribute. Be i
 
 (defn develop-lines [character dialogue]
   "Develop a character's attributes based on the dialogue."
-  (let [nearby-places (.replace (place.nearby-str character.coords :name True) "\n" ", ")
+  (let [nearby-places (.join ", " (place.nearby character.coords :name True))
         card f"name: {character.name}
 appearance: {character.appearance}
 health: {character.health}
 emotions: {character.emotions}
-destination: {nearby-places} or 'stay here'
+destination: {character.destination}
 objectives: {character.objectives}
 new_memory: [classification] - any significant or poignant thing worth remembering from the dialogue"
         instruction f"You will be given a template character card for {character.name}, and the transcript of a dialogue involving them, for context.
-Update each attribute that has changed in the the character appropriate to the given context.
-Destination should be one of those listed or to stay here.
+Update any attribute that has changed describing the character, appropriate to the given context.
+Appearance may change where a character changes clothes etc.
+Destination should be just one of {nearby-places} or to stay at {(place.name character.coords)}.
 Objectives should align with the plot, the character's role, and evolve slowly.
 Classify new memories into [significant], [minor] or [forgettable].
 Just omit the original attribute if it is unchanged.
@@ -232,27 +234,19 @@ The dialogue is as follows:
                   :instruction instruction
                   :attributes (append "new_memory" mutable-character-attributes))]
     (try
-      (let [new-memory (.pop details "new_memory" None)
-            new-name (.join  " "
+      (let [new-name (.join  " "
                              (-> details
                                  (.pop "name" character.name)
                                  (.split)
                                  (cut 3)))
-            memories (if (and new-memory
-                              ; ignore failed memories
-                              (not (in "significant or poignant thing worth remembering from this dialogue" new-memory))
-                              (not (in "[forgettable]" new-memory))
-                              (not (in "[classification]" new-memory)))
-                         (append new-memory character.memories)
-                         character.memories)
             new-score (if (and character.objectives
                                (similar character.objectives
                                         (:objectives details "")))
                           character.score
                           (inc character.score))]
-        (log.info f"character/develop-lines '{character.name}'")
+        (log.info f"character/develop-lines {character.name}")
+        (remember character (.pop details "new_memory" ""))
         (update-character character
-                          :memories memories
                           :score new-score
                           :name new-name
                           #** details))
@@ -261,75 +255,38 @@ The dialogue is as follows:
         (log.error "Bad character" e)
         (log.error details)))))
 
-(defn develop-json [character dialogue]
-  "Develop a character's attributes based on the dialogue."
-  (let [nearby-places (.join ", " (place.nearby character.coords :name True))
-        card f"{{
-    \"name\": \"{character.name}\",
-    \"appearance\": \"{character.appearance}\",
-    \"health\": \"{character.health}\",
-    \"emotions\": \"{character.emotions}\",
-    \"destination\": \"{character.destination}\",
-    \"objectives\": \"{character.objectives}\",
-    \"new_memory\": \"(classification) - any significant or poignant thing worth remembering from the dialogue\"
-}}"
-        instruction f"You will be given a character card for {character.name}, and the transcript of a dialogue involving them, for context.
-Update each attribute that has changed in the the character appropriate to the given context.
-Destination should be one of {nearby-places} or \"stay here\".
-Objectives (a string) should align with the plot, the character's role, and evolve slowly.
-Classify new memories into (significant), (minor) or (forgettable).
-Give one attribute per line, no commentary, examples or other notes, just the card with the updated details.
-Just omit the original attribute if it is unchanged.
-Use a brief few words, comma separated, for each attribute. Be concise and very specific."
-        length (+ 200 (token-length [instruction world card card])) ; count card twice to allow the result
-        dialogue-str (format-msgs (truncate dialogue :spare-length length))
-        setting f"Story setting: {world}
-The dialogue is as follows:
-{dialogue-str}"
-        kvs (complete-json
-              :template card
-              :instruction instruction
-              :context setting)]
-    (when kvs
-      (let [details (dfor [k v] (.items kvs)
-                          :if (in k (append "new_memory" mutable-character-attributes))
-                          k v)
-            new-memory (.pop details "new_memory" None)
-            new-name (.pop details "name" character.name)
-            memories (if (and new-memory
-                              ; ignore failed memories
-                              (not (in "significant or poignant thing worth remembering from this dialogue" new-memory))
-                              (not (in "(forgettable)" new-memory))
-                              (not (in "(classification)" new-memory)))
-                         (append new-memory character.memories)
-                         character.memories)
-            score (if (and character.objectives
-                           (similar character.objectives
-                                    (:objectives details "")))
-                      character.score
-                      (inc character.score))]
-        (log.info f"character/develop-json '{character.name}'")
-        (update-character character
-                          :memories memories
-                          :score score
-                          :name new-name
-                          #** details)))))
+(defn remember [character new-memory]
+  "Commit memory to vector db."
+  (log.info f"character/remember {character.name} {new-memory}")
+  (let [mem-class (re.search r"\[(\w+)\]" new-memory)
+        mem-point (re.search r"\][- ]*([\w ,.']+)" new-memory)]
+    (when (and mem-class
+               mem-point
+               ; ignore failed memories
+               (not (in "significant or poignant thing worth remembering from this dialogue" new-memory))
+               (not (in "[forgettable]" new-memory))
+               (not (in "[classification]" new-memory)))
+      (memory.add (character-key character.name)
+                  {"character" character.name
+                   "coords" (str character.coords)
+                   "place" (place.name character.coords)
+                   "time" f"{(time):015.2f}"
+                   "classification" (.lower (first (.groups mem-class)))}
+                  (first (.groups mem-point))))))
 
-(defn recall [character [keywords None]]
-  "Recall memories."
-  (let [memories (.copy character.memories)
-        significant (lfor m memories :if (in "significant" m) m)]
-    (shuffle significant)
-    ;; ----- ***** -----
-    ;; TODO: use vector db to extract most relevant memories rather than random
-    ;; ----- ***** -----
-    (cut significant 4)))
+(defn recall [character text [n 6] [class "significant"]]
+  "Recall memories of a character. Pass `class=None` for all memories."
+  (first
+    (:documents (memory.query (character-key character.name)
+                              :text text
+                              :n n
+                              :where (when class {"classification" class})))))
 
 (defn get-new [messages player]
   "Are any new or existing characters mentioned in the messages?
 They will appear at the player's location."
   (let [setting (system f"Story setting: {world}")
-        prelude (system f"Give a list of people (if any), one per line, that are obviously referred to in the text as being physically present at the current location ({(place.name player.coords)}) and time. Do not invent new characters. Exclude places and objects, only people's proper names count. Give the names as they appear in the text. Setting and narrative appear below.")
+        prelude (system f"Give a list of names of people (if any), one per line, that are obviously referred to in the text as being physically present at the current location ({(place.name player.coords)}) and time. Do not invent new characters. Exclude places and objects, only people's proper names count, no pronouns. Give the names as they appear in the text. Setting and narrative appear below.")
         instruction (user "Now, give the list of characters.")
         char-list (respond (->> (cut messages -6 None)
                                 (prepend setting)
@@ -339,12 +296,13 @@ They will appear at the player's location."
                                 (append (assistant "The list of character names is:")))
                            :max-tokens 50)
         filtered-char-list (->> char-list
-                                 (itemize)
+                                 (debullet)
                                  (.split :sep "\n")
                                  (map capwords)
                                  (sieve)
-                                 (filter (fn [x] (not (fuzzy-in x ["None" "You" "###" "."]))))
+                                 (filter (fn [x] (not (fuzzy-in x ["None" "You" "###" "." "Me" "Incorrect" "narrator" "She" "He"]))))
                                  (filter (fn [x] (< (len (.split x)) 3))) ; exclude long rambling non-names
+                                 (filter valid-key?)
                                  (list))]
     (log.info f"character/get-new: {filtered-char-list}")
     (cut filtered-char-list 4)))
