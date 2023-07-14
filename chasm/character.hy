@@ -10,7 +10,7 @@ Functions that deal with characters.
 (import chasm [log])
 
 (import chasm.stdlib *)
-(import chasm.constants [alphabet default-character])
+(import chasm.constants [alphabet default-character banned-names])
 (import chasm.types [Coords Character Item at?
                      mutable-character-attributes
                      initial-character-attributes])
@@ -44,6 +44,7 @@ Functions that deal with characters.
                      "traits" (:traits loaded None)
                      "likes" (:likes loaded None)
                      "dislikes" (:dislikes loaded None)
+                     "occupation" (:occupation loaded None)
                      "motivation" (:motivation loaded None)}
           coords (or coords (Coords 0 0))]
       (place.extend-map coords)
@@ -229,21 +230,15 @@ The dialogue is as follows:
                   :instruction instruction
                   :attributes (append "new_memory" mutable-character-attributes))]
     (try
-      (let [new-name (.join  " "
-                             (-> details
-                                 (.pop "name" character.name)
-                                 (.split)
-                                 (cut 3)))
-            new-score (if (and character.objectives
-                               (similar character.objectives
-                                        (:objectives details "")))
+      (let [new-score (if (similar (or character.objectives "")
+                                   (:objectives details "")
+                                   :threshold 0.5)
                           character.score
                           (inc character.score))]
         (log.info f"character/develop-lines {character.name}")
         (remember character (.pop details "new_memory" ""))
         (update-character character
                           :score new-score
-                          :name new-name
                           #** details))
       (except [e [Exception]]
         ; generating to template sometimes fails 
@@ -295,7 +290,7 @@ They will appear at the player's location."
                                  (.split :sep "\n")
                                  (map capwords)
                                  (sieve)
-                                 (filter (fn [x] (not (fuzzy-in x ["None" "You" "###" "." "Me" "Incorrect" "narrator" "She" "He" player.name]))))
+                                 (filter (fn [x] (not (fuzzy-in x (append player.name banned-names)))))
                                  (filter (fn [x] (< (len (.split x)) 3))) ; exclude long rambling non-names
                                  (filter valid-key?)
                                  (list))]

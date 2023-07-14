@@ -62,7 +62,7 @@ Develop the plot / world events
                           :max_tokens 300)
         sanitised (.replace response "\n" " ")
         classification (re.search r"\[(\w+)\]" sanitised)
-        point (re.search r"\][- ]*([\w ,.']+)" sanitised)]
+        point (re.search r"\][- ]*([\w ,.'-]+)" sanitised)]
     (when (and point classification)
       (log.info f"plot/extract-point: {(first (classification.groups))}")
       (log.info f"plot/extract-point: {(first (point.groups))}")

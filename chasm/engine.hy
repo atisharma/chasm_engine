@@ -41,9 +41,9 @@ The engine logic is expected to handle many players.
 (defn spawn-player [player-name #** kwargs]
   "Start the game. Make sure there's a recent message. Return the whole visible state."
   (let [player (character.spawn :name player-name :loaded kwargs) 
-        narrative (or (get-narrative player-name) [(assistant (describe-place player))])]
+        narrative (or (get-narrative player-name)
+                      (set-narrative [(assistant (describe-place player))] player-name))]
     (update-character player :npc False)
-    (set-narrative narrative player-name)
     {"narrative" narrative
      "result" (last narrative)
      "player" {"name" player.name
@@ -59,7 +59,7 @@ The engine logic is expected to handle many players.
 
 (defn parse [player-name line] ; player-name, line -> dict(info, error, messages)
   "Process the player's input and return the whole visible state."
-  (log.info f"engine/parse: {player-name} {line}")
+  (log.info f"engine/parse: {player-name}: {line}")
   (let [player (get-character player-name)
         narrative (get-narrative player-name)
         messages (truncate (standard-roles narrative)
@@ -77,6 +77,7 @@ The engine logic is expected to handle many players.
                    (.startswith line "/map") (info (print-map player.coords))
                    (.startswith line "/what-if") (info (narrate (append (user (last (.partition line))) messages) player))
                    (.startswith line "/hint") (info (hint messages player line))
+                   (.startswith line "/hist") (msg "history" "")
                    (command? line) (error "I didn't understand that command.")
                    ;; responses as assistant
                    (look? line) (assistant (place.describe player :messages messages :length "short"))
@@ -95,19 +96,20 @@ The engine logic is expected to handle many players.
                  ; don't develop when moving
                  (not (go? line)))
         (develop narrative player)))
-    ; always return the state
-    {"narrative" narrative
-     "result" result
-     "player" {"name" player.name
-               "objectives" player.objectives
-               "score" player.score
-               "health" player.health
-               "coords" player.coords
-               "inventory" (item.inventory player)
-               "place" (place.name player.coords)}
-     "world" world-name
-     "coords" player.coords
-     "errors" None}))
+    ; always return the most recent state
+    (let [player (get-character player-name)]
+      {"narrative" narrative
+       "result" result
+       "player" {"name" player.name
+                 "objectives" player.objectives
+                 "score" player.score
+                 "health" player.health
+                 "coords" player.coords
+                 "inventory" (item.inventory player)
+                 "place" (place.name player.coords)}
+       "world" world-name
+       "coords" player.coords
+       "errors" None})))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Parser functions -> bool
@@ -257,7 +259,7 @@ Now give the hint."
         instruction (+ "Give a single, one-sentence hint to progress the plot and help the player achieve their objective. "
                        (if line
                            f"The hint must relate to the following question: {line}"
-                           "The hint should be a riddle."))]
+                           "The hint should be a riddle, maybe cryptic."))]
     (->> [(system story-guidance)
           #* messages
           (system instruction)
@@ -292,35 +294,34 @@ Now give the hint."
                                            f"{c.name} recalls the memories:\n{mem}."
                                            ""))))
         story-guidance f"You are the narrator in an immersive and enjoyable adventure / interactive fiction game.
-The player ({player.name}, 'you' or 'I') interjects with questions, instructions or commands. These commands are always meant in the context of the story, for instance 'Look at X' or 'Ask Y about Z'.
-In your narrative, the player is referred to in the second person ('you do..., you go to...'), maybe 'user' or '{player.name}' - these refer to the same person. The narrator should only ever refer to {player.name} as 'you', but a character speaking directly to them may use '{player.name}'.
-You may indicate acting directions or actions like this: *smiles* or *shakes his head*. You both must never break the 'fourth wall'.
+The player ({player.name} or user) interjects with questions or instructions/commands, to be interpreted in the context of the story.
+Commands are meant for {player.name} and may be in first person ('I stand up') or imperative ('stand up', 'Look at X' or 'Ask Y about Z').
+Questions are meant in the context of the story ('What am I wearing?' really means 'Narrator, describe what {player.name} is wearing' etc).
+In your narrative, refer to the player {player.name} in the second person ('you do..., you go to...'), but a character speaking directly to them may address them directly as '{player.name}'.
+Indicate acting directions or actions like this: *smiles* or *shakes his head*. Never break the 'fourth wall'.
+Be descriptive, don't give instructions, don't break character.
+If the last instruction is highly inconsistent in context of the story (for example 'turn into a banana' when that's impossible), just say 'You can't do that' or some variation or interpret it creatively.
+Make every effort to keep the story consistent.
+Don't describe yourself as an AI, chatbot or similar; if you can't do something, describe {player.name} doing it within the story. If you must refer to yourself, do so as the narrator.
 Story setting:
 {world}
 Important plot points:
 {plot-points}
 An extract of the narrative is below."
-        local-guidance f"
+        local-guidance f"Information useful to continue the narrative:
 {present-str}
-
 These places are accessible:
 {(place.nearby-str player.coords)}
 {(place.rooms player.coords)}
 
 {items-here-str}
-
 {characters-here}
 {memories}
 
 {inventory-str}
 
-You will follow the instruction to continue the narrative.
-Instructions are usually meant for {player.name} to do in the context of the story.
-If the last instruction is highly inconsistent in context of the story (for example 'turn into a banana' when that's impossible), just say 'You can't do that' or some variation.
-Make every effort to keep the story consistent.
 Keep {player.name} at {here.name}.
-Be descriptive, don't give instructions, don't break character.
-Don't describe yourself as an AI, chatbot or similar; if you can't do something, describe {player.name} doing it within the story."]
+Continue the narrative."]
     (log.info f"engine/narrate: {player.name} {player.coords}")
     ;(log.info f"{characters-here}\n{items-here-str}")
     (log.info f"engine/narrate: news:\n{(plot.news)}")
@@ -410,7 +411,7 @@ Do not say you're an AI assistant or similar. To end the conversation, just say 
     (let [c (get-character c-name)]
       (if c
           (character.move c player.coords) ; make sure they're here if the narrator says so
-          (character.spawn :name c-name :coords player.coords :playername player.name))))) ; new characters may randomly spawn if mentioned
+          (character.spawn :name c-name :coords player.coords))))) ; new characters may randomly spawn if mentioned
   
 (defn move-characters [messages]
   "Move characters to their targets."

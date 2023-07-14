@@ -227,6 +227,10 @@ force to lowercase, remove 'the' from start of line."
     (when m
       (first (m.groups)))))
   
+(defn just-text [s]
+  "Remove non-word and non-punctuation characters."
+  (re.sub r"[^\w&-,.!?']+" "" s))
+  
 (defn last-word? [s1 s2]
   "Is one string the last word of the other?"
   (let [ss1 (.split s1)

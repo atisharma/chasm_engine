@@ -64,7 +64,7 @@ The player is sometimes called 'user' or '{player.name}' - these refer to the sa
 (defn [cache] gen-description [nearby-str coords [world-str world]]
   "Make up a single-paragraph place description from its name."
   (let [place (get-place coords)
-        prelude f"Your purpose is to generate short, fun, imaginative descriptions of a place, in keeping with the information you have. Make the reader feel viscerally like they are present in the place. Set the scene. Write in the second person, using 'you'. Be concise. Don't mention any people or characters that may be present here, concentrate on things that won't change.
+        prelude f"Your purpose is to generate short, fun, imaginative descriptions of a place, in keeping with the information you have. Make the reader feel viscerally like they are present in the place. Set the scene. Write in the second person, using 'you'. Be concise. Don't mention any people or characters that may be present here, concentrate on things that won't change. Write in plain, unformatted text.
 Generate a short paragraph of vivid description of what the the protagonist sees, hears, smells or touches from {place.name}."
         context f"Story setting:
 '{world-str}'

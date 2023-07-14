@@ -14,6 +14,8 @@
                                 logging.WARNING)
                      :encoding "utf-8")
 
+(logging.info (* "-" 80))
+
 (defn debug [msg]
   (logging.debug msg))
 

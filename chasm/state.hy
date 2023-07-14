@@ -24,6 +24,9 @@ Thing in themselves and relationships between things.
 ;;; -----------------------------------------------------------------------------
 
 (setv path (config "world"))
+(.mkdir (Path path)
+        :parents True
+        :exist-ok True)
 
 (setv world-name (-> path
                      (.split "/")

@@ -12,8 +12,9 @@ The main REPL where we read output and issue commands.
 
 (import chasm.stdlib *)
 (import chasm.engine [parse spawn-player])
+(import chasm.chat [msgs->dlg])
 (import chasm.interface [banner clear console pinput spinner
-                         exception error info print-message
+                         exception error info print-message print-messages
                          status-line
                          _bg _fg _it])
 
@@ -47,7 +48,6 @@ The main REPL where we read output and issue commands.
 (defn run []
   "Launch the REPL, which takes player's input, parses
 it, and passes it to the appropriate action."
-  (log.info (* "-" 80))
   (log.info f"Starting repl at {(.isoformat (datetime.today))}")
 
   (banner)
@@ -61,11 +61,13 @@ it, and passes it to the appropriate action."
     (while True
       (try ; ----- parser block ----- 
         (let [message (:result response)]
-          (match (:role message)
-                 "QUIT" (do (clear) (break))
-                 "assistant" (print-message message)
-                 "info" (info (:content message))
-                 "error" (error (:content message))))
+          (when message
+            (match (:role message)
+                   "QUIT" (do (clear) (break))
+                   "assistant" (print-message message)
+                   "info" (info (:content message))
+                   "error" (error (:content message))
+                   "history" (print-messages (msgs->dlg player-name "narrator" (:narrative response))))))
         (status response)
         (let [line (.strip (pinput "> "))]
           (setv response (with [(spinner "Writing...")]

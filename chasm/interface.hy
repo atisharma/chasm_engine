@@ -6,6 +6,7 @@ Functions that relate to output on the screen.
 (require hyrule.control [case])
 
 (import os)
+(import re)
 (import atexit)
 (import readline)
 (import hashlib [md5])
@@ -236,4 +237,5 @@ Functions that relate to output on the screen.
   "Prepare a generic string for markdown rendering."
   ;; Markdown swallows single newlines.
   ;; and defines the antipattern of preserving them with a double space.
-  (.replace (.strip s) "\n" "  \n"))
+  ;; but we don't want to lose itemised lists
+  (re.sub r"\n" r"  \n" (.strip s)))

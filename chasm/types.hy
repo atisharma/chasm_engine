@@ -42,8 +42,7 @@ They must be integer."
                                "owner" ; None if no character has in their inventory
                                "coords"])) ; None if it's being carried
 
-(setv mutable-character-attributes ["name" ; maybe... you discover their surname?
-                                    "appearance"
+(setv mutable-character-attributes ["appearance"
                                     "health"
                                     "emotions"
                                     "objectives"
