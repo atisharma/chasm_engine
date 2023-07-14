@@ -59,6 +59,7 @@ They must be integer."
                                     "likes"
                                     "dislikes"
                                     "skills"
+                                    "npc"
                                     "occupation"
                                     "objectives"])
       

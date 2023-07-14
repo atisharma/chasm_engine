@@ -81,7 +81,9 @@ The protagonist's new location is 'The {place.name}', with attributes:
                    :max-tokens 100)]
     (.join "\n\n"
            [f"**{place.name}**"
-            (trim-prose response)])))
+            (-> response
+                (.replace "\"" "")
+                trim-prose)])))
 
 (defn gen-json [nearby-places]
   "Make up a place from its neighbours."
@@ -124,7 +126,8 @@ The name should have {seed} in the first few letters. The place might be {(choic
                   :template template
                   :instruction instruction
                   :attributes place-attributes)]
-    (when (:name details None)
+    (when (and (:name details None)
+               (< (len (.split (:name details ""))) 4))
       details)))
 
 (defn gen-rooms [place-dict]

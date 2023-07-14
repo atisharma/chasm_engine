@@ -24,22 +24,11 @@ Thing in themselves and relationships between things.
 ;;; -----------------------------------------------------------------------------
 
 (setv path (config "world"))
-(setv username (config "name"))
 
 (setv world-name (-> path
                      (.split "/")
                      (last)
                      (capwords)))
-
-(defn mksubdir [d]
-  (.mkdir (Path (.join "/" [path d]))
-          :parents True
-          :exist-ok True))  
-
-; create world folder and subfolders
-(mksubdir "characters")
-(mksubdir "narratives")
-
 
 (setv world (-> (Path f"{path}.txt")
                 (.read-text)
@@ -147,3 +136,21 @@ Thing in themselves and relationships between things.
   "Update an item's details. You cannot change the name."
   (log.debug f"Updating item {item.name}, {kwargs}.")
   (set-item (Item #** (| (._asdict item) kwargs))))
+
+;;; -----------------------------------------------------------------------------
+;;; narrative
+;;; key is player name
+;;; -----------------------------------------------------------------------------
+
+(setv narratives (get-table "narratives"))
+
+(defn get-narrative [player-name]
+  (when player-name
+    (try
+      (get narratives (character-key player-name))
+      (except [KeyError]))))
+
+(defn set-narrative [messages player-name]
+  (setv (get narratives (character-key player-name)) messages)
+  (.commit narratives)
+  messages)

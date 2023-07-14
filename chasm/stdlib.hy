@@ -87,16 +87,6 @@
 ;;; File & IO functions
 ;;; -----------------------------------------------------------------------------
 
-(defn rlinput [prompt [prefill ""]]
-  "Like python's input() but using readline."
-  (readline.set_startup_hook (fn [] (readline.insert_text prefill)))
-  (try
-    (input prompt)
-    (except [EOFError]
-      "/quit")
-    (finally
-      (readline.set_startup_hook))))
-
 (defn load [fname]
   "Read a json file. None if it doesn't exist."
   (let [path (Path fname)]
@@ -139,6 +129,11 @@
   "Write a plain text file."
   (with [f (open fname :mode "w" :encoding "UTF-8")]
     (.write f text)))
+
+(defn mksubdir [d]
+  (.mkdir (Path (.join "/" [path d]))
+          :parents True
+          :exist-ok True))  
 
 ;;; -----------------------------------------------------------------------------
 ;;; Hashing, id and password functions
@@ -228,11 +223,12 @@ force to lowercase, remove 'the' from start of line."
                   (sieve)
                   (list))
         text (.join "\n\n" paras)
-        m (re.match r"(.*[.?!*\"])[^.?!*]+" text :flags re.S)]
+        m (re.match r"(.*[.?!*\"])[^.?!*\"]+" text :flags re.S)]
     (when m
       (first (m.groups)))))
   
 (defn last-word? [s1 s2]
+  "Is one string the last word of the other?"
   (let [ss1 (.split s1)
         ss2 (.split s2)])
   (or (and s2 (= s1 (last (.split s2))))

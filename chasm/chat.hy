@@ -51,6 +51,12 @@ We use tiktoken because I don't want to install pytorch."
          (encoding.encode)
          (len))))
 
+(defn standard-roles [messages]
+  "Remove messages not with standard role."
+  (lfor m messages
+        :if (in (:role m) ["assistant" "user" "system"])
+        m))
+  
 (defn truncate [messages [spare-length None]]
   "Hack away non-system messages until below length.
 This will fail if the system messages add up to be too long.
@@ -102,12 +108,6 @@ Return modified messages."
 (defn flip-roles [messages]
   (dlg->msgs "assistant" "user" messages))
 
-(defn load-messages [character]
-  (load (.join "/" [state.path "narratives" f"{(state.character-key character.name)}.json"])))
-
-(defn save-messages [character messages]
-  (save messages (.join "/" [state.path "narratives" f"{(state.character-key character.name)}.json"])))
-
 ;;; -----------------------------------------------------------------------------
 ;;; Remote API calls
 ;;; -----------------------------------------------------------------------------
@@ -126,7 +126,7 @@ The messages should already have the standard roles."
         defaults {"max_tokens" (config "max_tokens")
                   "model" "gpt-3.5-turbo"}
         response (ChatCompletion.create
-                   :messages messages
+                   :messages (standard-roles messages)
                    #** (| defaults params kwargs))]
     (-> response.choices
         (first)

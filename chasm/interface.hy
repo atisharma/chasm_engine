@@ -5,6 +5,9 @@ Functions that relate to output on the screen.
 (require hyrule.argmove [-> ->> as->])
 (require hyrule.control [case])
 
+(import os)
+(import atexit)
+(import readline)
 (import hashlib [md5])
 
 (import rich.console [Console])
@@ -16,11 +19,62 @@ Functions that relate to output on the screen.
 (import rich.progress [track])
 (import rich.color [ANSI_COLOR_NAMES])
 
+(import prompt-toolkit [HTML prompt :as pprompt])
+
+
+;;; -----------------------------------------------------------------------------
 
 (setv console (Console :highlight None))
 (setv colors (list (.keys ANSI_COLOR_NAMES)))
 (setv render-markdown True)
 
+;; status bar
+(setv toolbar "")
+
+;;; -----------------------------------------------------------------------------
+;;; startup/exit
+;;; -----------------------------------------------------------------------------
+
+;; load/save readline history at startup/exit
+
+(try
+  (let [history-file (os.path.join (os.path.expanduser "~") ".chasm_history")]
+    (readline.set-history-length 100)
+    (readline.read-history-file history-file)
+    (.register atexit readline.write-history-file history-file))
+  (except [e [FileNotFoundError]]))
+
+;;; -----------------------------------------------------------------------------
+;;; Input
+;;; -----------------------------------------------------------------------------
+
+(defn rlinput [prompt [prefill ""]]
+  "Like python's input() but using readline."
+  (readline.set_startup_hook (fn [] (readline.insert_text prefill)))
+  (try
+    (input prompt)
+    (except [EOFError]
+      "/quit")
+    (finally
+      (readline.set_startup_hook))))
+
+(defn pinput [prompt]
+  "Input with prompt-toolkit."
+  (pprompt prompt :bottom-toolbar (HTML toolbar)))
+
+(defn _it [s]
+  (+ "<i>" s "</i>"))
+
+(defn _tag [s [tag "i"]]
+  (+ f"<{tag}>" s f"</{tag}>"))
+
+(defn _fg [s [col "default"]]
+  (let [tag f"t_fg_{col}"]
+    (+ f"<{tag} fg=\"{col}\">" s f"</{tag}>")))
+
+(defn _bg [s [col "default"]]
+  (let [tag f"t_bg_{col}"]
+    (+ f"<{tag} bg=\"{col}\">" s f"</{tag}>")))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Screen control
@@ -93,28 +147,30 @@ Functions that relate to output on the screen.
   "Print a status line at the bottom of the screen."
   ;(print "\033[s" :end "") ; save cursor position
   ;(print "\033[u" :end "") ; restore cursor position
-  (print) ; move on one line
-  (console.rule)
+  #_(print) ; move on one line
+  #_(console.rule)
   ; s-without-markup (re.sub r"\[[/\w ]*\]" "" s)
-  (console.print s
-                 :end "\r"
-                 :overflow "ellipsis"
-                 :crop True)
-  (for [n (range (+ 2 (.count s "\n")))]
-    (print "\033[1A" :end "")) ; up one line
-  (print "\033[K" :end "")) ; clear to end of line for new input
+  #_(console.print s
+                   :end "\r"
+                   :overflow "ellipsis"
+                   :crop True)
+  #_(for [n (range (+ 2 (.count s "\n")))]
+      (print "\033[1A" :end "")) ; up one line
+  #_(print "\033[K" :end "") ; clear to end of line for new input
+  (global toolbar)
+  (setv toolbar s))
   
 (defn clear-status-line []
   "Hack to avoid old status line polluting new output."
-  (print "\033[K" :end "") ; clear to end of line
-  (print)
-  (print "\033[K" :end "") ; clear to end of line
-  (print)
-  (print "\033[K" :end "") ; clear to end of line
-  (print)
-  (print "\033[1A" :end "") ; up one line
-  (print "\033[1A" :end "") ; up one line
-  (print "\033[1A" :end "")) ; up one line
+  #_(print "\033[K" :end "") ; clear to end of line
+  #_(print)
+  #_(print "\033[K" :end "") ; clear to end of line
+  #_(print)
+  #_(print "\033[K" :end "") ; clear to end of line
+  #_(print)
+  #_(print "\033[1A" :end "") ; up one line
+  #_(print "\033[1A" :end "") ; up one line
+  #_(print "\033[1A" :end "")) ; up one line
   
 (defn role-color [role]
   "The signature color of the role, derived from its name."

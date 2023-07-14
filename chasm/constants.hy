@@ -4,8 +4,6 @@
 (setv alphabet "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
       alphanumeric "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
 
-(setv appearances ["hairstyle" "middle-aged" "young" "old" "tall" "short" "medium height" "average height"])
-
 (setv place-types ["a small building"
                    "a large building"
                    "a small outdoor space"
@@ -33,7 +31,8 @@
                           :objectives None
                           :score 0
                           :health 100
-                          :emotions None))
+                          :emotions None
+                          :npc True))
 
 (setv compass-directions ["n" "north"
                           "ne" "northeast"

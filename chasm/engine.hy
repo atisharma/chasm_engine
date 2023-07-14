@@ -1,5 +1,6 @@
 "
 The game engine. Handles interaction between Place, Item, Character, Event and narrative.
+The engine logic is expected to handle many players.
 "
 
 (require hyrule.argmove [-> ->>])
@@ -12,22 +13,101 @@ The game engine. Handles interaction between Place, Item, Character, Event and n
 (import chasm.constants [character-density item-density compass-directions])
 (import chasm.state [world world-name
                      characters
-                     username
                      get-place
                      get-character
-                     update-character])
-(import chasm.chat [respond msgs->topic text->topic msgs->points
-                    truncate
+                     update-character
+                     get-narrative
+                     set-narrative])
+(import chasm.chat [respond
+                    msgs->topic text->topic msgs->points
+                    msg->dlg msgs->dlg
+                    truncate standard-roles
                     token-length
-                    user assistant system
-                    msg->dlg msgs->dlg])
-(import chasm.interface [spinner
-                         info error
-                         clear-status-line
-                         print-message
-                         clear-status-line
-                         status-line])
+                    msg user assistant system])
 
+
+(defclass EngineError [Exception])
+
+;;; -----------------------------------------------------------------------------
+;;; parser
+;;; -----------------------------------------------------------------------------
+
+(defn info [content]
+  (msg "info" content))
+
+(defn error [content]
+  (msg "error" content))
+
+(defn spawn-player [player-name #** kwargs]
+  "Start the game. Make sure there's a recent message. Return the whole visible state."
+  (let [player (character.spawn :name player-name :loaded kwargs) 
+        narrative (or (get-narrative player-name) [(assistant (describe-place player))])]
+    (update-character player :npc False)
+    (set-narrative narrative player-name)
+    {"narrative" narrative
+     "result" (last narrative)
+     "player" {"name" player.name
+               "objectives" player.objectives
+               "score" player.score
+               "health" player.health
+               "coords" player.coords
+               "inventory" (item.inventory player)
+               "place" (place.name player.coords)}
+     "world" world-name
+     "coords" player.coords
+     "errors" None})) 
+
+(defn parse [player-name line] ; player-name, line -> dict(info, error, messages)
+  "Process the player's input and return the whole visible state."
+  (log.info f"engine/parse: {player-name} {line}")
+  (let [player (get-character player-name)
+        narrative (get-narrative player-name)
+        messages (truncate (standard-roles narrative)
+                           :spare-length (+ (token-length world) (config "max_tokens"))) 
+        user-msg (user line)
+        result (try
+                 (cond
+                   ;; responses as info / error
+                   (quit? line) (do (update-character player :npc True) (msg "QUIT" "QUIT"))
+                   (take? line) (info (item.fuzzy-claim (take? line) player))
+                   (drop? line) (info (item.fuzzy-drop (drop? line) player))
+                   (.startswith line "/items") (info (item.describe-at player.coords))
+                   (.startswith line "/characters") (info (or (character.describe-at player.coords) "Nobody interesting here but you."))
+                   (.startswith line "/spy") (info (spy (last (.partition line " "))))
+                   (.startswith line "/map") (info (print-map player.coords))
+                   (.startswith line "/what-if") (info (narrate (append (user (last (.partition line))) messages) player))
+                   (.startswith line "/hint") (info (hint messages player line))
+                   (command? line) (error "I didn't understand that command.")
+                   ;; responses as assistant
+                   (look? line) (assistant (place.describe player :messages messages :length "short"))
+
+                   (go? line) (assistant (move (append user-msg messages) player))
+                   (talk? line) (assistant (converse (append user-msg messages) player)) ; this one needs thinking about
+                   line (assistant (narrate (append user-msg messages) player)))
+                 (except [err [Exception]]
+                   (raise (EngineError))))]
+    (when (and result
+               (= (:role result) "assistant"))
+      (.extend narrative [user-msg result])
+      (set-narrative (cut narrative -1000 None) player-name) ; keep last 1000 messages
+      (move-characters narrative)
+      (when (and narrative
+                 ; don't develop when moving
+                 (not (go? line)))
+        (develop narrative player)))
+    ; always return the state
+    {"narrative" narrative
+     "result" result
+     "player" {"name" player.name
+               "objectives" player.objectives
+               "score" player.score
+               "health" player.health
+               "coords" player.coords
+               "inventory" (item.inventory player)
+               "place" (place.name player.coords)}
+     "world" world-name
+     "coords" player.coords
+     "errors" None}))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Parser functions -> bool
@@ -99,7 +179,6 @@ The game engine. Handles interaction between Place, Item, Character, Event and n
 
 (defn talk-status [dialogue character]
   "Show chat partner, place, tokens used."
-  (clear-status-line)
   (status-line (.join " | "
                       [f"[italic blue]{world-name}[/italic blue]"
                        f"[italic cyan]Talking to {character.name}[/italic cyan]"
@@ -110,14 +189,12 @@ The game engine. Handles interaction between Place, Item, Character, Event and n
 ;;; functions -> msg or None (with output)
 ;;; -----------------------------------------------------------------------------
 
-;;; TODO: maybe abstract out a standard narrator prompt template.
-
 (defn describe-place [char]
   "Short context-free description of a place and its occupants."
   ; don't include context so we force the narrative location to change.
   (let [description (place.describe char)
-        chars-here (character.list-at-str char.coords)]
-    (assistant (.join "\n\n" [description chars-here]))))
+        chars-here (character.list-at-str char.coords :exclude char.name)]
+    (.join "\n\n" [description chars-here])))
 
 (defn move [messages player] ; -> msg or None
   "Extend the map. Spawn items and characters. Move the player. Describe.
@@ -130,33 +207,27 @@ The game engine. Handles interaction between Place, Item, Character, Event and n
     (log.info f"engine/move: {player.name} to {dirn} {player.coords} -> {new-coords}")
     (cond
       new-coords (do
-                   (with [s (spinner "Travelling...")]
-                     (place.extend-map new-coords)
+                   (place.extend-map new-coords)
                      ; adding item, character has to occur *after* place has been created
-                     (when (and (not (item.get-items new-coords))
-                                (< (/ (len state.items) (inc (len state.places)))
-                                   item-density))
-                       (item.spawn new-coords))
+                   (when (and (not (item.get-items new-coords))
+                              (< (/ (len state.items) (inc (len state.places)))
+                                 item-density))
+                     (item.spawn new-coords))
                      ; only spawn a character if there's nobody there
-                     (when (and (not (character.get-at new-coords))
-                                (< (/ (len state.characters)
-                                      (inc (len state.places)))
-                                   character-density))
-                       (character.spawn :name None :coords new-coords))
-                     (character.move player new-coords)
+                   (when (and (not (character.get-at new-coords :exclude player.name))
+                              (< (/ (len state.characters)
+                                    (inc (len state.places)))
+                                 character-density))
+                     (character.spawn :name None :coords new-coords))
+                   (character.move player new-coords)
                      ; and make sure to pass character with updated position to place.describe
-                     (describe-place (get-character player.name))))
+                   (describe-place (get-character player.name)))
       (fuzzy-in dirn here.rooms) (narrate messages player) ; going to a room
-      :else (assistant (choice [f"You can't go to '{dirn}'."
-                                f"Is '{dirn}' where you meant?"
-                                f"I'm not sure '{dirn}' is a place."
-                                f"'{dirn}' doesn't seem to be somewhere you can go."
-                                f"'{dirn}' isn't accessible from here. Try somewhere else."])))))
-
-(defn look [player [messages None] [length "short"]]
-  "Describe the immediate surroundings."
-  (with [s (spinner "Writing...")]
-    (assistant (place.describe player :messages messages :length length))))
+      :else (choice [f"You can't go to '{dirn}'."
+                     f"Is '{dirn}' where you meant?"
+                     f"I'm not sure '{dirn}' is a place."
+                     f"'{dirn}' doesn't seem to be somewhere you can go."
+                     f"'{dirn}' isn't accessible from here. Try somewhere else."]))))
 
 (defn hint [messages player line]
   (let [[cmd _ obj] (.partition line " ")
@@ -187,30 +258,29 @@ Now give the hint."
                        (if line
                            f"The hint must relate to the following question: {line}"
                            "The hint should be a riddle."))]
-    (with [s (spinner "Writing...")]
-      (->> [(system story-guidance)
-            #* messages
-            (system instruction)
-            (user local-guidance)]
-           (truncate)
-           (respond)
-           (trim-prose)
-           (info)))))
+    (->> [(system story-guidance)
+          #* messages
+          (system instruction)
+          (user local-guidance)]
+         (truncate)
+         (respond)
+         (trim-prose))))
 
 (defn narrate [messages player]
   "Narrate the story, in the fictional universe."
   (let [items-here-str (item.describe-at player.coords)
         here (get-place player.coords)
         inventory-str (item.describe-inventory player)
+        ; this includes the player
         character-names-here (lfor c (character.get-at player.coords) c.name)
         ; if any are explicitly mentioned, give all characters a long description
-        ; this gets long, so limit detailed characters to 1 or 2.
-        detailed-chars (and (< (len character-names-here) 2)
+        ; this gets long, so limit detailed characters to a few.
+        detailed-chars (and (< (len character-names-here) 3)
                             (any (map (fn [s] (fuzzy-substr s (:content (last messages))))
                                       character-names-here)))
         characters-here (character.describe-at player.coords :long detailed-chars)
-        present-str (if character-names-here
-                        (+ (.join ", " character-names-here) f" and {player.name} are at the {here.name}.")
+        present-str (if (> (len character-names-here) 1)
+                        (+ (.join ", " character-names-here) f" are here at the {here.name}.")
                         f"{player.name} is at the {here.name}.")
         plot-points (.join "\n" (plot.recall-points (plot.news)))
         memories (.join "\n\n" (lfor c (character.get-at player.coords)
@@ -221,12 +291,16 @@ Now give the hint."
                                        (if mem
                                            f"{c.name} recalls the memories:\n{mem}."
                                            ""))))
-        story-guidance f"You are the narrator in an immersive and enjoyable adventure game.
+        story-guidance f"You are the narrator in an immersive and enjoyable adventure / interactive fiction game.
 The player ({player.name}, 'you' or 'I') interjects with questions, instructions or commands. These commands are always meant in the context of the story, for instance 'Look at X' or 'Ask Y about Z'.
-In your narrative, the player is referred to in the second person ('you do..., you go to...') or 'user' or '{player.name}' - these refer to the same person. Only ever refer to them as {player.name} or 'you'.
-
-Story setting: {world}"
-        local-guidance f"{plot-points}
+In your narrative, the player is referred to in the second person ('you do..., you go to...'), maybe 'user' or '{player.name}' - these refer to the same person. The narrator should only ever refer to {player.name} as 'you', but a character speaking directly to them may use '{player.name}'.
+You may indicate acting directions or actions like this: *smiles* or *shakes his head*. You both must never break the 'fourth wall'.
+Story setting:
+{world}
+Important plot points:
+{plot-points}
+An extract of the narrative is below."
+        local-guidance f"
 {present-str}
 
 These places are accessible:
@@ -240,23 +314,25 @@ These places are accessible:
 
 {inventory-str}
 
-If the instruction is highly inconsistent in context of the story (for example 'turn into a banana' when that's impossible), just say 'You can't do that' or some humorous variation. Make every effort to keep the story consistent. Otherwise, follow the instruction and develop the story.
+You will follow the instruction to continue the narrative.
+Instructions are usually meant for {player.name} to do in the context of the story.
+If the last instruction is highly inconsistent in context of the story (for example 'turn into a banana' when that's impossible), just say 'You can't do that' or some variation.
+Make every effort to keep the story consistent.
 Keep {player.name} at {here.name}.
-Don't give instructions, be descriptive, don't break character, don't describe yourself as an AI assistant or chatbot, maintain the fourth wall."]
+Be descriptive, don't give instructions, don't break character.
+Don't describe yourself as an AI, chatbot or similar; if you can't do something, describe {player.name} doing it within the story."]
     (log.info f"engine/narrate: {player.name} {player.coords}")
     ;(log.info f"{characters-here}\n{items-here-str}")
     (log.info f"engine/narrate: news:\n{(plot.news)}")
     (log.info f"engine/narrate: memories:\n{memories}")
     (log.info f"engine/narrate: story: {(token-length story-guidance)}; local {(token-length local-guidance)}")
-    (with [s (spinner "Writing...")]
-      (-> [(system story-guidance)
-           #* messages
-           (system local-guidance)]
-          (truncate)
-          (respond)
-          (trim-prose)
-          (or "")
-          (assistant)))))
+    (-> [(system story-guidance)
+         (system local-guidance)
+         #* messages]
+        (truncate)
+        (respond)
+        (trim-prose)
+        (or ""))))
 
 (defn consume-item [messages player item]
   "The character changes the narrative and the item based on the usage."
@@ -273,14 +349,14 @@ Don't give instructions, be descriptive, don't break character, don't describe y
         here (get-place player.coords)
         items-here-str (item.describe-at player.coords)
         character-names-here (lfor c (character.get-at player.coords)
-                                   :if (not (= c.name username))
+                                   :if (not (= c.name (config "name")))
                                    c.name)
         characters-here (character.describe-at player.coords :long True)
         talk-to-guess (first (.split line))
         talk-to (best-of character-names-here talk-to-guess)]
     (if (and talk-to (similar talk-to talk-to-guess))
         (let [story-guidance f"You are playing the character of {talk-to} in an improvised, continuous dialogue between {player.name} and {talk-to}. The user plays the part of {player.name}.
-{player.name} may speak about their thoughts, feelings, intentions etc. If necessary, indicate acting directions like this: *smiles* or *frowns*. You both must never break the 'fourth wall'.
+{player.name} may speak about their thoughts, feelings, intentions etc. If necessary, indicate acting directions or actions like this: *smiles* or *shakes his head*. You both must never break the 'fourth wall'.
 
 The setting for the dialogue is:
 {world}
@@ -290,10 +366,9 @@ The setting for the dialogue is:
 
 {player.name} and {talk-to} are talking here at the {here.name}. Do not go anywhere else.
 
-Do not say you're an AI assistant. To end the conversation, just say the codewords 'END CONVERSATION'. {player.name} will speak, then give your reply playing the part of {talk-to}, keeping in-character."
+Do not say you're an AI assistant or similar. To end the conversation, just say the codewords 'END CONVERSATION'. {player.name} will speak, then give your reply playing the part of {talk-to}, keeping in-character."
               dialogue [(user f"*Greets {talk-to}*")
                         (assistant f"*Waves back at {player.name}*")]]
-          (clear-status-line)
           (talk-status dialogue (get-character talk-to))
           (setv chat-line (.strip (rlinput f"{player.name}: " :prefill (.join " " (rest (.split line))))))
           (log.info f"{player.name} is talking to {talk-to}.")
@@ -312,47 +387,58 @@ Do not say you're an AI assistant. To end the conversation, just say the codewor
                           (similar "." (:content reply-msg)))
                 (.append dialogue reply-msg)
                 (print-message (msg->dlg player.name talk-to reply-msg) :padding #(0 3 0 0))
-                (clear-status-line)
                 (talk-status dialogue (get-character talk-to))
                 (setv chat-line (.strip (rlinput f"{player.name}: "))))))
           (when (> (len dialogue) 5)
-            (with [s (spinner "Making memories...")]
-              (let [dlg (cut dialogue 2 None)]
-                (character.develop-lines (get-character talk-to) (msgs->dlg player.name talk-to dlg))
-                (character.develop-lines player (msgs->dlg player.name talk-to dlg))
-                (assistant (text->topic (format-msgs (msgs->dlg player.name talk-to dlg))))))))
+            (let [dlg (cut dialogue 2 None)]
+              (character.develop-lines (get-character talk-to) (msgs->dlg player.name talk-to dlg))
+              (character.develop-lines player (msgs->dlg player.name talk-to dlg))
+              (assistant (text->topic (format-msgs (msgs->dlg player.name talk-to dlg)))))))
         (assistant (if talk-to
                        f"Why don't you talk to {talk-to} instead?"
                        f"There's nobody available with the name {talk-to-guess}.")))))
 
 (defn develop [messages player]
   "Move the plot and characters along."
-  (with [s (spinner "Developing plot...")]
-    ; new plot point, record in vdb, db and recent events
-    (plot.extract-point messages player))
-  (with [s (spinner "Developing characters...")]
-    ; all players get developed
-    (for [c (append (get-character player.name) (character.get-at player.coords))]
-      (character.develop-lines c messages))
-    ; Summon characters to the player's location
-    (for [c-name (character.get-new messages player)]
-      (let [c (get-character c-name)]
-        (if c
-            (character.move c player.coords) ; make sure they're here if the narrator says so
-            (character.spawn :name c-name :coords player.coords)))))) ; new characters may randomly spawn if mentioned
+  ; new plot point, record in vdb, db and recent events
+  (plot.extract-point messages player)
+  ; all players get developed
+  (for [c (character.get-at player.coords)]
+    (character.develop-lines c messages))
+  ; Summon characters to the player's location
+  (for [c-name (character.get-new messages player)]
+    (let [c (get-character c-name)]
+      (if c
+          (character.move c player.coords) ; make sure they're here if the narrator says so
+          (character.spawn :name c-name :coords player.coords :playername player.name))))) ; new characters may randomly spawn if mentioned
   
-(defn move-characters [messages player]
+(defn move-characters [messages]
   "Move characters to their targets."
-  (with [s (spinner "Moving other characters...")]
-    (for [c-key (.keys characters)]
-      (let [c (get-character c-key)]
-        (unless (= c.name player.name) ; don't randomly move the player
-          ; don't test for accessibility
-          (for [p (place.nearby c.coords :place True :list-inaccessible True)]
-            (when (and (similar c.destination p.name)
-                       (dice 16)
-                       ; don't move them if they've been mentioned in the last move or two
-                       (not (in c.name (str (cut messages -4 None)))))
-              (when (= p.coords c.coords)
-                (info f"{c.name} has gone to {p.name}."))
-              (character.move c p.coords))))))))
+  (for [c (map get-character characters)]
+    (when c.npc ; don't randomly move a player, only NPCs
+      ; don't test for accessibility
+      (for [p (place.nearby c.coords :place True :list-inaccessible True)]
+        (when (and (similar c.destination p.name)
+                   (dice 16)
+                   ; don't move them if they've been mentioned in the last move or two
+                   (not (in c.name (str (cut messages -4 None)))))
+          (log.info f"engine/move-characters: {c.name} -> {p.name}")
+          (character.move c p.coords))))))
+
+;;; -----------------------------------------------------------------------------
+;;; Main engine loop
+;;; -----------------------------------------------------------------------------
+
+(defn print-map [coords]
+  "Get your bearings."
+  (.join "\n\n"
+      [f"***{(place.name coords)}***"
+       f"{(.join ", " (place.rooms coords :as-string False))}"
+       ;f"*{(place.nearby-str coords :list-inaccessible True)}*"
+       ;f"Of which are accessible:"
+       f"*{(place.nearby-str coords)}*"]))
+
+(defn spy [char-name]
+  (character.describe
+    (get-character char-name)
+    :long True))

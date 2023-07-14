@@ -24,18 +24,19 @@ with a good model.
 * [x] continue / save file for game
 * [x] persistent items
 * [x] character inventory
-* [x] take, drop items
-* [ ] modify/use items
+* [x] take, drop, use items
+* [ ] permanently modify items
 * [x] per-character event memory
 * [x] per-character quests
 * [x] NPCs should travel
 * [ ] NPCs should interact with items
 * [ ] NPCs should interact with plot, follow quests
-* [x] persistent global event memory (vector db)
-* [x] per-character dialogue memory (snippets, vector db)
-* [x] protagonist is just another player but with a "human" model
+* [x] persistent global event memory (plot events in vector db)
+* [x] per-character dialogue memory (snippets in vector db)
+* [x] play as any character
 * [ ] command-line parameters to override config
 * [ ] world editor for manual world construction
+* [ ] multiplayer - separate out server & client
 
 
 ## Installing and running
@@ -53,24 +54,27 @@ history. They are universal and invariant context for your journey.
 For example, set `world = "worlds/New York"` in your config file
 and create a text file `worlds/New York.txt` with the contents
 ```
-The setting is 1930's New York, and surrounding areas. There are many buildings specific to the area.
-[genre: realist urban fiction]
+The setting is 1930's New York, and surrounding areas.
+There are many buildings specific to the area.
+(genre: realist urban fiction)
 ```
 This will create a world called 'New York' and scenes appropriate to it.
 
 
 ### Character cards
 
-If you want to override your or any other character's attributes permanently,
-create a file `worlds/New York/characters/Hero.json` (for a character name of
-Hero) with the contents
+If you want to override your or any other character's attributes
+permanently, create a file `characters/Hero.json` (if your character's
+name is Hero) with the contents
 ```
 {
     "name": "Hero",
     "appearance": "Heroic.",
+    "gender": "male",
     "backstory": "Comes from a long line of heroes.",
     "voice": "Heroic.",
     "traits": "Heroism.",
+    "likes": "Being heroic.",
     "dislikes": "Not being heroic.",
     "motivation": "To be heroic."
 }
@@ -93,6 +97,6 @@ There are still many.
 
 ### Inspiration
 
-- Zork-like games. Though I never played Zork.
+- Infocom-type games. Though I never played Zork.
 - https://github.com/QuangBK/generativeAgent_LLM
 - https://github.com/atisharma/llama_farm

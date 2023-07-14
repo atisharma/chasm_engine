@@ -5,19 +5,18 @@ Functions that deal with characters.
 (require hyrule.argmove [-> ->>])
 (require hyrule.control [unless])
 
+(import time [time])
+
 (import chasm [log])
 
 (import chasm.stdlib *)
-(import chasm.constants [alphabet
-                         appearances
-                         default-character])
+(import chasm.constants [alphabet default-character])
 (import chasm.types [Coords Character Item at?
                      mutable-character-attributes
                      initial-character-attributes])
 (import chasm [place memory])
 
-(import chasm.state [world path username
-                     get-item update-item
+(import chasm.state [world path
                      get-place
                      get-character set-character update-character character-key
                      characters])
@@ -33,13 +32,10 @@ Functions that deal with characters.
 (defn valid-key? [s]
   (re.match "^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$" s))
 
-(defn spawn [[name None] [coords None]] ; -> Character
+(defn spawn [[name None] [coords None] [loaded {}]] ; -> Character
   "Spawn a character from card, db, or just generated."
   (try
-    (let [card-path (.join "/"[path "characters" f"{name}.json"])
-          loaded (or (load card-path)
-                     {})
-          ; only allow to override some
+    (let [; only allow to override some
           sanitised {"name" name
                      "appearance" (:appearance loaded None)
                      "gender" (:gender loaded None)
@@ -66,9 +62,7 @@ Functions that deal with characters.
           character)))
     (except [e [Exception]]
       (log.error f"character/spawn: failed for {name} at {coords}.")
-      (log.error e)
-      (when (= username name)
-        (raise (ValueError f"Bad spawn for {name}, cannot continue. Check card is valid JSON."))))))
+      (log.error e))))
 
 (defn gen-lines [coords [name None]] ; -> Character or None
   "Make up some plausible character based on a name."
@@ -78,7 +72,7 @@ Functions that deal with characters.
         place (get-place coords)
         place-name (if place place.name "a typical place in this world")
         card f"name: '{name-str}'
-appearance: '{name-str}'s appearance, {(choice appearances)}, {(choice appearances)}, clothes, style etc (unique and memorable)'
+appearance: '{name-str}'s appearance, age, height, build, clothes, style etc (unique and memorable)'
 gender: 'their gender'
 backstory: 'their backstory (10 words, memorable)'
 voice: 'their manner of speaking, 2-3 words'
@@ -114,7 +108,7 @@ Make up a brief few words, with comma separated values, for each attribute. Be i
         place-name (if place place.name "a typical place in this world")
         card f"{{
     \"name\": \"{name-str}\",
-    \"appearance\": \"{name-str}'s appearance, {(choice appearances)}, {(choice appearances)}, clothes, style etc (unique and memorable)\",
+    \"appearance\": \"{name-str}'s appearance, age, height, build, clothes, style etc (unique and memorable)\",
     \"gender\": \"their gender\",
     \"backstory\": \"their backstory (10 words, memorable)\",
     \"voice\": \"their manner of speaking, 2-3 words\",
@@ -159,29 +153,30 @@ Make up a brief few words, with comma separated values, for each attribute. Be i
             f"{character.name} - {character.appearance}"))
       ""))
 
-(defn describe-at [coords [long False]]
+(defn describe-at [coords [long False] [exclude None]]
   "A string describing any characters at a location."
-  (let [all-at (get-at coords)]
+  (let [all-at (get-at coords :exclude exclude)]
     (if all-at
         (.join "\n" ["The following characters (and nobody else) are here with you:"
                      #* (map (fn [c] (describe c :long long)) all-at)])
         "")))
   
-(defn list-at-str [coords]
+(defn list-at-str [coords [exclude None]]
   "Give the names (as prose) of who is here."
-  (let [character-names-here (lfor c (get-at coords) c.name)
+  (let [character-names-here (lfor c (get-at coords :exclude exclude) c.name)
         n (len character-names-here)]
     (cond (= n 0) ""
           (= n 1) f"{(first character-names-here)} is here."
           :else f"{(.join ", " (butlast character-names-here))} and {(last character-names-here)} are here.")))
 
-(defn get-at [coords]
-  "List of characters at a location, excluding player."
+(defn get-at [coords [exclude None]]
+  "List of characters at a location, excluding player.
+This loops over all characters."
   (let [cs (map get-character characters)]
     (if cs
       (lfor character cs
             :if (and (at? coords character.coords)
-                     (not (= character.name username)))
+                     (not (= character.name exclude)))
             character)
       []))) 
 
@@ -300,7 +295,7 @@ They will appear at the player's location."
                                  (.split :sep "\n")
                                  (map capwords)
                                  (sieve)
-                                 (filter (fn [x] (not (fuzzy-in x ["None" "You" "###" "." "Me" "Incorrect" "narrator" "She" "He"]))))
+                                 (filter (fn [x] (not (fuzzy-in x ["None" "You" "###" "." "Me" "Incorrect" "narrator" "She" "He" player.name]))))
                                  (filter (fn [x] (< (len (.split x)) 3))) ; exclude long rambling non-names
                                  (filter valid-key?)
                                  (list))]
