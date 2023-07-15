@@ -2,6 +2,7 @@ __pycache__
 *.pyc
 build/
 worlds/
+characters/
 
 *.so
 .venv/
@@ -16,7 +17,7 @@ tags.temp
 .hyrc
 .hy-history
 
-config.toml
+*.toml
 .chasm_history
 chasm.log
 traceback.log

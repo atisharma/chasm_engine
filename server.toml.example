@@ -1,21 +1,23 @@
-name = "Hero"
 world = "worlds/generic-world-name"
 
 # params passed to the model are defined in their own section below
 provider = "local"
 # context_length is the context window of the model.
 context_length = 2000
-max_tokens = 250
 
-loglevel = "info"
+# max_tokens limits the text generation
+max_tokens = 200
 
-[vectordb]
-# If you change the embedding your previous data will be unreadable
-# Default to OpenAI embedding to enable switching provider
-# without needing torch installed
-embedding = "text-embedding-ada-002"
-chunk-size-tokens = 380
-sources = 6
+loglevel = "warning"
+
+[memory]
+# If you change memory provider, the embedding of your previous data will be unreadable
+# This uses pytorch, so will use CUDA if available.
+# For local, it depends, but all-MiniLM-L6-v2 is probably sufficient
+# For OpenAI, use text-embedding-ada-002
+# If using ooba, the embedding model is set by environment variable when starting the API.
+embedding_provider = "local"
+embedding = "all-mpnet-base-v2"
 
 [providers.OpenAI]
 model = "gpt-3.5-turbo"
@@ -27,6 +29,8 @@ api_key = "sk-your-super-secret-key"
 # and setting the base url appropriately. Exllama is fast.
 # I've been using Guanaco and Wizard-Vicuna-Uncensored, both 30B 4bit, with good results.
 # I've tried Nous-Hermes 13B and it seems to be OK
+# Lazarus 8k is patchy for instruction following, but does work.
+# Guanaco 65B is very good.
 api_base = "http://localhost:5001"
 api_key = "N/A"
 stop = ["</s>", "Assistant:"]

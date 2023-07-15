@@ -349,9 +349,7 @@ Continue the narrative."]
         recent (text->topic (format-msgs (msgs->dlg player.name "narrator" (cut messages -8 None))))
         here (get-place player.coords)
         items-here-str (item.describe-at player.coords)
-        character-names-here (lfor c (character.get-at player.coords)
-                                   :if (not (= c.name (config "name")))
-                                   c.name)
+        character-names-here (lfor c (character.get-at player.coords :exclude player.name) c.name)
         characters-here (character.describe-at player.coords :long True)
         talk-to-guess (first (.split line))
         talk-to (best-of character-names-here talk-to-guess)]

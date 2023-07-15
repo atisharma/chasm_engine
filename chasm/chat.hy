@@ -9,7 +9,6 @@ Chat management functions.
 (import tiktoken)
 
 (import chasm.stdlib *)
-(import chasm [state])
 
 
 ;;; -----------------------------------------------------------------------------
@@ -39,8 +38,6 @@ Chat management functions.
 ;;; -----------------------------------------------------------------------------
 ;;; Chat functions
 ;;; -----------------------------------------------------------------------------
-
-; TODO: extract and store events of chopped bit
 
 (defn token-length [x]
   "The number of tokens, roughly, of a chat history (or anything with a meaningful __repr__).

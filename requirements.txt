@@ -7,3 +7,4 @@ jaro-winkler
 tiktoken
 chromadb
 retrying
+pyzmq

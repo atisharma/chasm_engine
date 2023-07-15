@@ -69,7 +69,7 @@
 ;;; config functions
 ;;; -----------------------------------------------------------------------------
 
-(setv config-file "config.toml")
+(setv config-file "server.toml")
 
 (defn config [#* keys]
   "Get values in a toml file like a hashmap, but default to None."
