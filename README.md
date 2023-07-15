@@ -1,10 +1,13 @@
-# Chasm - CHAracter State Manager
+# Chasm - CHAracter State Manager (game server)
 
 Chasm is a ***generative text adventure game*** in a ***world you
 specify***. It uses generative artificial intelligence to generate
-scenes and characters as you play. Unlike simply role-playing in
-ChatGPT or similar, important state persists (locations, characters,
-dialogue etc.)
+scenes and characters as you play. Unlike simply role-playing with a
+chatbot, important state persists (locations, characters, dialogue
+etc.)
+
+**This is the server software that clients connect to.**
+**It runs the 'world'.**
 
 You can use it with a local model (LLaMA derivative like
 Wizard-Vicuna) or OpenAI's models. See the config file for examples.
@@ -36,15 +39,15 @@ with a good model.
 * [x] play as any character
 * [ ] command-line parameters to override config
 * [ ] world editor for manual world construction
-* [ ] multiplayer - separate out server & client
+* [x] multiplayer - separate out server & client
 
 
 ## Installing and running
 
-### World information
+### Configuring a world on the server
 
 Place a text file named after your world in a subdirectory called
-"worlds" (see the config file).
+"worlds" (see the config file `server.toml`).
 
 The world information (text file) should contain two or three
 sentences about the world that won't change (not specific places,
@@ -56,47 +59,11 @@ and create a text file `worlds/New York.txt` with the contents
 ```
 The setting is 1930's New York, and surrounding areas.
 There are many buildings specific to the area.
-(genre: realist urban fiction)
+[genre: realist urban fiction]
 ```
 This will create a world called 'New York' and scenes appropriate to it.
-
-
-### Character cards
-
-If you want to override your or any other character's attributes
-permanently, create a file `characters/Hero.json` (if your character's
-name is Hero) with the contents
-```
-{
-    "name": "Hero",
-    "appearance": "Heroic.",
-    "gender": "male",
-    "backstory": "Comes from a long line of heroes.",
-    "voice": "Heroic.",
-    "traits": "Heroism.",
-    "likes": "Being heroic.",
-    "dislikes": "Not being heroic.",
-    "motivation": "To be heroic."
-}
-```
-reflecting the desired values. Leave out fields and they'll be automatically generated. The `name` field is ignored (since it's implicit in the filename).
-
-
-## Interface
-
-- [x] management done by config files
-- [x] terminal interface
-- [ ] web chat interface, since should be remotely available?
-- [ ] map display?
 
 
 ## Problems / bugs
 
 There are still many.
-
-
-### Inspiration
-
-- Infocom-type games. Though I never played Zork.
-- https://github.com/QuangBK/generativeAgent_LLM
-- https://github.com/atisharma/llama_farm
