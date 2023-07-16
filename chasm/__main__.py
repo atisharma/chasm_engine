@@ -1,7 +1,6 @@
 import hy
 import sys
-
-from chasm import repl
+import chasm
 
 if __name__ == "__main__":
- sys.exit(repl.run() or 0)
+ sys.exit(chasm.serve() or 0)

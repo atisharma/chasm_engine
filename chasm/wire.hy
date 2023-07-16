@@ -1,3 +1,6 @@
+"
+The server protocol implementation.
+"
 (import json)
 (import zmq)
 (import time [time])
@@ -20,10 +23,8 @@
                "sender_time" (time)}))
 
 (defn unwrap [zmsg]
-  "Unwrap message. Return None if it doesn't decode.
-Otherwise, return function and data."
-  (try
-    (let [msg (json.loads zmsg)]
-      (:payload msg None))
+  "Unwrap message. Return None if it doesn't decode. Otherwise, return function and data."
+  (try (json.loads zmsg)
     (except [json.JSONDecodeError]
-      (log.error f"wire/unwrap: zmsg"))))
+      (log.error f"wire/unwrap: {zmsg}"))))
+    

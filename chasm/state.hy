@@ -75,7 +75,7 @@ Thing in themselves and relationships between things.
        (.lower)))
 
 (defn get-character [char-name]
-  (log.debug f"Recalling character {char-name}.")
+  (log.debug f"Getting character {char-name}.")
   (when char-name
     (try
       (Character #** (get characters (character-key char-name)))
@@ -157,3 +157,29 @@ Thing in themselves and relationships between things.
   (setv (get narratives (character-key player-name)) messages)
   (.commit narratives)
   messages)
+
+;;; -----------------------------------------------------------------------------
+;;; accounts
+;;; key is player name
+;;; -----------------------------------------------------------------------------
+
+(setv accounts (get-table "accounts"))
+
+(defn get-account [player-name]
+  (log.debug f"Getting account {player-name}.")
+  (when player-name
+    (try
+      (get accounts (character-key player-name))
+      (except [KeyError]))))
+
+(defn set-account [account player-name]
+  (log.debug f"Setting account {player-name}.")
+  (setv (get accounts (character-key player-name)) account)
+  (.commit accounts)
+  account)
+
+(defn update-account [player-name #** kwargs]
+  "Update a player's details. You cannot change the name."
+  (log.debug f"Updating account {player-name}, {kwargs}.")
+  (let [account (or (get-account player-name) {})]
+    (set-account (| account kwargs) player-name)))

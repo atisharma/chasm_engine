@@ -92,6 +92,7 @@ The engine logic is expected to handle many players.
       (.extend narrative [user-msg result])
       (set-narrative (cut narrative -1000 None) player-name) ; keep last 1000 messages
       (move-characters narrative)
+; TODO: develop in background
       (when (and narrative
                  ; don't develop when moving
                  (not (go? line)))
