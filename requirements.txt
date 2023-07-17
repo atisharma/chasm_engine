@@ -8,3 +8,4 @@ tiktoken
 chromadb
 tenacity
 pyzmq
+ecdsa

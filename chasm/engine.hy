@@ -41,20 +41,21 @@ The engine logic is expected to handle many players.
 ;;; API functions
 ;;; -----------------------------------------------------------------------------
 
-(defn payload [narrative result player]
+(defn payload [narrative result player-name]
   "What the client expects."
-  {"narrative" narrative
-   "result" result
-   "player" {"name" player.name
-             "objective" player.objective
-             "score" player.score
-             "health" player.health
-             "coords" player.coords
-             "inventory" (lfor i (item.inventory player) i.name)
-             "place" (place.name player.coords)}
-   "world" world-name
-   "coords" player.coords
-   "errors" None}) 
+  (let [player player-name]
+    {"narrative" narrative
+     "result" result
+     "player" {"name" player.name
+               "objective" player.objective
+               "score" player.score
+               "health" player.health
+               "coords" player.coords
+               "inventory" (lfor i (item.inventory player) i.name)
+               "place" (place.name player.coords)}
+     "world" world-name
+     "coords" player.coords
+     "errors" None})) 
 
 (defn null [#* args #** kwargs] ; -> response
   "Server no-op."
@@ -66,7 +67,7 @@ The engine logic is expected to handle many players.
         narrative (or (get-narrative player-name)
                       (set-narrative [(assistant (describe-place player))] player-name))]
     (update-character player :npc False)
-    (payload narrative (last narrative) player)))
+    (payload narrative (last narrative) player.name)))
 
 (defn help-str []
   "Return the help string."
@@ -118,7 +119,7 @@ The engine logic is expected to handle many players.
       (move-characters narrative))
     (log.debug f"engine/parse: -> {result}")
     ; always return the most recent state
-    (payload narrative result (get-character player-name))))
+    (payload narrative result player-name)))
       
 ;;; -----------------------------------------------------------------------------
 ;;; World functions (background tasks)
