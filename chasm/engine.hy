@@ -77,7 +77,8 @@ The engine logic is expected to handle many players.
 (defn parse [player-name line #* args #** kwargs] ; -> response
   "Process the player's input and return the whole visible state."
   (log.info f"engine/parse: {player-name}: {line}")
-  (let [player (get-character player-name)
+  (let [_player (get-character player-name)
+        player (update-character _player :npc False)
         narrative (get-narrative player-name)
         messages (truncate (standard-roles narrative)
                            :spare-length (+ (token-length world) (config "max_tokens"))) 
@@ -113,7 +114,6 @@ The engine logic is expected to handle many players.
                    (error "Unknown engine error.")))]
     ; info, error do not extend narrative.
     (when (and result (= (:role result) "assistant"))
-      (update-character player :npc False)
       (.extend narrative [user-msg result])
       (set-narrative (cut narrative -1000 None) player-name) ; keep just last 1000 messages
       (move-characters narrative))
