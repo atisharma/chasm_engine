@@ -32,7 +32,7 @@ Functions that deal with characters.
 (defn valid-key? [s]
   (re.match "^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$" s))
 
-(defn spawn [[name None] [coords None] [loaded {}]] ; -> Character
+(defn spawn [[name None] [coords (Coords 0 0)] [loaded {}]] ; -> Character
   "Spawn a character from card, db, or just generated."
   (try
     (let [; only allow to override some
@@ -45,9 +45,8 @@ Functions that deal with characters.
                      "likes" (:likes loaded None)
                      "dislikes" (:dislikes loaded None)
                      "occupation" (:occupation loaded None)
-                     "motivation" (:motivation loaded None)}
-          coords (or coords (Coords 0 0))]
-      (place.extend-map coords)
+                     "motivation" (:motivation loaded None)}]
+      (place.extend-map (Coords 0 0)) ; so first player has somewhere to go
       (let [char (or (get-character name)
                      (gen-lines coords name)
                      default-character)
@@ -83,11 +82,11 @@ likes: 'their desires, wants, cravings, guiding philosopher'
 dislikes: 'their fears and aversions'
 skills: 'what they are particularly good at'
 occupation: 'their usual job'
-objectives: 'their initial objectives'"
+objective: 'their initial objective'"
         setting f"Story setting: {world}"
         instruction f"Below is a story setting and a template character card.
 Complete the character card for {name-str} whom is found in the story at {place.name}.
-Example motivation and objectives might align with typical archetypes like Hero, Mentor, Villain, Informant, Guardian etc.
+Example motivation and objective might align with typical archetypes like Hero, Mentor, Villain, Informant, Guardian etc.
 Make up a brief few words, with comma separated values, for each attribute. Be imaginative and very specific."
         details (complete-lines
                   :context setting
@@ -119,12 +118,12 @@ Make up a brief few words, with comma separated values, for each attribute. Be i
     \"dislikes\": \"their fears and aversions\",
     \"skills\": \"what they are particularly good at\",
     \"occupation\": \"their usual job\",
-    \"objectives\": \"their initial objectives\"
+    \"objective\": \"their initial objective\"
 }}"
         setting f"Story setting: {world}"
         instruction f"Below is a story setting and a character card.
 Complete the character card for {name-str} whom is found in the story at {place.name}.
-Example objectives might align with archetypes Hero, Mentor, Villain, Informant, Guardian.
+Example objective might align with archetypes Hero, Mentor, Villain, Informant, Guardian.
 Give one attribute per line, no commentary, examples or other notes, just the card with the details updated.
 Make up a brief few words, with comma separated values, for each attribute. Be imaginative and very specific."
         details (complete-json
@@ -189,13 +188,13 @@ This loops over all characters."
 (defn increment-score? [character messages]
   "Has the character done something worthwhile?"
   (let [setting f"Story setting: {world}"
-        objectives f"In the narrative, {character.name} has the following objectives: {character.objectives}"
+        objective f"In the narrative, {character.name} has the following objective: {character.objective}"
         query f"Based only on events happening in the last two messages, has {character.name} done anything notable enough to increase their score?"
         msgs (truncate messages :spare-length 200)
         dialogue (msgs->dlg "narrator" character.name msgs)
         verdict (yes-no [(system query)
                          (user setting)]
-                        :context (.join "\n\n" [objectives (format-msgs dialogue)])
+                        :context (.join "\n\n" [objective (format-msgs dialogue)])
                         :query query)]
     (log.info f"character/increment-score? {verdict}")
     verdict))
@@ -208,13 +207,13 @@ appearance: {character.appearance}
 health: {character.health}
 emotions: {character.emotions}
 destination: {character.destination}
-objectives: {character.objectives}
+objective: {character.objective}
 new_memory: [classification] - any significant or poignant thing worth remembering from the dialogue"
         instruction f"You will be given a template character card for {character.name}, and the transcript of a dialogue involving them, for context.
 Update any attribute that has changed describing the character, appropriate to the given context.
 Appearance may change where a character changes clothes etc.
 Destination should be just one of {nearby-places} or to stay at {(place.name character.coords)}.
-Objectives should align with the plot, the character's role, and evolve slowly.
+Objective should align with the plot, the character's role, and evolve slowly (less than 8 words)
 Classify new memories into [significant], [minor] or [forgettable].
 Just omit the original attribute if it is unchanged.
 Use a brief few words, comma separated, for each attribute. Be concise and very specific."
@@ -230,8 +229,8 @@ The dialogue is as follows:
                   :instruction instruction
                   :attributes (append "new_memory" mutable-character-attributes))]
     (try
-      (let [new-score (if (similar (or character.objectives "")
-                                   (:objectives details "")
+      (let [new-score (if (similar (or character.objective "")
+                                   (:objective details "")
                                    :threshold 0.5)
                           character.score
                           (inc character.score))]
@@ -276,7 +275,7 @@ The dialogue is as follows:
   "Are any new or existing characters mentioned in the messages?
 They will appear at the player's location."
   (let [setting (system f"Story setting: {world}")
-        prelude (system f"Give a list of names of people (if any), one per line, that are obviously referred to in the text as being physically present at the current location ({(place.name player.coords)}) and time. Do not invent new characters. Exclude places and objects, only people's proper names count, no pronouns. Give the names as they appear in the text. Setting and narrative appear below.")
+        prelude (system f"Give a list of names of individuals (if any), one per line, that are obviously referred to in the text as being physically present at the current location ({(place.name player.coords)}) and time. Do not invent new characters. Exclude places and objects, only people's proper names count, no pronouns. Give the names as they appear in the text. Setting and narrative appear below.")
         instruction (user "Now, give the list of characters.")
         char-list (respond (->> (cut messages -6 None)
                                 (prepend setting)

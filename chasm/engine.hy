@@ -14,11 +14,12 @@ The engine logic is expected to handle many players.
 (import chasm.state [world world-name
                      characters
                      get-place
+                     random-coords
                      get-character
                      update-character
                      get-narrative
                      set-narrative])
-(import chasm.chat [respond
+(import chasm.chat [APIConnectionError ChatError respond
                     msgs->topic text->topic msgs->points
                     msg->dlg msgs->dlg
                     truncate standard-roles
@@ -28,9 +29,7 @@ The engine logic is expected to handle many players.
 
 (defclass EngineError [Exception])
 
-;;; -----------------------------------------------------------------------------
-;;; parser
-;;; -----------------------------------------------------------------------------
+(setv develop-queue (set))
 
 (defn info [content]
   (msg "info" content))
@@ -38,26 +37,43 @@ The engine logic is expected to handle many players.
 (defn error [content]
   (msg "error" content))
 
-(defn spawn-player [player-name #** kwargs]
+;;; -----------------------------------------------------------------------------
+;;; API functions
+;;; -----------------------------------------------------------------------------
+
+(defn payload [narrative result player]
+  "What the client expects."
+  {"narrative" narrative
+   "result" result
+   "player" {"name" player.name
+             "objective" player.objective
+             "score" player.score
+             "health" player.health
+             "coords" player.coords
+             "inventory" (lfor i (item.inventory player) i.name)
+             "place" (place.name player.coords)}
+   "world" world-name
+   "coords" player.coords
+   "errors" None}) 
+
+(defn null [#* args #** kwargs] ; -> response
+  "Server no-op."
+  {"errors" "No valid function specified."})
+
+(defn spawn-player [player-name #* args #** kwargs] ; -> response
   "Start the game. Make sure there's a recent message. Return the whole visible state."
-  (let [player (character.spawn :name player-name :loaded kwargs) 
+  (let [player (character.spawn :name player-name :loaded kwargs :coords (random-coords)) 
         narrative (or (get-narrative player-name)
                       (set-narrative [(assistant (describe-place player))] player-name))]
     (update-character player :npc False)
-    {"narrative" narrative
-     "result" (last narrative)
-     "player" {"name" player.name
-               "objectives" player.objectives
-               "score" player.score
-               "health" player.health
-               "coords" player.coords
-               "inventory" (item.inventory player)
-               "place" (place.name player.coords)}
-     "world" world-name
-     "coords" player.coords
-     "errors" None})) 
+    (payload narrative (last narrative) player)))
 
-(defn parse [player-name line] ; player-name, line -> dict(info, error, messages)
+(defn help-str []
+  "Return the help string."
+  (slurp (or (+ (os.path.dirname __file__) "/help.md")
+             "chasm/help.md")))
+
+(defn parse [player-name line #* args #** kwargs] ; -> response
   "Process the player's input and return the whole visible state."
   (log.info f"engine/parse: {player-name}: {line}")
   (let [player (get-character player-name)
@@ -71,47 +87,82 @@ The engine logic is expected to handle many players.
                    (quit? line) (do (update-character player :npc True) (msg "QUIT" "QUIT"))
                    (take? line) (info (item.fuzzy-claim (take? line) player))
                    (drop? line) (info (item.fuzzy-drop (drop? line) player))
-                   (.startswith line "/items") (info (item.describe-at player.coords))
-                   (.startswith line "/characters") (info (or (character.describe-at player.coords) "Nobody interesting here but you."))
-                   (.startswith line "/spy") (info (spy (last (.partition line " "))))
-                   (.startswith line "/map") (info (print-map player.coords))
-                   (.startswith line "/what-if") (info (narrate (append (user (last (.partition line))) messages) player))
+                   (.startswith line "/characters") (info (or (character.describe-at player.coords :exclude player.name) "Nobody interesting here but you.")) ; for debugging
+                   (.startswith line "/help") (info (help-str))
                    (.startswith line "/hint") (info (hint messages player line))
                    (.startswith line "/hist") (msg "history" "")
-                   (command? line) (error "I didn't understand that command.")
+                   (.startswith line "/items") (info (item.describe-at player.coords)) ; for debugging
+                   (.startswith line "/map") (info (print-map player.coords))
+                   (.startswith line "/spy") (info (spy (last (.partition line " ")))) ; for debugging
+                   (.startswith line "/what-if") (info (narrate (append (user (last (.partition line))) messages) player)) ; for debugging
                    ;; responses as assistant
                    (look? line) (assistant (place.describe player :messages messages :length "short"))
-
+                   (command? line) (error "I didn't understand that command.")
                    (go? line) (assistant (move (append user-msg messages) player))
-                   (talk? line) (assistant (converse (append user-msg messages) player)) ; this one needs thinking about
+                   ;(talk? line) (assistant (converse (append user-msg messages) player)) ; this one needs thinking about
                    line (assistant (narrate (append user-msg messages) player)))
+                 (except [err [APIConnectionError]]
+                   (log.error "engine/parse: model API connection error.")
+                   (error "Server error: call to language model failed."))
+                 (except [err [ChatError]]
+                   (log.error "engine/parse:" :exception err)
+                   (info "There was no reply."))
                  (except [err [Exception]]
-                   (raise (EngineError))))]
-    (when (and result
-               (= (:role result) "assistant"))
+                   (log.error "engine/parse:" :exception err)
+                   (error "Unknown engine error.")))]
+    ; info, error do not extend narrative.
+    (when (and result (= (:role result) "assistant"))
+      (update-character player :npc False)
       (.extend narrative [user-msg result])
-      (set-narrative (cut narrative -1000 None) player-name) ; keep last 1000 messages
-      (move-characters narrative)
-; TODO: develop in background
-      (when (and narrative
-                 ; don't develop when moving
-                 (not (go? line)))
-        (develop narrative player)))
+      (set-narrative (cut narrative -1000 None) player-name) ; keep just last 1000 messages
+      (move-characters narrative))
+    (log.debug f"engine/parse: -> {result}")
     ; always return the most recent state
-    (let [player (get-character player-name)]
-      {"narrative" narrative
-       "result" result
-       "player" {"name" player.name
-                 "objectives" player.objectives
-                 "score" player.score
-                 "health" player.health
-                 "coords" player.coords
-                 "inventory" (item.inventory player)
-                 "place" (place.name player.coords)}
-       "world" world-name
-       "coords" player.coords
-       "errors" None})))
+    (payload narrative result (get-character player-name))))
+      
+;;; -----------------------------------------------------------------------------
+;;; World functions (background tasks)
+;;; -----------------------------------------------------------------------------
 
+(defn extend-world []
+  "Make sure the map covers all characters. Add items, new characters if necessary.
+This function does not use vdb memory so should be thread-safe."
+  (for [n (.keys characters)]
+    (let [c (get-character n)
+          coords c.coords]
+      (unless c.npc
+        (place.extend-map coords)
+        ; adding item, character has to occur *after* place has been created
+        (when (and (not (item.get-items coords))
+                   (< (/ (len state.items) (inc (len state.places)))
+                      item-density))
+          (item.spawn coords))
+        ; only spawn a new character if there's nobody there
+        (when (and (not (character.get-at coords))
+                   (< (/ (len state.characters) (inc (len state.places)))
+                      character-density))
+          (character.spawn :name None :coords coords))))))
+
+(defn develop []
+  "Move the plot and characters along. Writes to vdb memory so is not thread-safe."
+  (when develop-queue
+    (log.info f"engine/develop: queue: {develop-queue}")
+    (let [player-name (.pop develop-queue)
+          player (get-character player-name)
+          messages (get-narrative player-name)]
+      (when (and player-name player messages)
+        ; new plot point, record in vdb, db and recent events
+        (plot.extract-point messages player)
+        ; all players get developed
+        (for [c (character.get-at player.coords)]
+          (character.develop-lines c messages))
+        ; Summon npcs to the player's location
+        (for [c-name (character.get-new messages player)]
+          (let [c (get-character c-name)]
+            (if (and c c.npc)
+              (character.move c player.coords) ; make sure they're here if the narrator says so
+              (character.spawn :name c-name :coords player.coords)))))))) ; new characters may randomly spawn if mentioned
+  
 ;;; -----------------------------------------------------------------------------
 ;;; Parser functions -> bool
 ;;; -----------------------------------------------------------------------------
@@ -200,8 +251,7 @@ The engine logic is expected to handle many players.
     (.join "\n\n" [description chars-here])))
 
 (defn move [messages player] ; -> msg or None
-  "Extend the map. Spawn items and characters. Move the player. Describe.
-`dirn` may be a compass direction like 'n' or a place name like 'Small House'"
+  "Move the player. Describe. `dirn` may be a compass direction like 'n' or a place name like 'Small House'"
   (let [user-msg (last messages)
         line (:content user-msg)
         dirn (go? line)
@@ -209,22 +259,9 @@ The engine logic is expected to handle many players.
         here (get-place player.coords)]
     (log.info f"engine/move: {player.name} to {dirn} {player.coords} -> {new-coords}")
     (cond
-      new-coords (do
-                   (place.extend-map new-coords)
-                     ; adding item, character has to occur *after* place has been created
-                   (when (and (not (item.get-items new-coords))
-                              (< (/ (len state.items) (inc (len state.places)))
-                                 item-density))
-                     (item.spawn new-coords))
-                     ; only spawn a character if there's nobody there
-                   (when (and (not (character.get-at new-coords :exclude player.name))
-                              (< (/ (len state.characters)
-                                    (inc (len state.places)))
-                                 character-density))
-                     (character.spawn :name None :coords new-coords))
-                   (character.move player new-coords)
+      new-coords (do (character.move player new-coords)
                      ; and make sure to pass character with updated position to place.describe
-                   (describe-place (get-character player.name)))
+                     (describe-place (get-character player.name)))
       (fuzzy-in dirn here.rooms) (narrate messages player) ; going to a room
       :else (choice [f"You can't go to '{dirn}'."
                      f"Is '{dirn}' where you meant?"
@@ -244,7 +281,7 @@ You respond in the narrator's voice. The narrative is given below.
 Story setting: {world}"
         local-guidance f"{(plot.news)}
 {player.name} is now at {(place.name player.coords)}.
-{player.name}'s objective: {player.objectives}
+{player.name}'s objective: {player.objective}
 
 {items-here}
 
@@ -294,7 +331,7 @@ Now give the hint."
                                        (if mem
                                            f"{c.name} recalls the memories:\n{mem}."
                                            ""))))
-        story-guidance f"You are the narrator in an immersive and enjoyable adventure / interactive fiction game.
+        story-guidance f"You are the narrator in an immersive, enjoyable, award-winning adventure / interactive fiction game.
 The player ({player.name} or user) interjects with questions or instructions/commands, to be interpreted in the context of the story.
 Commands are meant for {player.name} and may be in first person ('I stand up') or imperative ('stand up', 'Look at X' or 'Ask Y about Z').
 Questions are meant in the context of the story ('What am I wearing?' really means 'Narrator, describe what {player.name} is wearing' etc).
@@ -328,6 +365,7 @@ Continue the narrative."]
     (log.info f"engine/narrate: news:\n{(plot.news)}")
     (log.info f"engine/narrate: memories:\n{memories}")
     (log.info f"engine/narrate: story: {(token-length story-guidance)}; local {(token-length local-guidance)}")
+    (.add develop-queue player.name) ; add the player to the development queue
     (-> [(system story-guidance)
          (system local-guidance)
          #* messages]
@@ -336,12 +374,16 @@ Continue the narrative."]
         (trim-prose)
         (or ""))))
 
+; FIXME: not written
 (defn consume-item [messages player item]
-  "The character changes the narrative and the item based on the usage."
-  "Rewrite the item description based on its usage.")
+  "The character changes the narrative and the item based on the usage.
+  Rewrite the item description based on its usage.")
   ; How is it being used?
   ; What happens to the item?
 
+; FIXME: This is not written for the new client-server paradigm
+
+; FIXME: makes no sense in a server context
 (defn converse [messages player]
   "Have a chat with a character."
   (let [user-msg (last messages)
@@ -398,20 +440,6 @@ Do not say you're an AI assistant or similar. To end the conversation, just say 
                        f"Why don't you talk to {talk-to} instead?"
                        f"There's nobody available with the name {talk-to-guess}.")))))
 
-(defn develop [messages player]
-  "Move the plot and characters along."
-  ; new plot point, record in vdb, db and recent events
-  (plot.extract-point messages player)
-  ; all players get developed
-  (for [c (character.get-at player.coords)]
-    (character.develop-lines c messages))
-  ; Summon characters to the player's location
-  (for [c-name (character.get-new messages player)]
-    (let [c (get-character c-name)]
-      (if c
-          (character.move c player.coords) ; make sure they're here if the narrator says so
-          (character.spawn :name c-name :coords player.coords))))) ; new characters may randomly spawn if mentioned
-  
 (defn move-characters [messages]
   "Move characters to their targets."
   (for [c (map get-character characters)]

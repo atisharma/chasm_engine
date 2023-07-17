@@ -10,8 +10,7 @@
 
 ;; overrides root logger to capture logs of any badly-behaved imported modules
 (logging.basicConfig :filename logfile
-                     :level (or (getattr logging (.upper (config "loglevel")))
-                                logging.WARNING)
+                     :level (getattr logging (.upper (or (config "loglevel") "WARNING")))
                      :encoding "utf-8")
 
 (logging.info (* "-" 80))

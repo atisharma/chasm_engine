@@ -16,7 +16,7 @@ Thing in themselves and relationships between things.
 ; consider using diskcache
 
 (import chasm.stdlib *)
-(import chasm.types [Place Item Character])
+(import chasm.types [Place Item Character Coords])
 
 
 ;;; -----------------------------------------------------------------------------
@@ -117,6 +117,13 @@ Thing in themselves and relationships between things.
   (log.debug f"Updating place {loc.name}, {kwargs}.")
   (set-place (Place #** (| (._asdict loc) kwargs))))
 
+(defn random-coords []
+  "Return a random place (usually to spawn at)."
+  (let [keys (list (.keys places))]
+    (if keys
+      (. (get-place (choice keys)) coords)
+      (Coords 0 0))))
+
 ;;; -----------------------------------------------------------------------------
 ;;; Items
 ;;; key is item name, value is Item
@@ -151,7 +158,8 @@ Thing in themselves and relationships between things.
   (when player-name
     (try
       (get narratives (character-key player-name))
-      (except [KeyError]))))
+      (except [KeyError]
+        []))))
 
 (defn set-narrative [messages player-name]
   (setv (get narratives (character-key player-name)) messages)

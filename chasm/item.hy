@@ -137,9 +137,8 @@ If you just want those at a location, use `get-items`."
 
 (defn inventory [owner]
   "List of items with a specific owner."
-  (list
-    (filter (fn [i] (= i.owner owner.name))
-            (map get-item items))))
+  (list (filter (fn [i] (= i.owner owner.name))
+                (map get-item items))))
 
 (defn describe-inventory [character]
   "The prosaic version of get-items for an inventory."

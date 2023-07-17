@@ -28,7 +28,7 @@
                           :occupation None
                           :coords (Coords 0 0)
                           :destination "stay here"
-                          :objectives None
+                          :objective None
                           :score 0
                           :health 100
                           :emotions None

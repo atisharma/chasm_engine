@@ -45,7 +45,7 @@ They must be integer."
 (setv mutable-character-attributes ["appearance"
                                     "health"
                                     "emotions"
-                                    "objectives"
+                                    "objective"
                                     "destination"]
 
       initial-character-attributes ["appearance"
@@ -60,7 +60,7 @@ They must be integer."
                                     "skills"
                                     "npc"
                                     "occupation"
-                                    "objectives"])
+                                    "objective"])
       
 (setv Character (namedtuple "Character" (list (set [#* initial-character-attributes
                                                     #* mutable-character-attributes

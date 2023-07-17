@@ -6,5 +6,5 @@ tomli
 jaro-winkler
 tiktoken
 chromadb
-retrying
+tenacity
 pyzmq

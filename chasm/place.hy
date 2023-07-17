@@ -2,8 +2,8 @@
 Functions that manage place.
 "
 
-(require hyrule.argmove [-> ->>])
-(require hyrule.control [unless])
+(require hyrule [-> ->>])
+(require hyrule [unless])
 
 (import chasm [log])
 
@@ -61,7 +61,7 @@ The player is sometimes called 'user' or '{player.name}' - these refer to the sa
         response (respond messages)]
     (trim-prose response)))
 
-(defn [cache] gen-description [nearby-str coords [world-str world]]
+(defn [(lru-cache :maxsize 1000)] gen-description [nearby-str coords [world-str world]]
   "Make up a single-paragraph place description from its name."
   (let [place (get-place coords)
         prelude f"Your purpose is to generate short, fun, imaginative descriptions of a place, in keeping with the information you have. Make the reader feel viscerally like they are present in the place. Set the scene. Write in the second person, using 'you'. Be concise. Don't mention any people or characters that may be present here, concentrate on things that won't change. Write in plain, unformatted text.
@@ -312,18 +312,15 @@ This function is not deterministic, because we ask the model to decide."
 (defn describe [player [messages None] [length "very short"]]
   "Return a description of the location."
   (let [coords player.coords
-        place (get-place coords)]
-    (if place
-        (let [near-str (.join "; " (nearby coords :list-inaccessible False :name True))]
-          (if messages
-              (chat-gen-description near-str
-                                    place
-                                    player
-                                    messages
-                                    :length length)
-              (gen-description near-str
-                               (str coords))))
-        "I can't even begin to tell you how completely lost you are. How did you get here?")))
+        place (get-place coords)
+        near-str (.join "; " (nearby coords :list-inaccessible False :name True))]
+    (if messages
+        (chat-gen-description near-str
+                              place
+                              player
+                              messages
+                              :length length)
+        (gen-description near-str (str coords)))))
 
 (defn name [coords]
   (. (get-place coords) name))

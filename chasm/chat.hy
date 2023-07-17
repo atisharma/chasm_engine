@@ -5,8 +5,11 @@ Chat management functions.
 
 (import chasm [log])
 
-(import openai [ChatCompletion])
 (import tiktoken)
+(import openai [ChatCompletion])
+(import openai.error [APIConnectionError])
+
+(import tenacity [retry stop-after-attempt wait-random-exponential])
 
 (import chasm.stdlib *)
 
@@ -19,21 +22,21 @@ Chat management functions.
 ;;; Message functions
 ;;; -----------------------------------------------------------------------------
 
-(defn msg [role #* content]
+(defn msg [role content]
   "Just a simple dict with the needed fields."
-  {"role" role
-   "content" (->> content
-                  (.join "\n")
-                  (.strip))})
+  (if content
+      {"role" role
+       "content" (.strip content)}
+      (raise (ChatError f"No content in message (role: {role})."))))
 
-(defn system [#* content]
-  (msg "system" #* content))
+(defn system [content]
+  (msg "system" content))
 
-(defn user [#* content]
-  (msg "user" #* content))
+(defn user [content]
+  (msg "user" content))
 
-(defn assistant [#* content]
-  (msg "assistant" #* content))
+(defn assistant [content]
+  (msg "assistant" content))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Chat functions
@@ -116,7 +119,8 @@ Return modified messages."
   (respond [(system instruction)
             (user text)]))
 
-(defn respond [messages #** kwargs]
+(defn [(retry :wait (wait-random-exponential :min 0.5 :max 30)
+              :stop (stop-after-attempt 6))] respond [messages #** kwargs]
   "Reply to a list of messages and return just content.
 The messages should already have the standard roles."
   (let [params (config "providers" (config "provider"))

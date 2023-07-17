@@ -52,7 +52,7 @@ Develop the plot / world events
   "Scan the recent conversation for plot points and insert them into the record."
   (let [msgs (truncate (cut messages -6 None) :spare-length 500)
         narrative (format-msgs (msgs->dlg "narrative" player.name msgs))
-        instruction "In the following narrative, classify events from the last messages for significance to the story's narrative arc, as [major], [minor], [subplot] or [irrelevant]. Most will be minor or subplot. Use the square bracket format. Give a single bullet point (max 15 words) describing the plot point. Stay faithful to the story setting. Give the classification, then the point. Don't justify your answer."
+        instruction "In the following narrative, classify events from the last messages for significance to the story's narrative arc, as [major], [minor], [subplot] or [irrelevant]. Major events tend to be relevant to more than one character or the fictional world as a whole. Most will be minor or subplot. Use the square bracket format. Give a single bullet point (max 15 words) describing the plot point. Stay faithful to the story setting. If events relate to people, use their names. Give the classification, then the point. Don't justify your answer."
         setting f"Story setting: {world}"
         response (respond [(system instruction)
                            (user setting)

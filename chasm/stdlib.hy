@@ -5,8 +5,6 @@
 (import functools [partial cache lru-cache])
 (import itertools *)
 
-(import retrying [retry])
-
 (import importlib)
 (import os)
 (import re)

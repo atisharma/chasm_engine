@@ -3,9 +3,11 @@ The server, implementing RPC for engine functions.
 Protocol: see wire.hy.
 "
 (require hyrule [defmain])
+(require hyrule [unless])
 
 (import sys)
 (import json)
+(import time [time])
 (import datetime [datetime])
 
 (import zmq)
@@ -17,48 +19,86 @@ Protocol: see wire.hy.
 (import chasm.wire [wrap unwrap])
 
 
-(setv fns {"spawn" engine.spawn-player
-           "parse" engine.parse})
+; this defines what RPCs are available to the client
+(setv server-functions {"spawn" engine.spawn-player
+                        "parse" engine.parse
+                        "null" engine.null})
 
 ;;; -----------------------------------------------------------------------------
 
-(setv context (zmq.Context)
-      socket (.socket context zmq.REP))
+(setv context (zmq.Context))
 
-(.bind socket (config "listen"))
+(defn start-server-socket []
+  (setv socket (.socket context zmq.REP))
+  ; see https://stackoverflow.com/questions/26915347/zeromq-reset-req-rep-socket-state
+  ; server will tick every 1s
+  (.setsockopt socket zmq.RCVTIMEO 1000)
+  (.setsockopt socket zmq.SNDTIMEO 1000)
+  (.setsockopt socket zmq.LINGER 1000)
+  (.bind socket (config "listen"))
+  socket)
+
+(setv socket (start-server-socket))
 
          
 ;;; -----------------------------------------------------------------------------
 
+(defn send [msg]
+  (try
+    (.send-string socket (wrap msg))
+    (except [zmq.EAGAIN]
+      (log.error "server/send: client send failed."))))
+  
 (defn auth [player-name pub-key]
-  "Store the public key if it's not already known. Return the stored public key."
+  "Store the public key if it's not already known. Return the stored public key. First-come first-served."
   (let [account (state.get-account player-name)]
-    (if account
-        (:key account None)
-        (:key (state.update-account player-name :key pub-key)))))
+    (if (and account (:ecdsa-key account None)) ; if there is an account and it has a key
+        (:ecdsa-key account) ; use the key, or
+        (:ecdsa-key (state.update-account player-name :ecdsa-key pub-key))))) ; store the provided key
+
+(defn time-ok? [client-time [threshold 30]]
+  "Is client time within threshold (seconds) of server time?"
+  (try
+    (let [ct (float client-time)
+          diff (abs (- ct (time)))]
+      (< diff threshold))
+    (except [ValueError])))
+
+(defn handle-request [player-name client-time function #* args #** kwargs]
+  "Process the RPC in the engine and send the result."
+  (state.update-account player-name :last-verified client-time)
+  ((.get server-functions function "null") #* args #** kwargs))
 
 (defn serve []
   "Call a function on the server."
   (log.info f"Starting server at {(.isoformat (datetime.today))}")
   (while True
     (try
-      (let [msg (unwrap (.recv-string socket))
-            player (:player msg {})
+      (let [msg (unwrap (.recv-string socket)) ; no messages will raise zmq.Again
+            player-name (:player msg {})
             payload (:payload msg {})
-            function (:function payload [])
+            function (:function payload "null") 
             args (:args payload [])
             kwargs (:kwargs payload [])
-            pub-key (auth player (:public-key msg "")) ; TODO: auth/lookup here
+            stored-pub-key (auth player-name (:public-key msg ""))
             signature (:signature msg "")
-            client-time (:sender-time msg) ; TODO: discard if too old
+            client-time (:sender-time msg)
             expected-hash (hash-id (+ client-time (json.dumps payload)))]
         (log.debug f"server/serve: {msg}")
-        (if (crypto.verify pub-key signature expected-hash)
-          (let [response ((get fns function) #* args #** kwargs)]
-            (.send-string socket (wrap response)))
-          (.send-string socket (wrap {"errors" f"failed to verify signature:\n{payload}\n\n{pub-key}\n{signature}\n{expected-hash}"}))))
+        (send
+          (cond
+            (not (time-ok? client-time)) {"errors" f"Bad message time, got {client-time}, expected {(time)}"}
+            (crypto.verify stored-pub-key signature expected-hash) (handle-request player-name client-time function #* args #** kwargs)
+            :else {"errors" "Failed to verify signature."})))
+      (except [zmq.Again]
+        ; only process world if there is no message queue
+        (engine.extend-world)
+        (engine.develop))
       (except [KeyError]
-        (log.error f"server/serve: msg")))))
+        (log.error f"server/serve: {msg}"))
+      (except [KeyboardInterrupt]
+        (log.info f"server/serve: quit")
+        (break)))))
 
 (defmain []
-  (sys.exit (serve)))
+  (sys.exit (or (serve) 0)))

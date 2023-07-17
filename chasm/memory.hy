@@ -33,7 +33,7 @@ Functions that deal with recall and vector databases.
               :anonymized-telemetry False)))
 
 ;; chromadb is a singleton,
-;; which sadly means no concurrency
+;; which sadly means no concurrency and no writing from child threads
 (setv _vdb (chroma (.join "/" [path "memory"])))
 
 (defn collection [name]

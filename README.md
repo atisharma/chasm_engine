@@ -37,9 +37,9 @@ with a good model.
 * [x] persistent global event memory (plot events in vector db)
 * [x] per-character dialogue memory (snippets in vector db)
 * [x] play as any character
-* [ ] command-line parameters to override config
 * [ ] world editor for manual world construction
-* [x] multiplayer - separate out server & client
+* [x] multiplayer - separate server & client
+* [x] player authentication
 
 
 ## Installing and running
