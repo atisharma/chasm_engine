@@ -92,7 +92,7 @@ The engine logic is expected to handle many players.
                    (.startswith line "/characters") (info (or (character.describe-at player.coords :exclude player.name) "Nobody interesting here but you.")) ; for debugging
                    (.startswith line "/help") (info (help-str))
                    (.startswith line "/hint") (info (hint messages player line))
-                   (.startswith line "/hist") (msg "history" "")
+                   (.startswith line "/hist") (msg "history" "history")
                    (.startswith line "/items") (info (item.describe-at player.coords)) ; for debugging
                    (.startswith line "/map") (info (print-map player.coords))
                    (.startswith line "/spy") (info (spy (last (.partition line " ")))) ; for debugging
