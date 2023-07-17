@@ -1,9 +1,10 @@
+listen = "tcp://*:25566"
 world = "worlds/generic-world-name"
 
 # params passed to the model are defined in their own section below
 provider = "local"
 # context_length is the context window of the model.
-context_length = 2000
+context_length = 3000
 
 # max_tokens limits the text generation
 max_tokens = 200
@@ -16,8 +17,8 @@ loglevel = "warning"
 # For local, it depends, but all-MiniLM-L6-v2 is probably sufficient
 # For OpenAI, use text-embedding-ada-002
 # If using ooba, the embedding model is set by environment variable when starting the API.
-embedding_provider = "local"
-embedding = "all-mpnet-base-v2"
+embedding_provider = "OpenAI"
+embedding = "text-embedding-ada-002"
 
 [providers.OpenAI]
 model = "gpt-3.5-turbo"
