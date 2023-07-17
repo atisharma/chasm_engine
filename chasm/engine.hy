@@ -43,7 +43,7 @@ The engine logic is expected to handle many players.
 
 (defn payload [narrative result player-name]
   "What the client expects."
-  (let [player player-name]
+  (let [player (get-character player-name)]
     {"narrative" narrative
      "result" result
      "player" {"name" player.name
