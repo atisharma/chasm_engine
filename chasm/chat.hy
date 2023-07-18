@@ -117,14 +117,16 @@ Return modified messages."
 `text`: The input text to use as a starting point for the edit.
 `instruction`: how the model should edit the prompt."
   (respond [(system instruction)
-            (user text)]))
+            (user text)]
+           #** kwargs))
 
 (defn [(retry :wait (wait-random-exponential :min 0.5 :max 30)
               :stop (stop-after-attempt 6))] respond [messages #** kwargs]
   "Reply to a list of messages and return just content.
 The messages should already have the standard roles."
   (let [params (config "providers" (config "provider"))
-        defaults {"max_tokens" (config "max_tokens")
+        defaults {"api_key" "n/a"
+                  "max_tokens" (config "max_tokens")
                   "model" "gpt-3.5-turbo"}
         response (ChatCompletion.create
                    :messages (standard-roles messages)
