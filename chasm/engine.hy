@@ -266,7 +266,7 @@ This function does not use vdb memory so should be thread-safe."
       (fuzzy-in dirn here.rooms) (narrate messages player) ; going to a room
       :else (choice [f"You can't go to '{dirn}'."
                      f"Is '{dirn}' where you meant?"
-                     f"I'm not sure '{dirn}' is a place."
+                     f"I'm not sure '{dirn}' is a place that you can go to."
                      f"'{dirn}' doesn't seem to be somewhere you can go."
                      f"'{dirn}' isn't accessible from here. Try somewhere else."]))))
 
@@ -276,7 +276,7 @@ This function does not use vdb memory so should be thread-safe."
         characters-here (character.describe-at player.coords :long True)
         inventory-str (item.describe-inventory player)
         story-guidance f"You are a narrator in a gripping and enjoyable adventure game.
-The player, {player.name}, interjects with questions, instructions or commands.
+The player/protagonist, {player.name}, interjects with questions, instructions or commands.
 You respond in the narrator's voice. The narrative is given below.
 
 Story setting: {world}"
@@ -333,14 +333,15 @@ Now give the hint."
                                            f"{c.name} recalls the memories:\n{mem}."
                                            ""))))
         story-guidance f"You are the narrator in an immersive, enjoyable, award-winning adventure / interactive fiction game.
-The player ({player.name} or user) interjects with questions or instructions/commands, to be interpreted in the context of the story.
-Commands are meant for {player.name} and may be in first person ('I stand up') or imperative ('stand up', 'Look at X' or 'Ask Y about Z').
+The player ({player.name} or user) interjects with questions or instructions/commands, to be interpreted as instructions for the protagonist (also {player.name}, the player's avatar) in the context of the story.
+Commands are meant for protagonist {player.name} and may be in first person ('I stand up') or imperative ('stand up', 'Look at X' or 'Ask Y about Z').
 Questions are meant in the context of the story ('What am I wearing?' really means 'Narrator, describe what {player.name} is wearing' etc).
-In your narrative, refer to the player {player.name} in the second person ('you do..., you go to...'), but a character speaking directly to them may address them directly as '{player.name}'.
-Indicate acting directions or actions like this: *smiles* or *shakes his head*. Never break the 'fourth wall'.
+In your narrative, refer to the protagonist {player.name} in the second person ('you do..., you go to...'), but a character speaking directly to them may address them directly as '{player.name}'.
+The protagonist is always present.
+Indicate acting directions or actions like this: *smiles* or *shakes head*. Never break the 'fourth wall'.
 Be descriptive, don't give instructions, don't break character.
-If the last instruction is highly inconsistent in context of the story (for example 'turn into a banana' when that's impossible), just say 'You can't do that' or some variation or interpret it creatively.
-Make every effort to keep the story consistent.
+If the player's last instruction is highly inconsistent in context of the story (for example 'turn into a banana' when that's impossible), just say 'You can't do that' or some variation or interpret the instruction creatively.
+Make every effort to keep the story consistent. Puzzles (if any) should develop the narrative arc.
 Don't describe yourself as an AI, chatbot or similar; if you can't do something, describe {player.name} doing it within the story. If you must refer to yourself, do so as the narrator.
 Story setting:
 {world}
