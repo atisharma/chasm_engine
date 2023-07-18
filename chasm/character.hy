@@ -32,7 +32,7 @@ Functions that deal with characters.
 (defn valid-key? [s]
   (re.match "^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$" s))
 
-(defn spawn [[name None] [coords (Coords 0 0)] [loaded {}]] ; -> Character
+(defn spawn [[name None] [coords (Coords 0 0)] [loaded {}] [retries 0]] ; -> Character
   "Spawn a character from card, db, or just generated."
   (try
     (let [; only allow to override some
@@ -56,10 +56,15 @@ Functions that deal with characters.
                                         filtered))]
         (log.info f"character/spawn {char.name}")
         (when loaded (log.info f"character/spawn loaded: {sanitised}"))
-        (when (and character.name (valid-key? (character-key character.name)))
-          (place.extend-map character.coords)
-          (set-character character)
-          character)))
+        (if (and character.name (valid-key? (character-key character.name)) (< retries 5))
+            (do
+                (place.extend-map character.coords)
+                (set-character character)
+                character)
+            ; keep trying until it works
+            (do
+              (log.error f"character/spawn: retrying for {name} at {coords}.")
+              (spawn name coords loaded (inc retries))))))
     (except [e [Exception]]
       (log.error f"character/spawn: failed for {name} at {coords}.")
       (log.error e))))
@@ -214,8 +219,8 @@ Update any attribute that has changed describing the character, appropriate to t
 Appearance may change where a character changes clothes etc.
 Destination should be just one of {nearby-places} or to stay at {(place.name character.coords)}.
 Objective should align with the plot, the character's role, and evolve slowly (less than 8 words)
-Classify new memories into [significant], [minor] or [forgettable].
-Just omit the original attribute if it is unchanged.
+Classify new memories into [significant], [minor] or [forgettable] (note square brackets).
+Don't mention the original attribute if it is unchanged.
 Use a brief few words, comma separated, for each attribute. Be concise and very specific."
         length (+ 200 (token-length [instruction world card card])) ; count card twice to allow the result
         dialogue-str (format-msgs (truncate dialogue :spare-length length))

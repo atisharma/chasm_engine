@@ -5,6 +5,7 @@
 (import functools [partial cache lru-cache])
 (import itertools *)
 
+(import argparse)
 (import importlib)
 (import os)
 (import re)
@@ -25,6 +26,32 @@
   (except [ModuleNotFoundError]
     (import tomli :as tomllib)))
 
+
+;;; -----------------------------------------------------------------------------
+;;; config function
+;;; -----------------------------------------------------------------------------
+
+(setv args-parser (.ArgumentParser argparse :description "Run the chasm server."))
+(.add-argument args-parser
+               "--config" "-c"
+               :type str
+               :dest "config"
+               :default "server.toml"
+               :help "specify alternative config file")
+(setv args (.parse-args args-parser))
+(setv config-file args.config)
+
+(defn config [#* keys]
+  "Get values in a toml file like a hashmap, but default to None."
+  (unless (os.path.isfile config-file)
+    (raise (FileNotFoundError config-file)))
+  (try
+    (-> config-file
+        (slurp)
+        (tomllib.loads)
+        (get #* keys))
+    (except [KeyError]
+      None)))
 
 ;;; -----------------------------------------------------------------------------
 ;;; meta functions
@@ -62,24 +89,6 @@
 (defn append [x l]
   "Append x to list l."
   (+ l [x]))
-
-;;; -----------------------------------------------------------------------------
-;;; config functions
-;;; -----------------------------------------------------------------------------
-
-(setv config-file "server.toml")
-
-(defn config [#* keys]
-  "Get values in a toml file like a hashmap, but default to None."
-  (unless (os.path.isfile config-file)
-    (raise (FileNotFoundError config-file)))
-  (try
-    (-> config-file
-        (slurp)
-        (tomllib.loads)
-        (get #* keys))
-    (except [KeyError]
-      None)))
 
 ;;; -----------------------------------------------------------------------------
 ;;; File & IO functions

@@ -226,7 +226,7 @@ Give one attribute per line, no commentary, examples or other notes, just the te
                   (user context)
                   (system "Below is the template to complete.")
                   (user template)
-                  (system "Now, complete the template. Give only new values, no other text or explanation.")]
+                  (system "Now, complete the template, one attribute per line. Give only new values, no other text or explanation.")]
         response (respond messages :max-tokens max-tokens)]
     (grep-attributes response attributes)))
 

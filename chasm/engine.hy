@@ -44,11 +44,13 @@ The engine logic is expected to handle many players.
 (defn payload [narrative result player-name]
   "What the client expects."
   (let [player (get-character player-name)]
+       [account (get-account player-name)]
     {"narrative" narrative
      "result" result
      "player" {"name" player.name
                "objective" player.objective
                "score" player.score
+               "turns" (:turns account None)
                "health" player.health
                "coords" player.coords
                "inventory" (lfor i (item.inventory player) i.name)
@@ -63,11 +65,15 @@ The engine logic is expected to handle many players.
 
 (defn spawn-player [player-name #* args #** kwargs] ; -> response
   "Start the game. Make sure there's a recent message. Return the whole visible state."
-  (let [player (character.spawn :name player-name :loaded kwargs :coords (random-coords)) 
-        narrative (or (get-narrative player-name)
-                      (set-narrative [(assistant (describe-place player))] player-name))]
-    (update-character player :npc False)
-    (payload narrative (last narrative) player.name)))
+  (try
+    (let [player (character.spawn :name player-name :loaded kwargs :coords (random-coords)) 
+          narrative (or (get-narrative player-name)
+                        (set-narrative [(assistant (describe-place player))] player-name))]
+      (update-character player :npc False)
+      (payload narrative (last narrative) player.name))
+    (except [err [Exception]]
+      (log.error "engine/spawn-player:" :exception err)
+      (error f"Engine error: {(repr err)}"))))
 
 (defn help-str []
   "Return the help string."
@@ -77,7 +83,7 @@ The engine logic is expected to handle many players.
 (defn parse [player-name line #* args #** kwargs] ; -> response
   "Process the player's input and return the whole visible state."
   (log.info f"engine/parse: {player-name}: {line}")
-  (let [_player (get-character player-name)
+  (let [_player (or (get-character player-name) (character.spawn :name player-name :loaded kwargs))
         player (update-character _player :npc False)
         narrative (get-narrative player-name)
         messages (truncate (standard-roles narrative)
@@ -111,7 +117,7 @@ The engine logic is expected to handle many players.
                    (info "There was no reply."))
                  (except [err [Exception]]
                    (log.error "engine/parse:" :exception err)
-                   (error "Unknown engine error.")))]
+                   (error f"Engine error: {(repr err)}")))]
     ; info, error do not extend narrative.
     (when (and result (= (:role result) "assistant"))
       (.extend narrative [user-msg result])
@@ -333,11 +339,10 @@ Now give the hint."
                                            f"{c.name} recalls the memories:\n{mem}."
                                            ""))))
         story-guidance f"You are the narrator in an immersive, enjoyable, award-winning adventure / interactive fiction game.
-The player ({player.name} or user) interjects with questions or instructions/commands, to be interpreted as instructions for the protagonist (also {player.name}, the player's avatar) in the context of the story.
-Commands are meant for protagonist {player.name} and may be in first person ('I stand up') or imperative ('stand up', 'Look at X' or 'Ask Y about Z').
+The player ({player.name} or user) interjects with questions or instructions/commands, to be interpreted as instructions for the player's avatar (also {player.name}) in the context of the story.
+Commands are meant for {player.name} and may be in first person ('I stand up') or imperative ('stand up', 'Look at X' or 'Ask Y about Z').
 Questions are meant in the context of the story ('What am I wearing?' really means 'Narrator, describe what {player.name} is wearing' etc).
-In your narrative, refer to the protagonist {player.name} in the second person ('you do..., you go to...'), but a character speaking directly to them may address them directly as '{player.name}'.
-The protagonist is always present.
+In the narrative, refer to {player.name} in the second person ('you do..., you go to...'), but a character speaking directly to them may address them directly as '{player.name}'.
 Indicate acting directions or actions like this: *smiles* or *shakes head*. Never break the 'fourth wall'.
 Be descriptive, don't give instructions, don't break character.
 If the player's last instruction is highly inconsistent in context of the story (for example 'turn into a banana' when that's impossible), just say 'You can't do that' or some variation or interpret the instruction creatively.

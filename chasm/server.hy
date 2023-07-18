@@ -13,7 +13,7 @@ Protocol: see wire.hy.
 
 (import chasm [log])
 
-(import chasm [engine state crypto])
+(import chasm [engine state place types crypto])
 (import chasm.stdlib [config hash-id inc])
 (import chasm.wire [wrap unwrap])
 
@@ -72,6 +72,7 @@ Protocol: see wire.hy.
 (defn serve []
   "Call a function on the server."
   (log.info f"Starting server at {(.isoformat (datetime.today))}")
+  (place.extend-map (types.Coords 0 0))
   (while True
     (try
       (let [msg (unwrap (.recv-string socket)) ; no messages will raise zmq.Again

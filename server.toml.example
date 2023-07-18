@@ -12,7 +12,7 @@ max_tokens = 200
 loglevel = "warning"
 
 [memory]
-# If you change memory provider, the embedding of your previous data will be unreadable
+# If you change embedding provider, the embedding of your previous data will be unreadable
 # This uses pytorch, so will use CUDA if available.
 # For local, it depends, but all-MiniLM-L6-v2 is probably sufficient
 # For OpenAI, use text-embedding-ada-002
