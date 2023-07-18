@@ -16,7 +16,7 @@ The engine logic is expected to handle many players.
                      get-place
                      random-coords
                      get-character update-character
-                     get-account
+                     get-account update-account
                      get-narrative set-narrative])
 (import chasm.chat [APIConnectionError ChatError respond
                     msgs->topic text->topic msgs->points
@@ -41,9 +41,10 @@ The engine logic is expected to handle many players.
 ;;; -----------------------------------------------------------------------------
 
 (defn payload [narrative result player-name]
-  "What the client expects."
+  "What the client expects. Increment turns here."
   (let [player (get-character player-name)
         account (get-account player-name)]
+    (update-account player-name :turns (inc (:turns account 0)))
     {"narrative" narrative
      "result" result
      "player" {"name" player.name
