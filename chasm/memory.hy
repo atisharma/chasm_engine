@@ -27,10 +27,9 @@ Functions that deal with recall and vector databases.
 
 (defn chroma [vdb-path]
   "Return the chroma client."
-  (chromadb.Client
-    (Settings :chroma-db-impl "duckdb+parquet"
-              :persist-directory vdb-path
-              :anonymized-telemetry False)))
+  (chromadb.PersistClient
+    :path vdb-path
+    :settings (Settings :anonymized-telemetry False)))
 
 ;; chromadb is a singleton,
 ;; which sadly means no concurrency and no writing from child threads
