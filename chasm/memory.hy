@@ -40,7 +40,7 @@ Functions that deal with recall and vector databases.
   (let [params (config "providers" (config "memory" "embedding_provider"))
         model (or (config "memory" "embedding") "text-embedding-ada-002")
         ef (OpenAIEmbeddingFunction :model-name model
-                                    :api-key (:api-key params None)
+                                    :api-key (:api-key params "N/A")
                                     :api-base (:api-base params None)
                                     :api-type (:api-type params None)
                                     :organization-id (:organization-id params None))]
