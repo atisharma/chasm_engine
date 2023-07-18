@@ -8,11 +8,12 @@ Functions that deal with recall and vector databases.
 (import os)
 (import pathlib [Path])
 
+(import openai [Embedding])
+(import tenacity [retry stop-after-attempt wait-random-exponential])
+
 (import chromadb)
 (import chromadb.config [Settings])
 (import chromadb.utils.embedding-functions [OpenAIEmbeddingFunction])
-
-(import openai [Embedding])
 
 (import chasm [log])
 
@@ -45,9 +46,10 @@ Functions that deal with recall and vector databases.
                                     :organization-id (:organization-id params None))]
     (log.info f"memory/collection {name}")
     (_vdb.get-or-create-collection :name f"C-{name}"
-                                  :embedding-function ef)))
+                                   :embedding-function ef)))
 
-(defn embed [text #** kwargs]
+(defn [(retry :wait (wait-random-exponential :min 0.5 :max 30)
+              :stop (stop-after-attempt 6))] embed [text #** kwargs]
   "Get an embedding from text via the API."
   (let [params (config "providers" (config "memory" "embedding_provider"))
         model {"model" (or (config "memory" "embedding")
@@ -70,7 +72,7 @@ Functions that deal with recall and vector databases.
   "Recall related memories."
   (let [vdbc (collection name)]
     ; can use where field to filter on metadata
-    (vdbc.query :query-embeddings [(embed text)]
+    (vdbc.query :query-texts [text]
                 :n-results n
                 :where where)))
       
@@ -81,6 +83,7 @@ Functions that deal with recall and vector databases.
   (let [c (collection name)
         ct (.count c)]
     (.get c
+          :limit (min n ct)
           :offset (- ct (min n ct))
           :where where)))
     
