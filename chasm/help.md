@@ -1,4 +1,4 @@
-To play, just enter some text, saying what you want to do.
+Just enter some text, saying what you want to do.
 
 For instance,
 ```
@@ -6,10 +6,12 @@ For instance,
 > Go north
 > Go to the crossroads.
 > Tell so-and-so about thingy.
+> Ask about the secret treasure.
+> "Why can't I fly in my dreams?"
 ```
 
 Lines beginning with **/** are parsed as special commands, otherwise everything is understood as normal narrative text.  
-The only exception is lines beginning with `go` which are understood to be an instruction to travel.  
+The only exception is lines beginning with `go` which are understood to be an instruction to travel to a new map location.  
 The usual readline shortcuts should be available (up-arrow for previous commands, etc).
 
 - **/help /h**                   Show this helpful text
@@ -17,7 +19,7 @@ The usual readline shortcuts should be available (up-arrow for previous commands
 
 - **/take sparkly thing**        Add the item called 'sparkly thing' to your inventory
 - **/drop old shoes**            Remove the item called 'old shoes' to your inventory
-- **/give lantern to Sonia**     Not implemented yet, but will give the lantern in your inventory to Sonia when it is
+- **/give lantern to Sonia**     Not implemented yet, but will give the lantern in your inventory to Sonia
 
 - **/hint how do I escape?**     Help if you're stuck
 - **/history**                   Print your whole narrative

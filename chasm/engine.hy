@@ -41,7 +41,7 @@ The engine logic is expected to handle many players.
 ;;; -----------------------------------------------------------------------------
 
 (defn payload [narrative result player-name]
-  "What the client expects. Increment turns here."
+  "What the client expects."
   (let [player (get-character player-name)
         account (get-account player-name)]
     (update-account player-name :turns (inc (:turns account 0)))
@@ -273,7 +273,7 @@ This function does not use vdb memory so should be thread-safe."
       :else (choice [f"You can't go to '{dirn}'."
                      f"Is '{dirn}' where you meant?"
                      f"I'm not sure '{dirn}' is a place that you can go to."
-                     f"'{dirn}' doesn't seem to be somewhere you can go."
+                     f"'{dirn}' doesn't seem to be a location you can go."
                      f"'{dirn}' isn't accessible from here. Try somewhere else."]))))
 
 (defn hint [messages player line]

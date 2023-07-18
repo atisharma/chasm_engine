@@ -72,12 +72,12 @@ Functions that deal with characters.
 (defn gen-lines [coords [name None]] ; -> Character or None
   "Make up some plausible character based on a name."
   (let [seed (choice alphabet)
-        name-str (or name f"the character (whose first name begins with '{seed}')")
+        name-str (or name f"the character (invent one whose first name begins with '{seed}')")
         name-dict (if name {"name" name} {})
         place (get-place coords)
         place-name (if place place.name "a typical place in this world")
         card f"name: '{name-str}'
-appearance: '{name-str}'s appearance, age, height, build, clothes, style etc (unique and memorable)'
+appearance: 'their appearance, age, height, build, clothes, style etc (unique and memorable)'
 gender: 'their gender'
 backstory: 'their backstory (10 words, memorable)'
 voice: 'their manner of speaking, 2-3 words'
