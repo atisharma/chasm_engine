@@ -66,8 +66,9 @@ Protocol: see wire.hy.
 
 (defn handle-request [player-name client-time function #* args #** kwargs]
   "Process the RPC in the engine and send the result."
-  (state.update-account player-name :last-verified client-time)
-  ((.get server-functions function "null") #* args #** kwargs))
+  (let [account (state.get-account player-name)]
+    (state.update-account player-name :last-verified client-time :turns (inc (:turns account 0)))
+    ((.get server-functions function "null") #* args #** kwargs)))
 
 (defn serve []
   "Call a function on the server."
