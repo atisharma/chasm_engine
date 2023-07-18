@@ -15,10 +15,9 @@ The engine logic is expected to handle many players.
                      characters
                      get-place
                      random-coords
-                     get-character
-                     update-character
-                     get-narrative
-                     set-narrative])
+                     get-character update-character
+                     get-account
+                     get-narrative set-narrative])
 (import chasm.chat [APIConnectionError ChatError respond
                     msgs->topic text->topic msgs->points
                     msg->dlg msgs->dlg
