@@ -2,7 +2,7 @@
 The server, implementing RPC for engine functions.
 Protocol: see wire.hy.
 "
-(require hyrule [defmain unless inc])
+(require hyrule [defmain unless])
 
 (import sys)
 (import json)
@@ -14,7 +14,7 @@ Protocol: see wire.hy.
 (import chasm [log])
 
 (import chasm [engine state crypto])
-(import chasm.stdlib [config hash-id])
+(import chasm.stdlib [config hash-id inc])
 (import chasm.wire [wrap unwrap])
 
 
