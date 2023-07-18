@@ -27,7 +27,7 @@ Functions that deal with recall and vector databases.
 
 (defn chroma [vdb-path]
   "Return the chroma client."
-  (chromadb.PersistClient
+  (chromadb.PersistentClient
     :path vdb-path
     :settings (Settings :anonymized-telemetry False)))
 
