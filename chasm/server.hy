@@ -2,8 +2,7 @@
 The server, implementing RPC for engine functions.
 Protocol: see wire.hy.
 "
-(require hyrule [defmain])
-(require hyrule [unless])
+(require hyrule [defmain unless inc])
 
 (import sys)
 (import json)
