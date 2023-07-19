@@ -77,21 +77,21 @@ Functions that deal with characters.
         place (get-place coords)
         place-name (if place place.name "a typical place in this world")
         card f"name: '{name-str}'
-appearance: 'their appearance, age, height, build, clothes, style etc (unique and memorable)'
+motivation: 'drives their behaviour, 4-5 words
 gender: 'their gender'
-backstory: 'their backstory (10 words, memorable)'
-voice: 'their manner of speaking, 2-3 words'
 traits: 'shapes behaviour, MBTI, quirks/habits, 4-5 words'
-motivation: 'drives their behaviour, 4-5 words'
-likes: 'their desires, wants, cravings, guiding philosopher'
-dislikes: 'their fears and aversions'
 skills: 'what they are particularly good at'
 occupation: 'their usual job'
-objective: 'their initial objective'"
+backstory: 'their backstory (10 words, memorable)'
+likes: 'their desires, wants, cravings, guiding philosopher'
+dislikes: 'their fears and aversions'
+voice: 'their manner of speaking, 2-3 words'
+appearance: 'their appearance, age, height, build, clothes, style etc (unique and memorable)'
+objective: 'their current objective'"
         setting f"Story setting: {world}"
         instruction f"Below is a story setting and a template character card.
 Complete the character card for {name-str} whom is found in the story at {place.name}.
-Example motivation and objective might align with typical archetypes like Hero, Mentor, Villain, Informant, Guardian etc.
+Motivation must include narrative archetypes Hero, Mentor, Villain, Informant, Guardian.
 Make up a brief few words, with comma separated values, for each attribute. Be imaginative and very specific."
         details (complete-lines
                   :context setting
@@ -113,24 +113,23 @@ Make up a brief few words, with comma separated values, for each attribute. Be i
         place-name (if place place.name "a typical place in this world")
         card f"{{
     \"name\": \"{name-str}\",
-    \"appearance\": \"{name-str}'s appearance, age, height, build, clothes, style etc (unique and memorable)\",
-    \"gender\": \"their gender\",
-    \"backstory\": \"their backstory (10 words, memorable)\",
-    \"voice\": \"their manner of speaking, 2-3 words\",
-    \"traits\": \"shapes their behaviour, 4-5 words\",
     \"motivation\": \"drives their behaviour, 4-5 words\",
-    \"likes\": \"their desires, wants and cravings\",
-    \"dislikes\": \"their fears and aversions\",
+    \"gender\": \"their gender\",
+    \"traits\": \"shapes their behaviour, 4-5 words\",
     \"skills\": \"what they are particularly good at\",
     \"occupation\": \"their usual job\",
+    \"backstory\": \"their backstory (10 words, memorable)\",
+    \"likes\": \"their desires, wants and cravings\",
+    \"dislikes\": \"their fears and aversions\",
+    \"voice\": \"their manner of speaking, 2-3 words\",
+    \"appearance\": \"{name-str}'s appearance, age, height, build, clothes, style etc (unique and memorable)\",
     \"objective\": \"their initial objective\"
 }}"
         setting f"Story setting: {world}"
         instruction f"Below is a story setting and a character card.
 Complete the character card for {name-str} whom is found in the story at {place.name}.
-Example objective might align with archetypes Hero, Mentor, Villain, Informant, Guardian.
-Give one attribute per line, no commentary, examples or other notes, just the card with the details updated.
-Make up a brief few words, with comma separated values, for each attribute. Be imaginative and very specific."
+Motivation must include narrative archetypes Hero, Mentor, Villain, Informant, Guardian.
+Make up a brief few words, comma separated, for each attribute. Be imaginative and very specific."
         details (complete-json
                   :template card
                   :context setting

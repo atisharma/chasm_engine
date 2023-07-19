@@ -56,7 +56,7 @@ Protocol: see wire.hy.
         (:ecdsa-key (state.update-account player-name :ecdsa-key pub-key))))) ; store the provided key
 
 (defn time-ok? [client-time [threshold 30]]
-  "Is client time within threshold (seconds) of server time?"
+  "Is client's message time within threshold (seconds) of server time?"
   (try
     (let [ct (float client-time)
           diff (abs (- ct (time)))]
@@ -88,7 +88,7 @@ Protocol: see wire.hy.
         (log.debug f"server/serve: {msg}")
         (send
           (cond
-            (not (time-ok? client-time)) {"errors" f"Bad message time, got {client-time}, expected {(time)}"}
+            (not (time-ok? client-time)) {"errors" f"Bad message time, off by {(- client-time (time))}, server probably busy."}
             (crypto.verify stored-pub-key signature expected-hash) (handle-request player-name client-time function #* args #** kwargs)
             :else {"errors" "Failed to verify signature."})))
       (except [zmq.Again]
