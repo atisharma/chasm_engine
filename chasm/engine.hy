@@ -53,7 +53,7 @@ The engine logic is expected to handle many players.
                "turns" (:turns account None)
                "health" player.health
                "coords" player.coords
-               "compass" (print-map :compass True)
+               "compass" (print-map player.coords :compass True)
                "inventory" (lfor i (item.inventory player) i.name)
                "place" (place.name player.coords)}
      "world" world-name
