@@ -91,7 +91,7 @@ objective: 'their current objective'"
         setting f"Story setting: {world}"
         instruction f"Below is a story setting and a template character card.
 Complete the character card for {name-str} whom is found in the story at {place.name}.
-Motivation must include narrative archetypes Hero, Mentor, Villain, Informant, Guardian.
+Motivation must include a narrative archetype like Hero, Mentor, Villain, Informant, Guardian.
 Make up a brief few words, with comma separated values, for each attribute. Be imaginative and very specific."
         details (complete-lines
                   :context setting
@@ -128,7 +128,7 @@ Make up a brief few words, with comma separated values, for each attribute. Be i
         setting f"Story setting: {world}"
         instruction f"Below is a story setting and a character card.
 Complete the character card for {name-str} whom is found in the story at {place.name}.
-Motivation must include narrative archetypes Hero, Mentor, Villain, Informant, Guardian.
+Motivation must include a narrative archetype like Hero, Mentor, Villain, Informant, Guardian.
 Make up a brief few words, comma separated, for each attribute. Be imaginative and very specific."
         details (complete-json
                   :template card
