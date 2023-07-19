@@ -235,7 +235,7 @@ The dialogue is as follows:
     (try
       (let [new-score (if (similar (or character.objective "")
                                    (:objective details "")
-                                   :threshold 0.5)
+                                   :threshold 0.7)
                           character.score
                           (inc character.score))]
         (log.info f"character/develop-lines {character.name}")
