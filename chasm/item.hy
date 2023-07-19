@@ -117,7 +117,7 @@ None if the place doesn't exist or if generation fails."
         items-str (.join ", " (lfor i items i.name))
         place-name (place.name coords)]
     (if items
-        f"Only the following portable items are laying around at {place-name}, which may be taken: {items-str}."
+        f"The only notable, portable items laying around at {place-name}, which may be taken, are: {items-str}."
         "There are no portable items here.")))
 
 (defn get-desc [item-name] ; -> str
