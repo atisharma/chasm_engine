@@ -471,7 +471,7 @@ Do not say you're an AI assistant or similar. To end the conversation, just say 
   (if compass
       (let [cx (:x coords)
             cy (:y coords)
-            accessible-places (accessible coords :min-places 4)]
+            accessible-places (place.accessible coords :min-places 4)]
         (.join "\n"
           (lfor dy [-1 0 1]
                 (.join ""
