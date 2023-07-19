@@ -71,6 +71,7 @@ Protocol: see wire.hy.
 
 (defn serve []
   "Call a function on the server."
+  (print f"Starting server at {(.isoformat (datetime.today))}")
   (log.info f"Starting server at {(.isoformat (datetime.today))}")
   (place.extend-map (types.Coords 0 0))
   (while True
