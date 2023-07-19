@@ -118,7 +118,7 @@ Nearby places: {nearby-places}"
 appearance: a few keywords to describe
 atmosphere: a few keywords
 terrain: the terrain"
-        instruction f"Complete the template for a place you want to explore, that's distinct from those nearby, but that's in keeping with the story's setting. Avoid adjectives used in nearby places, be interesting and imaginative.
+        instruction f"Complete the template for a place you want to explore, that's distinct from those nearby, but that's in keeping with the story's setting. Avoid adjectives used in nearby places; be interesting and imaginative.
 Example names would include: 'Residential Buildings', 'Mysterious Ruins', 'Junction', 'Inn', 'Architect's Office', 'Corner Shop', 'Palace', 'Nightclub', 'Small White House', 'Ship', 'Castle', 'Secret Cave'.
 The name should have {seed} in the first few letters. The place might be {(choice place-types)}."
         details (complete-lines
@@ -227,7 +227,7 @@ Return new coords or None."
 in adjacent cells, accessible or not."
   (let [cx (:x _coords)
         cy (:y _coords)
-        accessible-places (unless list-inaccessible (accessible _coords :min-places 3))]
+        accessible-places (unless list-inaccessible (accessible _coords :min-places 4))]
     (lfor dx [-1 0 1]
           dy [-1 0 1]
           :setv nearby-place (get-offset-place _coords dx dy)
@@ -281,7 +281,7 @@ This function is not deterministic, because we ask the model to decide."
                      :key (fn [p] (hash-id p.name)))
              min-places))))
 
-(defn accessible-coords [coords [min-places 3]]
+(defn accessible-coords [coords [min-places 4]]
   "A list of all existing Coords that are accessible from here."
   (lfor a (accessible coords :min-places min-places)
         a.coords))

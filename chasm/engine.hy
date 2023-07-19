@@ -53,6 +53,7 @@ The engine logic is expected to handle many players.
                "turns" (:turns account None)
                "health" player.health
                "coords" player.coords
+               "compass" (print-map :compass True)
                "inventory" (lfor i (item.inventory player) i.name)
                "place" (place.name player.coords)}
      "world" world-name
@@ -465,14 +466,24 @@ Do not say you're an AI assistant or similar. To end the conversation, just say 
 ;;; Main engine loop
 ;;; -----------------------------------------------------------------------------
 
-(defn print-map [coords]
+(defn print-map [coords [compass False]]
   "Get your bearings."
-  (.join "\n\n"
-      [f"***{(place.name coords)}***"
-       f"{(.join ", " (place.rooms coords :as-string False))}"
-       ;f"*{(place.nearby-str coords :list-inaccessible True)}*"
-       ;f"Of which are accessible:"
-       f"*{(place.nearby-str coords)}*"]))
+  (if compass
+      (let [cx (:x coords)
+            cy (:y coords)
+            accessible-places (accessible coords :min-places 4)]
+        (.join "\n"
+          (lfor dy [-1 0 1]
+                (.join ""
+                       (lfor dx [-1 0 1]
+                         :setv nearby-place (get-offset-place coords dx dy)
+                         (cond (in nearby-place accessible-places) "•"
+                               (= 0 (+ (abs dx) (abs dy)) "+")
+                               :else " "))))))
+      (.join "\n\n"
+          [f"***{(place.name coords)}***"
+           f"{(.join ", " (place.rooms coords :as-string False))}"
+           f"*{(place.nearby-str coords)}*"])))
 
 (defn spy [char-name]
   (character.describe
