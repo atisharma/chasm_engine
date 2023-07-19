@@ -206,9 +206,7 @@ force to lowercase, remove 'the' from start of line."
   (.join "\n" (lfor x l f"- {x}")))
 
 (defn close-quotes [s]
-  "
-  If there is an odd number of quotes in a line, close the quote.
-  "
+  "If there is an odd number of quotes in a line, close the quote."
   (.join "\n"
     (lfor line (-> s (.replace "\"\"" "\"") (.splitlines))
           (if (% (.count line "\"") 2)  ; if an odd number of quotes
