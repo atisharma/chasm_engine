@@ -477,9 +477,9 @@ Do not say you're an AI assistant or similar. To end the conversation, just say 
                 (.join ""
                        (lfor dx [-1 0 1]
                          :setv nearby-place (place.get-offset-place coords dx dy)
-                         (cond (in nearby-place accessible-places) "•"
-                               (= 0 (+ (abs dx) (abs dy))) "+"
-                               :else " "))))))
+                         (cond (in nearby-place accessible-places) "• "
+                               (= 0 (+ (abs dx) (abs dy))) "+ "
+                               :else "  "))))))
       (.join "\n\n"
           [f"***{(place.name coords)}***"
            f"{(.join ", " (place.rooms coords :as-string False))}"
