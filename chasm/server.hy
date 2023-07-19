@@ -89,7 +89,7 @@ Protocol: see wire.hy.
         (log.debug f"server/serve: {msg}")
         (send
           (cond
-            (not (time-ok? client-time)) {"errors" f"Bad message time, off by {(- client-time (time))}, server probably busy."}
+            (not (time-ok? client-time)) {"errors" f"Bad message time, off by {(- (float client-time) (time))}, server probably busy."}
             (crypto.verify stored-pub-key signature expected-hash) (handle-request player-name client-time function #* args #** kwargs)
             :else {"errors" "Failed to verify signature."})))
       (except [zmq.Again]
