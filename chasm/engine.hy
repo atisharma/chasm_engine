@@ -329,6 +329,7 @@ Now give the hint."
         present-str (if (> (len character-names-here) 1)
                         (+ (.join ", " character-names-here) f" are here at the {here.name}.")
                         f"{player.name} is at the {here.name}.")
+        ; TODO: improve memory queues
         plot-points (.join "\n" (plot.recall-points (plot.news)))
         memories (.join "\n\n" (lfor c (character.get-at player.coords)
                                      (let [mem (bullet (character.recall c (.join "\n" [#* characters-here
