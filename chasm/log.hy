@@ -7,12 +7,11 @@
 ;; TODO: per-module log configuration
 
 
-(setv world-name (-> (config "world")
-                     (.split "/")
-                     (last)
-                     (capwords)))
+(setv log-name (-> (config "world")
+                   (.split "/")
+                   (last)))
 
-(setv logfile (or (config "logfile") f"{world-name}.log"))
+(setv logfile (or (config "logfile") f"{log-name}.log"))
 
 
 ;; overrides root logger to capture logs of any badly-behaved imported modules

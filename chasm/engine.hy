@@ -143,9 +143,10 @@ This function does not use vdb memory so should be thread-safe."
 
 (defn spawn-items []
   "Spawn items when needed at existing places."
-  (when (< (/ (len state.items) (inc (len state.places)))
-           item-density)
-    (item.spawn coords)))
+  (let [coords (random-coords)]
+    (when (< (/ (len state.items) (inc (len state.places)))
+             item-density)
+      (item.spawn coords))))
   
 (defn spawn-characters []
   "Spawn characters when needed at existing places."
