@@ -73,9 +73,11 @@ Protocol: see wire.hy.
   "Call a function on the server."
   (print f"Starting server at {(.isoformat (datetime.today))}")
   (log.info f"Starting server at {(.isoformat (datetime.today))}")
-  (for [x (range -2 3)
-        y (range -2 3)]
+  (print "Initial map generation...")
+  (for [x (range -4 5)
+        y (range -4 5)]
     (place.extend-map (types.Coords x y)))
+  (print "Ready for players.")
   (while True
     (try
       (let [msg (unwrap (.recv-string socket)) ; no messages will raise zmq.Again

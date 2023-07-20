@@ -221,10 +221,8 @@ Return new coords or None."
 (defn get-offset-place [coords dx dy]
   (get-place (Coords (+ (:x coords) dx) (+ (:y coords) dy))))
 
-(defn nearby [_coords [name False] [place False] [coords False] [place-dirn False]
-              [list-inaccessible False]]
-  "A list of all existing [place names + directions]
-in adjacent cells, accessible or not."
+(defn nearby [_coords [name False] [place False] [coords False] [place-dirn False] [list-inaccessible False]]
+  "A list of all existing [place names + directions] in adjacent cells, accessible or not."
   (let [cx (:x _coords)
         cy (:y _coords)
         accessible-places (unless list-inaccessible (accessible _coords :min-places 4))]
