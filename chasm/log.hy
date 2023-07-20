@@ -5,7 +5,12 @@
 ;; TODO: per-module log configuration
 
 
-(setv logfile (or (config "logfile") "chasm.log"))
+(setv world-name (-> (config "world")
+                     (.split "/")
+                     (last)
+                     (capwords)))
+
+(setv logfile (or (config "logfile") f"{world-name}.log"))
 
 
 ;; overrides root logger to capture logs of any badly-behaved imported modules
