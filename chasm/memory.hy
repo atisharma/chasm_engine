@@ -39,16 +39,17 @@ Functions that deal with recall and vector databases.
 
 (defn get-embedding-fn []
   "Return the configured embedding function."
-  (let [provider (config "memory" "embedding_provider")
-        model (or (config "memory" "embedding") "text-embedding-ada-002")]
+  (let [provider (config "memory" "embedding_provider")]
     (if provider
-        (let [params (config "providers" provider)]
+        (let [params (config "providers" provider)
+              model (or (config "memory" "embedding") "text-embedding-ada-002")]
           (OpenAIEmbeddingFunction :model-name model
                                    :api-key (:api-key params "N/A")
                                    :api-base (:api-base params None)
                                    :api-type (:api-type params None)
                                    :organization-id (:organization-id params None))) 
-        (SentenceTransformerEmbeddingFunction :model-name model))))
+        (let [model (or (config "memory" "embedding") "all-MiniLM-L6-v2"")]
+          (SentenceTransformerEmbeddingFunction :model-name model)))))
 
 (defn collection [name]
   (log.info f"memory/collection {name}")
