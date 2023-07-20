@@ -139,18 +139,22 @@ This function does not use vdb memory so should be thread-safe."
     (let [c (get-character n)
           coords c.coords]
       (unless c.npc
-        (place.extend-map coords)
-        ; adding item, character has to occur *after* place has been created
-        (when (and (not (item.get-items coords))
-                   (< (/ (len state.items) (inc (len state.places)))
-                      item-density))
-          (item.spawn coords))
-        ; only spawn a new character if there's nobody there
-        (when (and (not (character.get-at coords))
-                   (< (/ (len state.characters) (inc (len state.places)))
-                      character-density))
-          (character.spawn :name None :coords coords))))))
+        (place.extend-map coords)))))
 
+(defn spawn-items []
+  "Spawn items when needed at existing places."
+  (when (< (/ (len state.items) (inc (len state.places)))
+           item-density)
+    (item.spawn coords)))
+  
+(defn spawn-characters []
+  "Spawn characters when needed at existing places."
+  (let [coords (random-coords)]
+    (when (and (not (character.get-at coords)))
+          (< (/ (len state.characters) (inc (len state.places)))
+             character-density)
+      (character.spawn :name None :coords coords))))
+  
 (defn develop []
   "Move the plot and characters along. Writes to vdb memory so is not thread-safe."
   (when develop-queue
@@ -349,7 +353,7 @@ Indicate acting directions or actions like this: *smiles* or *shakes head*. Neve
 Be descriptive, don't give instructions, don't break character.
 If the player's last instruction is highly inconsistent in context of the story (for example 'turn into a banana' when that's impossible), just say 'You can't do that' or some variation or interpret the instruction creatively.
 Make every effort to keep the story consistent. Puzzles (if any) and events should develop the narrative arc.
-Don't describe yourself as an AI, chatbot or similar; if you can't do something, describe {player.name} doing it within the story. If you must refer to yourself, do so as the narrator.
+Don't describe yourself as an AI, chatbot or similar; if you can't do something, describe {player.name} doing it within the story. Don't apologize. If you must refer to yourself, do so as the narrator.
 Story setting:
 {world}
 Important plot points:
@@ -473,7 +477,7 @@ Do not say you're an AI assistant or similar. To end the conversation, just say 
             cy (:y coords)
             accessible-places (place.accessible coords :min-places 4)]
         (.join "\n"
-          (lfor dy [-1 0 1]
+          (lfor dy [1 0 -1]
                 (.join ""
                        (lfor dx [-1 0 1]
                          :setv nearby-place (place.get-offset-place coords dx dy)

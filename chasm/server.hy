@@ -89,13 +89,15 @@ Protocol: see wire.hy.
         (log.debug f"server/serve: {msg}")
         (send
           (cond
-            (not (time-ok? client-time)) {"errors" f"Message stale, off by {(- (float client-time) (time))}s, server was probably busy."}
+            (not (time-ok? client-time)) {"errors" f"Message stale, off by {(int (- (float client-time) (time)))}s, server was probably busy."}
             (crypto.verify stored-pub-key signature expected-hash) (handle-request player-name client-time function #* args #** kwargs)
             :else {"errors" "Failed to verify signature."})))
       (except [zmq.Again]
         ; only process world if there is no message queue
         (engine.extend-world)
-        (engine.develop))
+        (engine.develop)
+        (engine.spawn-characters)
+        (engine.spawn-items))
       (except [KeyError]
         (log.error f"server/serve: {msg}"))
       (except [KeyboardInterrupt]
