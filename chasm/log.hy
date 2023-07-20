@@ -1,3 +1,5 @@
+(require hyrule.argmove [-> ->>])
+
 (import logging)
 
 (import chasm.stdlib *)
