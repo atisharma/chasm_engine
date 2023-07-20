@@ -245,6 +245,7 @@ in adjacent cells, accessible or not."
   
 (defn new [coords]
   "Add a description etc, item, character to a place."
+  ; TODO: consider pre-generating a long list of names, to ensure uniqueness.
   (let [near-places (.join ", " (nearby coords :list-inaccessible True :name True))
         details (gen-lines near-places)]
     (if (and details (:name details None))

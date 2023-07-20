@@ -101,6 +101,7 @@ The engine logic is expected to handle many players.
                    (quit? line) (do (update-character player :npc True) (msg "QUIT" "QUIT"))
                    (take? line) (info (item.fuzzy-claim (take? line) player))
                    (drop? line) (info (item.fuzzy-drop (drop? line) player))
+                   (give? line) (info (item.fuzzy-give player #* (give? line)))
                    (.startswith line "/characters") (info (or (character.describe-at player.coords :exclude player.name) "Nobody interesting here but you.")) ; for debugging
                    (.startswith line "/help") (info (help-str))
                    (.startswith line "/hint") (info (hint messages player line))
@@ -212,27 +213,20 @@ This function does not use vdb memory so should be thread-safe."
   "Are you trying to pick up an item?"
   (let [[_cmd _ obj] (.partition line " ")
         cmd (.lower _cmd)]
-    (cond (.startswith cmd "/take") (sstrip obj))))
-          ;(= cmd "take") (sstrip obj)
-          ;(= cmd "pick") (re.sub "^up " "" (sstrip obj)))))
+    (when (.startswith cmd "/take") (sstrip obj))))
 
 (defn drop? [line] ; -> item or None
   "Are you trying to drop an item?"
   (let [[_cmd _ obj] (.partition line " ")
         cmd (.lower _cmd)]
-    (cond (.startswith cmd "/drop") (sstrip obj))))
-          ;(= cmd "drop") (sstrip obj))))
-          ;(and (= cmd "put") (.startswith obj "down")) (re.sub "^down " "" (sstrip obj)))))
+    (when (.startswith cmd "/drop") (sstrip obj))))
 
-; FIXME: have to parse this... it's complicated
-; might need a LLM...
-
-(defn give? [line] ; -> item or None
+(defn give? [line] ; -> [item character] or None
   "Are you trying to give an item?"
-  (let [[cmd _ obj] (.partition line " ")
-        cmd (.lower _cmd)]
-    (cond (.startswith cmd "/give") (sstrip obj)
-          (= cmd "give") (sstrip obj))))
+  (let [[cmd _ obj-recip] (.partition line " ")
+        cmd (.lower cmd)
+        [obj _ recipient] (.partition obj-recip " to ")]
+    (when (.startswith cmd "/give") [(sstrip obj) (get-character (sstrip recipient))])))
 
 (defn talk? [line] ; -> string or None
   "Are you trying to talk to another character?"
@@ -329,22 +323,23 @@ Now give the hint."
   "Narrate the story, in the fictional universe."
   (let [items-here-str (item.describe-at player.coords)
         here (get-place player.coords)
-        inventory-str (item.describe-inventory player)
         ; this includes the player
-        character-names-here (lfor c (character.get-at player.coords) c.name)
+        characters-here (character.get-at player.coords)
+        character-names-here (lfor c characters-here c.name)
+        inventory-str (.join "\n\n" (map item.describe-inventory characters-here))
         ; if any are explicitly mentioned, give all characters a long description
         ; this gets long, so limit detailed characters to a few.
         detailed-chars (and (< (len character-names-here) 3)
                             (any (map (fn [s] (fuzzy-substr s (:content (last messages))))
                                       character-names-here)))
-        characters-here (character.describe-at player.coords :long detailed-chars)
+        character-descs-here (character.describe-at player.coords :long detailed-chars)
         present-str (if (> (len character-names-here) 1)
                         (+ (.join ", " character-names-here) f" are here at the {here.name}.")
                         f"{player.name} is at the {here.name}.")
         ; TODO: improve memory queues
         plot-points (.join "\n" (plot.recall-points (plot.news)))
         memories (.join "\n\n" (lfor c (character.get-at player.coords)
-                                     (let [mem (bullet (character.recall c (.join "\n" [#* characters-here
+                                     (let [mem (bullet (character.recall c (.join "\n" [#* character-descs-here
                                                                                         plot-points
                                                                                         (plot.news)])
                                                                            :n 6))]
@@ -373,7 +368,7 @@ These places are accessible:
 {(place.rooms player.coords)}
 
 {items-here-str}
-{characters-here}
+{character-descs-here}
 {memories}
 
 {inventory-str}
@@ -385,6 +380,7 @@ Continue the narrative."]
     (log.info f"engine/narrate: news:\n{(plot.news)}")
     (log.info f"engine/narrate: memories:\n{memories}")
     (log.info f"engine/narrate: story: {(token-length story-guidance)}; local {(token-length local-guidance)}")
+    (log.info f"engine/narrate: inventory-str\n{inventory-str}")
     (.add develop-queue player.name) ; add the player to the development queue
     (-> [(system story-guidance)
          (system local-guidance)

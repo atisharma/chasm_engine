@@ -190,13 +190,14 @@ This implements picking it up, taking etc."
           f"You dropped the {i.name}.")
         f"You don't have '{obj}' in your inventory.")))
 
-(defn fuzzy-give [obj owner character]
+(defn fuzzy-give [owner obj recipient]
   "Check `obj` is owned, then assign it to character's inventory."
+  (log.info f"item/fuzzy-give: {owner.name}: {obj} -> {recipient.name}")
   (let [inv (inventory owner)
         inv-names (lfor i inv i.name)]
     (if (fuzzy-in obj inv-names)
       (let [item-name (best-of inv-names obj)
-            i (get inv item-name)]
-        (claim i character)
-        f"You gave the {i.name} to {character.name}.")
-      f"You don't have a '{obj}'.")))
+            i (get-item item-name)]
+        (claim i recipient)
+        f"You gave the {i.name} to {recipient.name}.")
+      f"You don't have a '{obj}' to give.")))
