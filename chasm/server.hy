@@ -55,7 +55,7 @@ Protocol: see wire.hy.
         (:ecdsa-key account) ; use the key, or
         (:ecdsa-key (state.update-account player-name :ecdsa-key pub-key))))) ; store the provided key
 
-(defn time-ok? [client-time [threshold 30]]
+(defn time-ok? [client-time [threshold 120]]
   "Is client's message time within threshold (seconds) of server time?"
   (try
     (let [ct (float client-time)
