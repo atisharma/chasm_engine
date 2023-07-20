@@ -145,8 +145,8 @@ If you just want those at a location, use `get-items`."
   (let [items (inventory character)
         items-str (.join "\n" (lfor i items f"- {(get-desc i.name)}"))]
     (if items-str
-        f"{character.name} possesses and is carrying the following items:\n{items-str}"
-        f"{character.name} is not carrying anything.")))
+        f"{character.name} has the following items in their inventory:\n{items-str}"
+        f"{character.name} has no inventory.")))
 
 (defn move [item coords]
  "Move an item to a location."

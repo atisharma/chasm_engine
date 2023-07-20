@@ -46,7 +46,6 @@ Functions that deal with characters.
                      "dislikes" (:dislikes loaded None)
                      "occupation" (:occupation loaded None)
                      "motivation" (:motivation loaded None)}]
-      (place.extend-map (Coords 0 0)) ; so first player has somewhere to go
       (let [char (or (get-character name)
                      (gen-lines coords name)
                      default-character)
@@ -57,10 +56,7 @@ Functions that deal with characters.
         (log.info f"character/spawn {char.name}")
         (when loaded (log.info f"character/spawn loaded: {sanitised}"))
         (if (and character.name (valid-key? (character-key character.name)) (< retries 5))
-            (do
-                (place.extend-map character.coords)
-                (set-character character)
-                character)
+            (set-character character)
             ; keep trying until it works
             (do
               (log.error f"character/spawn: retrying for {name} at {coords}.")

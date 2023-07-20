@@ -10,6 +10,7 @@ The engine logic is expected to handle many players.
 
 (import chasm.stdlib *)
 (import chasm [place item character plot state])
+(import chasm.types [Coords])
 (import chasm.constants [character-density item-density compass-directions])
 (import chasm.state [world world-name
                      characters
@@ -67,9 +68,13 @@ The engine logic is expected to handle many players.
 (defn spawn-player [player-name #* args #** kwargs] ; -> response
   "Start the game. Make sure there's a recent message. Return the whole visible state."
   (try
-    (let [player (character.spawn :name player-name :loaded kwargs :coords (random-coords)) 
+    (place.extend-map (Coords 0 0))
+    (let [coords (random-coords)
+          player (character.spawn :name player-name :loaded kwargs :coords coords) 
           narrative (or (get-narrative player-name)
                         (set-narrative [(assistant (describe-place player))] player-name))]
+
+      (place.extend-map coords)
       (update-character player :npc False)
       (payload narrative (last narrative) player.name))
     (except [err [Exception]]
@@ -132,7 +137,7 @@ The engine logic is expected to handle many players.
 ;;; World functions (background tasks)
 ;;; -----------------------------------------------------------------------------
 
-(defn extend-world []
+(defn extend-world [] ; -> place or None
   "Make sure the map covers all characters. Add items, new characters if necessary.
 This function does not use vdb memory so should be thread-safe."
   (for [n (.keys characters)]
@@ -141,14 +146,14 @@ This function does not use vdb memory so should be thread-safe."
       (unless c.npc
         (place.extend-map coords)))))
 
-(defn spawn-items []
+(defn spawn-items [] ; -> item or None
   "Spawn items when needed at existing places."
   (let [coords (random-coords)]
     (when (< (/ (len state.items) (inc (len state.places)))
              item-density)
       (item.spawn coords))))
   
-(defn spawn-characters []
+(defn spawn-characters [] ; -> char or None
   "Spawn characters when needed at existing places."
   (let [coords (random-coords)]
     (when (and (not (character.get-at coords)))
@@ -156,21 +161,22 @@ This function does not use vdb memory so should be thread-safe."
              character-density)
       (character.spawn :name None :coords coords))))
   
-(defn develop []
+(defn develop [] ; -> char or None
   "Move the plot and characters along. Writes to vdb memory so is not thread-safe."
   (when develop-queue
     (log.info f"engine/develop: queue: {develop-queue}")
     (let [player-name (.pop develop-queue)
           player (get-character player-name)
-          messages (get-narrative player-name)]
+          messages (get-narrative player-name)
+          recent-messages (cut messages -6 None)]
       (when (and player-name player messages)
         ; new plot point, record in vdb, db and recent events
-        (plot.extract-point messages player)
+        (plot.extract-point recent-messages player)
         ; all players get developed
         (for [c (character.get-at player.coords)]
-          (character.develop-lines c messages))
+          (character.develop-lines c recent-messages))
         ; Summon npcs to the player's location
-        (for [c-name (character.get-new messages player)]
+        (for [c-name (character.get-new recent-messages player)]
           (let [c (get-character c-name)]
             (if (and c c.npc)
               (character.move c player.coords) ; make sure they're here if the narrator says so

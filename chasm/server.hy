@@ -73,7 +73,9 @@ Protocol: see wire.hy.
   "Call a function on the server."
   (print f"Starting server at {(.isoformat (datetime.today))}")
   (log.info f"Starting server at {(.isoformat (datetime.today))}")
-  (place.extend-map (types.Coords 0 0))
+  (for [x (range -2 3)
+        y (range -2 3)]
+    (place.extend-map (types.Coords x y)))
   (while True
     (try
       (let [msg (unwrap (.recv-string socket)) ; no messages will raise zmq.Again
@@ -94,10 +96,10 @@ Protocol: see wire.hy.
             :else {"errors" "Failed to verify signature."})))
       (except [zmq.Again]
         ; only process world if there is no message queue
-        (engine.extend-world)
-        (engine.develop)
-        (engine.spawn-characters)
-        (engine.spawn-items))
+        (any [(engine.extend-world)
+              (engine.develop)
+              (engine.spawn-characters)
+              (engine.spawn-items)]))
       (except [KeyError]
         (log.error f"server/serve: {msg}"))
       (except [KeyboardInterrupt]

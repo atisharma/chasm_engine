@@ -19,5 +19,5 @@ tags.temp
 
 *.toml
 .chasm_history
-chasm.log
+*.log
 traceback.log
