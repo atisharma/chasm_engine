@@ -48,7 +48,7 @@ Functions that deal with recall and vector databases.
                                    :api-base (:api-base params None)
                                    :api-type (:api-type params None)
                                    :organization-id (:organization-id params None))) 
-        (let [model (or (config "memory" "embedding") "all-MiniLM-L6-v2"")]
+        (let [model (or (config "memory" "embedding") "all-MiniLM-L6-v2")]
           (SentenceTransformerEmbeddingFunction :model-name model)))))
 
 (defn collection [name]
