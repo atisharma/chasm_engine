@@ -13,7 +13,8 @@ Functions that deal with recall and vector databases.
 
 (import chromadb)
 (import chromadb.config [Settings])
-(import chromadb.utils.embedding-functions [OpenAIEmbeddingFunction])
+(import chromadb.utils.embedding-functions [OpenAIEmbeddingFunction
+                                            SentenceTransformerEmbeddingFunction])
 
 (import chasm [log])
 
@@ -36,24 +37,29 @@ Functions that deal with recall and vector databases.
 ;; which sadly means no concurrency and no writing from child threads
 (setv _vdb (chroma (.join "/" [path "memory"])))
 
+(defn get-embedding-fn []
+  "Return the configured embedding function."
+  (let [provider (config "memory" "embedding_provider")
+        model (or (config "memory" "embedding") "text-embedding-ada-002")]
+    (if provider
+        (let [params (config "providers" provider)]
+          (OpenAIEmbeddingFunction :model-name model
+                                   :api-key (:api-key params "N/A")
+                                   :api-base (:api-base params None)
+                                   :api-type (:api-type params None)
+                                   :organization-id (:organization-id params None))) 
+        (SentenceTransformerEmbeddingFunction :model-name model))))
+
 (defn collection [name]
-  (let [params (config "providers" (config "memory" "embedding_provider"))
-        model (or (config "memory" "embedding") "text-embedding-ada-002")
-        ef (OpenAIEmbeddingFunction :model-name model
-                                    :api-key (:api-key params "N/A")
-                                    :api-base (:api-base params None)
-                                    :api-type (:api-type params None)
-                                    :organization-id (:organization-id params None))]
-    (log.info f"memory/collection {name}")
-    (_vdb.get-or-create-collection :name f"C-{name}"
-                                   :embedding-function ef)))
+  (log.info f"memory/collection {name}")
+  (_vdb.get-or-create-collection :name f"C-{name}"
+                                 :embedding-function (get-embedding-fn)))
 
 (defn [(retry :wait (wait-random-exponential :min 0.5 :max 30)
-              :stop (stop-after-attempt 6))] embed [text #** kwargs]
+              :stop (stop-after-attempt 6))] remote-embed [text #** kwargs]
   "Get an embedding from text via the API."
   (let [params (config "providers" (config "memory" "embedding_provider"))
-        model {"model" (or (config "memory" "embedding")
-                           "text-embedding-ada-002")}
+        model {"model" (or (config "memory" "embedding") "all-mpnet-base-v2")}
         response (Embedding.create :input text
                                    #** (| params kwargs model))]
     (-> response

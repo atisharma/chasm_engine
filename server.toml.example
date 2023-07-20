@@ -11,14 +11,16 @@ max_tokens = 200
 
 loglevel = "warning"
 
-[memory]
+#[memory]
+# There is no good reason not to use the default.
 # If you change embedding provider, the embedding of your previous data will be unreadable
-# This uses pytorch, so will use CUDA if available.
-# For local, it depends, but all-MiniLM-L6-v2 is probably sufficient
-# For OpenAI, use text-embedding-ada-002
-# If using ooba, the embedding model is set by environment variable when starting the API.
-embedding_provider = "OpenAI"
-embedding = "text-embedding-ada-002"
+# Leaving unset will use Sentence Transformers,
+# which uses pytorch, so will use CUDA if available.
+# For local, it depends, but all-MiniLM-L6-v2 is probably sufficient (the default)
+# For OpenAI, you must use text-embedding-ada-002
+# If using ooba, the embedding model is set by environment variable when starting the ooba API.
+#embedding_provider = "OpenAI"
+#embedding = "text-embedding-ada-002"
 
 [providers.OpenAI]
 model = "gpt-3.5-turbo"
@@ -35,4 +37,3 @@ api_key = "sk-your-super-secret-key"
 api_base = "http://localhost:5001"
 api_key = "N/A"
 stop = ["</s>", "Assistant:"]
-# truncation_length can be set in the gui, I think
