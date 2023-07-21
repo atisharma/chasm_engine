@@ -58,12 +58,11 @@ The engine logic is expected to handle many players.
                "inventory" (lfor i (item.inventory player) i.name)
                "place" (place.name player.coords)}
      "world" world-name
-     "coords" player.coords
-     "errors" None})) 
+     "coords" player.coords}))
 
 (defn null [#* args #** kwargs] ; -> response
   "Server no-op."
-  {"errors" "No valid function specified."})
+  {"error" "No valid function specified."})
 
 (defn spawn-player [player-name #* args #** kwargs] ; -> response
   "Start the game. Make sure there's a recent message. Return the whole visible state."
@@ -138,6 +137,12 @@ The engine logic is expected to handle many players.
 ;;; World functions (background tasks)
 ;;; -----------------------------------------------------------------------------
 
+(defn init []
+  "When first starting the engine, create a few places to go."
+  (for [x (range -4 5)
+        y (range -4 5)]
+    (place.extend-map (Coords x y))))
+
 (defn extend-world [] ; -> place or None
   "Make sure the map covers all characters. Add items, new characters if necessary.
 This function does not use vdb memory so should be thread-safe."
@@ -150,26 +155,27 @@ This function does not use vdb memory so should be thread-safe."
 (defn spawn-items [] ; -> item or None
   "Spawn items when needed at existing places."
   (let [coords (random-coords)]
-    (when (< (/ (len state.items) (inc (len state.places)))
-             item-density)
+    (when (< (* item-density (len state.places))
+             (len state.items))
       (item.spawn coords))))
   
 (defn spawn-characters [] ; -> char or None
   "Spawn characters when needed at existing places."
   (let [coords (random-coords)]
-    (when (and (not (character.get-at coords)))
-          (< (/ (len state.characters) (inc (len state.places)))
-             character-density)
-      (character.spawn :name None :coords coords))))
+    (unless (character.get-at coords)
+      (when (< (* character-density (len state.places))
+               (len state.characters))
+        (character.spawn :name None :coords coords)))))
   
 (defn develop [] ; -> char or None
-  "Move the plot and characters along. Writes to vdb memory so is not thread-safe."
+  "Move the plot and characters along.
+Writes to vdb memory so is not thread-safe."
   (when develop-queue
     (log.info f"engine/develop: queue: {develop-queue}")
     (let [player-name (.pop develop-queue)
           player (get-character player-name)
           messages (get-narrative player-name)
-          recent-messages (cut messages -6 None)]
+          recent-messages (cut messages -4 None)]
       (when (and player-name player messages)
         ; new plot point, record in vdb, db and recent events
         (plot.extract-point recent-messages player)

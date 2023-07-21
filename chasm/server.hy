@@ -1,5 +1,5 @@
 "
-The server, implementing RPC for engine functions.
+The server, implementing RPC for engine method.
 Protocol: see wire.hy.
 "
 (require hyrule [defmain unless])
@@ -13,15 +13,15 @@ Protocol: see wire.hy.
 
 (import chasm [log])
 
-(import chasm [engine state place types crypto])
+(import chasm [engine state crypto])
 (import chasm.stdlib [config hash-id inc])
-(import chasm.wire [wrap unwrap])
+(import chasm.wire [wrap unwrap zerror])
 
 
 ; this defines what RPCs are available to the client
-(setv server-functions {"spawn" engine.spawn-player
-                        "parse" engine.parse
-                        "null" engine.null})
+(setv server-methods {"spawn" engine.spawn-player
+                      "parse" engine.parse
+                      "null" engine.null})
 
 ;;; -----------------------------------------------------------------------------
 
@@ -30,16 +30,15 @@ Protocol: see wire.hy.
 (defn start-server-socket []
   (setv socket (.socket context zmq.REP))
   ; see https://stackoverflow.com/questions/26915347/zeromq-reset-req-rep-socket-state
-  ; server will tick every 1s
-  (.setsockopt socket zmq.RCVTIMEO 1000)
+  ; server will tick every 2s
+  (.setsockopt socket zmq.RCVTIMEO 2000)
   (.setsockopt socket zmq.SNDTIMEO 1000)
-  (.setsockopt socket zmq.LINGER 1000)
+  (.setsockopt socket zmq.LINGER 2000)
   (.bind socket (config "listen"))
   socket)
 
 (setv socket (start-server-socket))
 
-         
 ;;; -----------------------------------------------------------------------------
 
 (defn send [msg]
@@ -53,7 +52,19 @@ Protocol: see wire.hy.
   (let [account (state.get-account player-name)]
     (if (and account (:ecdsa-key account None)) ; if there is an account and it has a key
         (:ecdsa-key account) ; use the key, or
-        (:ecdsa-key (state.update-account player-name :ecdsa-key pub-key))))) ; store the provided key
+        (:ecdsa-key (state.update-account player-name
+                                          :last-accessed (time)
+                                          :ecdsa-key pub-key))))) ; store the provided key
+
+(defn verify [msg]
+  "Check the message signature."
+  (let [player-name (:player msg {})
+        payload (:payload msg {})
+        stored-pub-key (auth player-name (:public-key msg ""))
+        signature (:signature msg "")
+        client-time (:sender-time msg Inf)
+        expected-hash (hash-id (+ client-time (json.dumps payload)))]
+    (crypto.verify stored-pub-key signature expected-hash))) ; check the signature
 
 (defn time-ok? [client-time [threshold 120]]
   "Is client's message time within threshold (seconds) of server time?"
@@ -63,39 +74,34 @@ Protocol: see wire.hy.
       (< diff threshold))
     (except [ValueError])))
 
-(defn handle-request [player-name client-time function #* args #** kwargs]
+(defn handle-request [player-name client-time method #* args #** kwargs]
   "Process the RPC in the engine and send the result."
   (let [account (state.get-account player-name)]
     (state.update-account player-name :last-verified client-time)
-    ((.get server-functions function "null") #* args #** kwargs)))
+    ((.get server-methods method "null") #* args #** kwargs)))
 
 (defn serve []
-  "Call a function on the server."
+  "Call a method on the server."
   (print f"Starting server at {(.isoformat (datetime.today))}")
   (log.info f"Starting server at {(.isoformat (datetime.today))}")
   (print "Initial map generation...")
-  (for [x (range -4 5)
-        y (range -4 5)]
-    (place.extend-map (types.Coords x y)))
+  (engine.init)
   (print "Ready for players.")
   (while True
     (try
       (let [msg (unwrap (.recv-string socket)) ; no messages will raise zmq.Again
             player-name (:player msg {})
             payload (:payload msg {})
-            function (:function payload "null") 
+            method (:method payload "null") 
             args (:args payload [])
             kwargs (:kwargs payload [])
-            stored-pub-key (auth player-name (:public-key msg ""))
-            signature (:signature msg "")
-            client-time (:sender-time msg)
-            expected-hash (hash-id (+ client-time (json.dumps payload)))]
+            client-time (:sender-time msg Inf)]
         (log.debug f"server/serve: {msg}")
         (send
           (cond
-            (not (time-ok? client-time)) {"errors" f"Message stale, off by {(int (- (float client-time) (time)))}s, server was probably busy."}
-            (crypto.verify stored-pub-key signature expected-hash) (handle-request player-name client-time function #* args #** kwargs)
-            :else {"errors" "Failed to verify signature."})))
+            (not (time-ok? client-time)) (zerror "STALE" f"Message stale, off by {(int (- (float client-time) (time)))}s, server was probably busy.")
+            (verify msg) (handle-request player-name client-time method #* args #** kwargs)
+            :else (zerror "SIGNATURE" "Failed to verify signature. Maybe your name/passphrase is wrong."))))
       (except [zmq.Again]
         ; only process world if there is no message queue
         (any [(engine.extend-world)
@@ -105,6 +111,7 @@ Protocol: see wire.hy.
       (except [KeyError]
         (log.error f"server/serve: {msg}"))
       (except [KeyboardInterrupt]
+        (print "Interrupted, quitting.")
         (log.info f"server/serve: quit")
         (break)))))
 

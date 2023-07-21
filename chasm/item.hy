@@ -123,7 +123,7 @@ None if the place doesn't exist or if generation fails."
 (defn get-desc [item-name] ; -> str
   "Name, type and appearance of the item."
   (let [i (get-item item-name)
-        owner-str (if i.owner f"owned by {i.owner}" "")]
+        owner-str (if i.owner f"- owned by {i.owner}" "")]
     (if i
         f"{i.name} ({i.type}) - {i.appearance} {i.usage} {owner-str}"
         "")))

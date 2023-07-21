@@ -294,4 +294,4 @@ They will appear at the player's location."
                                  (filter valid-key?)
                                  (list))]
     (log.info f"character/get-new: {filtered-char-list}")
-    (cut filtered-char-list 4)))
+    (cut filtered-char-list 3)))

@@ -1,5 +1,6 @@
 "
 The server protocol implementation.
+The signature verification happens in server.hy, not here, because it involves looking up the public key.
 "
 (import json)
 (import zmq)
@@ -20,7 +21,7 @@ The server protocol implementation.
                "server_version" CHASM_SERVER_VERSION
                "zmq_version" zmq.__version__
                "sender_id" sender-id
-               "sender_time" (time)}))
+               "sender_time" (str (time))}))
 
 (defn unwrap [zmsg]
   "Unwrap message. Return None if it doesn't decode. Otherwise, return function and data."
@@ -28,3 +29,5 @@ The server protocol implementation.
     (except [json.JSONDecodeError]
       (log.error f"wire/unwrap: {zmsg}"))))
     
+(defn zerror [code message]
+  {"error" {"code" code "message" message}})
