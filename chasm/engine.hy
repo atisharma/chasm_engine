@@ -18,7 +18,7 @@ The engine logic is expected to handle many players.
                      get-place len-places
                      random-coords
                      get-character update-character len-characters
-                     get-account update-account
+                     get-account update-account get-accounts
                      get-narrative set-narrative])
 (import chasm.chat [APIConnectionError ChatError respond
                     msgs->topic text->topic msgs->points
@@ -67,7 +67,7 @@ The engine logic is expected to handle many players.
 
 (defn motd [#* args #** kwargs] ; -> response
   "Server MOTD."
-  {"result" (info "***Welcome to CHASM***
+  {"result" (info "# Welcome to CHASM
 
 Please don't do anything illegal or antisocial.
 All messages are transmitted in the clear and are logged.")})
