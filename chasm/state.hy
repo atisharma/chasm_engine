@@ -131,10 +131,7 @@ Thing in themselves and relationships between things.
 
 (defn random-coords []
   "Return a random place (usually to spawn at)."
-  (let [keys (list (.keys places))]
-    (if keys
-      (. (get-place (choice keys)) coords)
-      (Coords 0 0))))
+  (. (choice (list (get-places))) coords))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Items

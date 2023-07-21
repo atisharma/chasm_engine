@@ -6,6 +6,8 @@ The engine logic is expected to handle many players.
 (require hyrule.argmove [-> ->>])
 (require hyrule.control [unless])
 
+(import time [time])
+
 (import chasm [log])
 
 (import chasm.stdlib *)
@@ -70,7 +72,8 @@ The engine logic is expected to handle many players.
   {"result" (info "# Welcome to CHASM
 
 Please don't do anything illegal or antisocial.
-All messages are transmitted in the clear and are logged.")})
+All messages are transmitted in the clear and are logged.
+This is a public space.")})
 
 (defn spawn-player [player-name #* args #** kwargs] ; -> response
   "Start the game. Make sure there's a recent message. Return the whole visible state."
@@ -199,10 +202,10 @@ Writes to vdb memory so is not thread-safe."
 
 (defn set-offline-players []
   "Set characters not accessed in last hour to NPC."
-  (for [a (get-accounts)
-        dt (- (time) (:last-accessed a Inf))]
-    (when (> (abs dt) 3600)
-      (update-character (get-character (:name a)) :npc True))))
+  (for [a (get-accounts)]
+    (let [dt (- (time) (:last-accessed a Inf))]
+      (when (> (abs dt) 3600)
+        (update-character (get-character (:name a)) :npc True)))))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Parser functions -> bool

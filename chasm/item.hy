@@ -107,7 +107,7 @@ None if the place doesn't exist or if generation fails."
 
 (defn get-items [coords]
   "List of (unowned) items at a location"
-  (lfor item (map get-item items)
+  (lfor item (state.get-items)
         :if (at? coords item.coords)
         item)) 
 
