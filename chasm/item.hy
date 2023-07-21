@@ -9,9 +9,9 @@ Functions that deal with items.
 
 (import chasm.stdlib *)
 (import chasm.constants [alphanumeric item-attributes full-inventory-messages inventory-capacity])
-(import chasm [place])
+(import chasm [place state])
 (import chasm.types [Item Coords at?])
-(import chasm.state [world get-item set-item update-item items])
+(import chasm.state [world get-item set-item update-item get-item-names])
 (import chasm.chat [complete-json complete-lines
                     system user assistant])
 
@@ -102,7 +102,7 @@ None if the place doesn't exist or if generation fails."
     (when p
       (let [item (gen-lines p)]
         (when (and item
-                   (not (in item.name (.keys items))))
+                   (not (in item.name (get-item-names))))
           (set-item item))))))
 
 (defn get-items [coords]
@@ -131,19 +131,19 @@ None if the place doesn't exist or if generation fails."
 (defn unclaimed-items []
   "List of all items (globally) without an owner.
 If you just want those at a location, use `get-items`."
-  (lfor item (map get-item items)
+  (lfor item (state.get-items)
         :if (not item.owner)
         item))
 
 (defn inventory [owner]
   "List of items with a specific owner."
   (list (filter (fn [i] (= i.owner owner.name))
-                (map get-item items))))
+                (state.get-items))))
 
 (defn describe-inventory [character]
   "The prosaic version of get-items for an inventory."
   (let [items (inventory character)
-        items-str (.join "\n" (lfor i items f"- {(get-desc i.name)}"))]
+        items-str (.join "\n" (lfor i (state.get-items) f"- {(get-desc i.name)}"))]
     (if items-str
         f"{character.name} has the following items in their inventory:\n{items-str}"
         f"{character.name} has no inventory.")))

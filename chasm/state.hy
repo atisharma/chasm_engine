@@ -92,6 +92,12 @@ Thing in themselves and relationships between things.
   (log.debug f"Updating character {char.name}, {kwargs}.")
   (set-character (Character #** (| (._asdict char) kwargs))))
 
+(defn get-characters []
+  (gfor c characters (get-character c)))
+
+(defn len-characters []
+  (len characters))
+  
 ;;; -----------------------------------------------------------------------------
 ;;; Locations
 ;;; key is string repr of coords, value is Location
@@ -116,6 +122,12 @@ Thing in themselves and relationships between things.
 (it replaces the place at those coords instead)."
   (log.debug f"Updating place {loc.name}, {kwargs}.")
   (set-place (Place #** (| (._asdict loc) kwargs))))
+
+(defn len-places []
+  (len places))
+  
+(defn get-places []
+  (gfor p places (get-place p)))
 
 (defn random-coords []
   "Return a random place (usually to spawn at)."
@@ -146,6 +158,15 @@ Thing in themselves and relationships between things.
   "Update an item's details. You cannot change the name."
   (log.debug f"Updating item {item.name}, {kwargs}.")
   (set-item (Item #** (| (._asdict item) kwargs))))
+
+(defn len-items []
+  (len items))
+
+(defn get-item-names []
+  (.keys items))
+
+(defn get-items []
+  (gfor i items (get-item i)))
 
 ;;; -----------------------------------------------------------------------------
 ;;; narrative
@@ -191,3 +212,6 @@ Thing in themselves and relationships between things.
   (log.debug f"Updating account {player-name}, {kwargs}.")
   (let [account (or (get-account player-name) {})]
     (set-account (| account kwargs) player-name)))
+
+(defn get-accounts []
+  (gfor p accounts (get-account p)))

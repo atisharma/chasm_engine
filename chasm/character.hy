@@ -18,8 +18,7 @@ Functions that deal with characters.
 
 (import chasm.state [world path
                      get-place
-                     get-character set-character update-character character-key
-                     characters])
+                     get-character set-character update-character character-key get-characters])
 (import chasm.chat [respond yes-no
                     complete-json complete-lines
                     token-length truncate
@@ -172,7 +171,7 @@ Make up a brief few words, comma separated, for each attribute. Be imaginative a
 (defn get-at [coords [exclude None]]
   "List of characters at a location, excluding player.
 This loops over all characters."
-  (let [cs (map get-character characters)]
+  (let [cs (get-characters)]
     (if cs
       (lfor character cs
             :if (and (at? coords character.coords)

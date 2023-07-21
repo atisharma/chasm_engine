@@ -9,14 +9,15 @@ The engine logic is expected to handle many players.
 (import chasm [log])
 
 (import chasm.stdlib *)
-(import chasm [place item character plot state])
+(import chasm [place item character plot])
 (import chasm.types [Coords])
 (import chasm.constants [character-density item-density compass-directions])
 (import chasm.state [world world-name
                      characters
-                     get-place
+                     len-items
+                     get-place len-places
                      random-coords
-                     get-character update-character
+                     get-character update-character len-characters
                      get-account update-account
                      get-narrative set-narrative])
 (import chasm.chat [APIConnectionError ChatError respond
@@ -63,6 +64,13 @@ The engine logic is expected to handle many players.
 (defn null [#* args #** kwargs] ; -> response
   "Server no-op."
   {"error" "No valid function specified."})
+
+(defn motd [#* args #** kwargs] ; -> response
+  "Server MOTD."
+  {"result" (info "***Welcome to CHASM***
+
+Please don't do anything illegal or antisocial.
+All messages are transmitted in the clear and are logged.")})
 
 (defn spawn-player [player-name #* args #** kwargs] ; -> response
   "Start the game. Make sure there's a recent message. Return the whole visible state."
@@ -155,16 +163,16 @@ This function does not use vdb memory so should be thread-safe."
 (defn spawn-items [] ; -> item or None
   "Spawn items when needed at existing places."
   (let [coords (random-coords)]
-    (when (< (* item-density (len state.places))
-             (len state.items))
+    (when (< (* item-density (len-places))
+             (len-items))
       (item.spawn coords))))
   
 (defn spawn-characters [] ; -> char or None
   "Spawn characters when needed at existing places."
   (let [coords (random-coords)]
     (unless (character.get-at coords)
-      (when (< (* character-density (len state.places))
-               (len state.characters))
+      (when (< (* character-density (len-places))
+               (len-characters))
         (character.spawn :name None :coords coords)))))
   
 (defn develop [] ; -> char or None
@@ -188,7 +196,14 @@ Writes to vdb memory so is not thread-safe."
             (if (and c c.npc)
               (character.move c player.coords) ; make sure they're here if the narrator says so
               (character.spawn :name c-name :coords player.coords)))))))) ; new characters may randomly spawn if mentioned
-  
+
+(defn set-offline-players []
+  "Set characters not accessed in last hour to NPC."
+  (for [a (get-accounts)
+        dt (- (time) (:last-accessed a Inf))]
+    (when (> (abs dt) 3600)
+      (update-character (get-character (:name a)) :npc True))))
+
 ;;; -----------------------------------------------------------------------------
 ;;; Parser functions -> bool
 ;;; -----------------------------------------------------------------------------

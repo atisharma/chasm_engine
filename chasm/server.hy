@@ -13,14 +13,16 @@ Protocol: see wire.hy.
 
 (import chasm [log])
 
-(import chasm [engine state crypto])
+(import chasm [engine crypto])
 (import chasm.stdlib [config hash-id inc])
+(import chasm.state [get-account set-account update-account])
 (import chasm.wire [wrap unwrap zerror])
 
 
 ; this defines what RPCs are available to the client
 (setv server-methods {"spawn" engine.spawn-player
                       "parse" engine.parse
+                      "motd" engine.motd
                       "null" engine.null})
 
 ;;; -----------------------------------------------------------------------------
@@ -49,12 +51,13 @@ Protocol: see wire.hy.
   
 (defn auth [player-name pub-key]
   "Store the public key if it's not already known. Return the stored public key. First-come first-served."
-  (let [account (state.get-account player-name)]
+  (let [account (get-account player-name)]
     (if (and account (:ecdsa-key account None)) ; if there is an account and it has a key
         (:ecdsa-key account) ; use the key, or
-        (:ecdsa-key (state.update-account player-name
-                                          :last-accessed (time)
-                                          :ecdsa-key pub-key))))) ; store the provided key
+        (:ecdsa-key (update-account player-name
+                                    :name player-name
+                                    :last-accessed (time)
+                                    :ecdsa-key pub-key))))) ; store the provided key
 
 (defn verify [msg]
   "Check the message signature."
@@ -76,8 +79,8 @@ Protocol: see wire.hy.
 
 (defn handle-request [player-name client-time method #* args #** kwargs]
   "Process the RPC in the engine and send the result."
-  (let [account (state.get-account player-name)]
-    (state.update-account player-name :last-verified client-time)
+  (let [account (get-account player-name)]
+    (update-account player-name :last-verified client-time)
     ((.get server-methods method "null") #* args #** kwargs)))
 
 (defn serve []
@@ -104,10 +107,11 @@ Protocol: see wire.hy.
             :else (zerror "SIGNATURE" "Failed to verify signature. Maybe your name/passphrase is wrong."))))
       (except [zmq.Again]
         ; only process world if there is no message queue
-        (any [(engine.extend-world)
-              (engine.develop)
-              (engine.spawn-characters)
-              (engine.spawn-items)]))
+        (or (engine.extend-world)
+            (engine.develop)
+            (engine.spawn-characters)
+            (engine.spawn-items)
+            (engine.set-offline-players)))
       (except [KeyError]
         (log.error f"server/serve: {msg}"))
       (except [KeyboardInterrupt]
