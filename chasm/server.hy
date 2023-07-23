@@ -81,10 +81,12 @@ Protocol: see wire.hy.
   "Process the RPC in the engine and send the result."
   (let [account (get-account player-name)]
     (update-account player-name :last-verified client-time)
+    ; TODO: this could be changed to a message to worker threads
     ((.get server-methods method "null") #* args #** kwargs)))
 
 (defn serve []
   "Call a method on the server."
+  ; TODO: change to a broker model
   (print f"Starting server at {(.isoformat (datetime.today))}")
   (log.info f"Starting server at {(.isoformat (datetime.today))}")
   (print "Initial map generation...")

@@ -46,6 +46,7 @@ The engine logic is expected to handle many players.
 
 (defn payload [narrative result player-name]
   "What the client expects."
+  ; TODO: maybe move accounts logic to server
   (let [player (get-character player-name)
         account (get-account player-name)]
     (update-account player-name :turns (inc (:turns account 0)))
@@ -202,6 +203,7 @@ Writes to vdb memory so is not thread-safe."
 
 (defn set-offline-players []
   "Set characters not accessed in last hour to NPC."
+  ; TODO: maybe this is server logic, not engine?
   (for [a (get-accounts)]
     (let [dt (- (time) (:last-accessed a Inf))]
       (when (> (abs dt) 3600)
@@ -360,7 +362,7 @@ Now give the hint."
         present-str (if (> (len character-names-here) 1)
                         (+ (.join ", " character-names-here) f" are here at the {here.name}.")
                         f"{player.name} is at the {here.name}.")
-        ; TODO: improve memory queues
+        ; TODO: improve memory cues
         plot-points (.join "\n" (plot.recall-points (plot.news)))
         memories (.join "\n\n" (lfor c (character.get-at player.coords)
                                      (let [mem (bullet (character.recall c (.join "\n" [#* character-descs-here

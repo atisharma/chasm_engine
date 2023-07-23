@@ -68,6 +68,11 @@ Functions that deal with recall and vector databases.
         (first)
         (:embedding))))
 
+(defn peek [name]
+  (.peek (collection name)))
+
+;;; -----------------------------------------------------------------------------
+
 (defn add [name metadata text]
   "Add text, metadata and vector embedding to the corresponding index."
   (let [vdbc (collection name)]
@@ -83,9 +88,6 @@ Functions that deal with recall and vector databases.
                 :n-results n
                 :where where)))
       
-(defn peek [name]
-  (.peek (collection name)))
-
 (defn recent [name [n 6] [where None]]
   (let [c (collection name)
         ct (.count c)]
