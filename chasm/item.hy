@@ -20,7 +20,7 @@ Functions that deal with items.
 
 ;; TODO: modify / damage / destroy items
 
-(defn gen-json [place]
+(defn/a gen-json [place]
   "Make up some fantastical item."
   (let [seed (choice alphanumeric)
         template f"{{
@@ -35,10 +35,10 @@ Complete the template for a single portable object you would expect to find in t
 Give one attribute per line, with no commentary or other notes, just the updated template with the details.
 Make up a name, type, appearance, usage.
 Write a very short sentence (max 10 words) for appearance and another for usage. Be very specific."
-        kvs (complete-json
-              :template template
-              :context setting
-              :instruction instruction)]
+        kvs (await (complete-json
+                     :template template
+                     :context setting
+                     :instruction instruction))]
     (when kvs
       ; sometimes the model likes to make up an "item" field instead of "name".
       (let [details (dfor [k v] (.items kvs)
@@ -57,7 +57,7 @@ Write a very short sentence (max 10 words) for appearance and another for usage.
                 :coords place.coords
                 :owner None))))))
 
-(defn gen-lines [place]
+(defn/a gen-lines [place]
   "Make up some fantastical item."
   (let [seed (choice alphanumeric)
         template f"name: item name (has '{seed}' in the first few letters)
@@ -70,11 +70,11 @@ Complete the template for a single portable object you would expect to find in t
 Give one attribute per line, with no commentary or other notes, just the updated template with the details.
 Make up a name, type, appearance, usage.
 Write a very short sentence (max 10 words) for appearance and another for usage. Be very specific."
-        details (complete-lines
-                  :context setting
-                  :instruction instruction
-                  :template template
-                  :attributes item-attributes)]
+        details (await (complete-lines
+                         :context setting
+                         :instruction instruction
+                         :template template
+                         :attributes item-attributes))]
     (try
       (let [name (:name details (:item details None))]
         (log.info f"Creating item '{name}'")
@@ -95,12 +95,12 @@ Write a very short sentence (max 10 words) for appearance and another for usage.
         (log.error seed)
         (log.error kvs)))))
 
-(defn spawn [coords]
+(defn/a spawn [coords]
   "Invent a new item from a place name, store it and return it.
 None if the place doesn't exist or if generation fails."
   (let [p (place.get-place coords)]
     (when p
-      (let [item (gen-lines p)]
+      (let [item (await (gen-lines p))]
         (when (and item
                    (not (in item.name (get-item-names))))
           (set-item item))))))

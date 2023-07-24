@@ -1,36 +1,37 @@
 "
 The server, implementing RPC for engine method.
 Protocol: see wire.hy.
+See documentation:
+- https://api.zeromq.org
+- https://zeromq.org/get-started
+- https://zguide.zeromq.org
 "
 (require hyrule [defmain unless])
 
 (import sys)
+(import asyncio)
 (import json)
 (import time [time])
 (import datetime [datetime])
 
 (import zmq)
+(import zmq.asyncio)
 
 (import chasm [log])
 
-(import chasm [engine crypto])
+(import chasm [crypto])
+(import chasm [engine])
 (import chasm.stdlib [config hash-id inc])
 (import chasm.state [get-account set-account update-account])
 (import chasm.wire [wrap unwrap zerror])
 
 
-; this defines what RPCs are available to the client
-(setv server-methods {"spawn" engine.spawn-player
-                      "parse" engine.parse
-                      "motd" engine.motd
-                      "null" engine.null})
-
 ;;; -----------------------------------------------------------------------------
 
-(setv context (zmq.Context))
+(setv context (zmq.asyncio.Context))
 
 (defn start-server-socket []
-  (setv socket (.socket context zmq.REP))
+  (setv socket (.socket context zmq.ROUTER))
   ; see https://stackoverflow.com/questions/26915347/zeromq-reset-req-rep-socket-state
   ; server will tick every 2s
   (.setsockopt socket zmq.RCVTIMEO 2000)
@@ -43,9 +44,9 @@ Protocol: see wire.hy.
 
 ;;; -----------------------------------------------------------------------------
 
-(defn send [msg]
+(defn/a send [zmsg]
   (try
-    (.send-string socket (wrap msg))
+    (await (.send-multipart socket zmsg))
     (except [zmq.EAGAIN]
       (log.error "server/send: client send failed."))))
   
@@ -77,49 +78,52 @@ Protocol: see wire.hy.
       (< diff threshold))
     (except [ValueError])))
 
-(defn handle-request [player-name client-time method #* args #** kwargs]
+(defn/a handoff-request [player-name client-time method #* args #** kwargs]
   "Process the RPC in the engine and send the result."
   (let [account (get-account player-name)]
     (update-account player-name :last-verified client-time)
-    ; TODO: this could be changed to a message to worker threads
-    ((.get server-methods method "null") #* args #** kwargs)))
+    (match method
+           "spawn" (await (engine.spawn-player #* args #** kwargs))
+           "parse" (await (engine.parse #* args #** kwargs))
+           "motd" (engine.motd #* args #** kwargs)
+           "null" (engine.null #* args #** kwargs))))
 
-(defn serve []
+(defn/a handle-frames [frames]
+  "Unwrap, verify an incoming message."
+  (let [[q ident z zmsg] frames
+        msg (unwrap zmsg) ; no messages will raise zmq.Again
+        player-name (:player msg {})
+        payload (:payload msg {})
+        method (:method payload "null") 
+        args (:args payload [])
+        kwargs (:kwargs payload [])
+        client-time (:sender-time msg Inf)
+        response (cond (not (time-ok? client-time)) (zerror "STALE" f"Message stale, off by {(int (- (float client-time) (time)))}s, server was probably busy.")
+                       (verify msg) (await (handoff-request player-name client-time method #* args #** kwargs))
+                       :else (zerror "SIGNATURE" "Failed to verify signature. Maybe your name/passphrase is wrong."))]
+    (log.debug f"server/serve: {msg}")
+    (await (send [q ident z (wrap response)]))))
+
+(defn/a serve []
   "Call a method on the server."
   ; TODO: change to a broker model
   (print f"Starting server at {(.isoformat (datetime.today))}")
   (log.info f"Starting server at {(.isoformat (datetime.today))}")
   (print "Initial map generation...")
-  (engine.init)
+  (await (engine.init))
   (print "Ready for players.")
   (while True
     (try
-      (let [msg (unwrap (.recv-string socket)) ; no messages will raise zmq.Again
-            player-name (:player msg {})
-            payload (:payload msg {})
-            method (:method payload "null") 
-            args (:args payload [])
-            kwargs (:kwargs payload [])
-            client-time (:sender-time msg Inf)]
-        (log.debug f"server/serve: {msg}")
-        (send
-          (cond
-            (not (time-ok? client-time)) (zerror "STALE" f"Message stale, off by {(int (- (float client-time) (time)))}s, server was probably busy.")
-            (verify msg) (handle-request player-name client-time method #* args #** kwargs)
-            :else (zerror "SIGNATURE" "Failed to verify signature. Maybe your name/passphrase is wrong."))))
+      ; FIXME: for/a over queue
+      (await (handle-frames (await (.recv-multipart socket))))
       (except [zmq.Again]
         ; only process world if there is no message queue
-        (or (engine.extend-world)
-            (engine.develop)
-            (engine.spawn-characters)
-            (engine.spawn-items)
-            (engine.set-offline-players)))
-      (except [KeyError]
-        (log.error f"server/serve: {msg}"))
+        #_(or (await (engine.extend-world))
+              (await (engine.develop))
+              (await (engine.spawn-characters))
+              (await (engine.spawn-items))
+              (engine.set-offline-players)))
       (except [KeyboardInterrupt]
         (print "Interrupted, quitting.")
         (log.info f"server/serve: quit")
         (break)))))
-
-(defmain []
-  (sys.exit (or (serve) 0)))

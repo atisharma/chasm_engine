@@ -31,7 +31,7 @@ Functions that deal with characters.
 (defn valid-key? [s]
   (re.match "^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$" s))
 
-(defn spawn [[name None] [coords (Coords 0 0)] [loaded {}] [retries 0]] ; -> Character
+(defn/a spawn [[name None] [coords (Coords 0 0)] [loaded {}] [retries 0]] ; -> Character
   "Spawn a character from card, db, or just generated."
   (try
     (let [; only allow to override some
@@ -46,7 +46,7 @@ Functions that deal with characters.
                      "occupation" (:occupation loaded None)
                      "motivation" (:motivation loaded None)}]
       (let [char (or (get-character name)
-                     (gen-lines coords name)
+                     (await (gen-lines coords name))
                      default-character)
             filtered (dfor [k v] (.items sanitised) :if v k v)
             character (Character #** (| (._asdict default-character)
@@ -59,12 +59,12 @@ Functions that deal with characters.
             ; keep trying until it works
             (do
               (log.error f"character/spawn: retrying for {name} at {coords}.")
-              (spawn name coords loaded (inc retries))))))
+              (await (spawn name coords loaded (inc retries)))))))
     (except [e [Exception]]
       (log.error f"character/spawn: failed for {name} at {coords}.")
       (log.error e))))
 
-(defn gen-lines [coords [name None]] ; -> Character or None
+(defn/a gen-lines [coords [name None]] ; -> Character or None
   "Make up some plausible character based on a name."
   (let [seed (choice alphabet)
         name-str (or name f"the character (invent one whose first name begins with '{seed}')")
@@ -88,18 +88,18 @@ objective: 'their current objective'"
 Complete the character card for {name-str} whom is found in the story at {place.name}.
 Motivation must include a narrative archetype like Hero, Mentor, Villain, Informant, Guardian.
 Make up a brief few words, with comma separated values, for each attribute. Be imaginative and very specific."
-        details (complete-lines
-                  :context setting
-                  :template card
-                  :instruction instruction
-                  :attributes initial-character-attributes)]
+        details (await (complete-lines
+                         :context setting
+                         :template card
+                         :instruction instruction
+                         :attributes initial-character-attributes))]
     (log.info f"character/gen-lines '{(:name details None)}'")
     (Character #** (| (._asdict default-character)
                       details
                       name-dict
                       {"coords" coords}))))
 
-(defn gen-json [coords [name None]] ; -> Character or None
+(defn/a gen-json [coords [name None]] ; -> Character or None
   "Make up some plausible character based on a name."
   (let [seed (choice alphabet)
         name-str (or name f"the character (whose first name begins with {seed})")
@@ -125,10 +125,10 @@ Make up a brief few words, with comma separated values, for each attribute. Be i
 Complete the character card for {name-str} whom is found in the story at {place.name}.
 Motivation must include a narrative archetype like Hero, Mentor, Villain, Informant, Guardian.
 Make up a brief few words, comma separated, for each attribute. Be imaginative and very specific."
-        details (complete-json
-                  :template card
-                  :context setting
-                  :instruction instruction)]
+        details (await (complete-json
+                         :template card
+                         :context setting
+                         :instruction instruction))]
     (when details
       (log.info f"character/gen '{(:name details None)}'")
       (Character #** (| (._asdict default-character)
@@ -184,21 +184,21 @@ This loops over all characters."
   (update-character character :coords coords)
   coords)
 
-(defn increment-score? [character messages]
+(defn/a increment-score? [character messages]
   "Has the character done something worthwhile?"
   (let [setting f"Story setting: {world}"
         objective f"In the narrative, {character.name} has the following objective: {character.objective}"
         query f"Based only on events happening in the last two messages, has {character.name} done anything notable enough to increase their score?"
         msgs (truncate messages :spare-length 200)
-        dialogue (msgs->dlg "narrator" character.name msgs)
-        verdict (yes-no [(system query)
-                         (user setting)]
-                        :context (.join "\n\n" [objective (format-msgs dialogue)])
-                        :query query)]
+        dialogue (await (msgs->dlg "narrator" character.name msgs))
+        verdict (await (yes-no [(system query)
+                                (user setting)]
+                               :context (.join "\n\n" [objective (format-msgs dialogue)])
+                               :query query))]
     (log.info f"character/increment-score? {verdict}")
     verdict))
 
-(defn develop-lines [character dialogue]
+(defn/a develop-lines [character dialogue]
   "Develop a character's attributes based on the dialogue."
   (let [nearby-places (.join ", " (place.nearby character.coords :name True))
         card f"name: {character.name}
@@ -222,11 +222,11 @@ Use a brief few words, comma separated, for each attribute. Be concise and very 
 
 The dialogue is as follows:
 {dialogue-str}"
-        details (complete-lines
-                  :context context
-                  :template card
-                  :instruction instruction
-                  :attributes (append "new_memory" mutable-character-attributes))]
+        details (await (complete-lines
+                         :context context
+                         :template card
+                         :instruction instruction
+                         :attributes (append "new_memory" mutable-character-attributes)))]
     (try
       (let [new-score (if (similar (or character.objective "")
                                    (:objective details "")
@@ -270,19 +270,19 @@ The dialogue is as follows:
                               :n n
                               :where (when class {"classification" class})))))
 
-(defn get-new [messages player]
+(defn/a get-new [messages player]
   "Are any new or existing characters mentioned in the messages?
 They will appear at the player's location."
   (let [setting (system f"Story setting: {world}")
         prelude (system f"Give a list of names of individuals (if any), one per line, that are obviously referred to in the text as being physically present at the current location ({(place.name player.coords)}) and time. Do not invent new characters. Exclude places and objects, only people's proper names count, no pronouns. Give the names as they appear in the text. Setting and narrative appear below.")
         instruction (user "Now, give the list of characters.")
-        char-list (respond (->> (cut messages -6 None)
-                                (prepend setting)
-                                (prepend prelude)
-                                (append instruction)
-                                (truncate :spare-length 200)
-                                (append (assistant "The list of character names is:")))
-                           :max-tokens 50)
+        char-list (await (respond (->> (cut messages -6 None)
+                                       (prepend setting)
+                                       (prepend prelude)
+                                       (append instruction)
+                                       (truncate :spare-length 200)
+                                       (append (assistant "The list of character names is:")))
+                                  :max-tokens 50))
         filtered-char-list (->> char-list
                                  (debullet)
                                  (.split :sep "\n")

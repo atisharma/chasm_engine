@@ -10,3 +10,4 @@ sentence-transformers
 tenacity
 pyzmq
 ecdsa
+async-lru

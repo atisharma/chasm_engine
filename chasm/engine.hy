@@ -44,7 +44,7 @@ The engine logic is expected to handle many players.
 ;;; API functions
 ;;; -----------------------------------------------------------------------------
 
-(defn payload [narrative result player-name]
+(defn/a payload [narrative result player-name]
   "What the client expects."
   ; TODO: maybe move accounts logic to server
   (let [player (get-character player-name)
@@ -58,7 +58,7 @@ The engine logic is expected to handle many players.
                "turns" (:turns account None)
                "health" player.health
                "coords" player.coords
-               "compass" (print-map player.coords :compass True)
+               "compass" (await (print-map player.coords :compass True))
                "inventory" (lfor i (item.inventory player) i.name)
                "place" (place.name player.coords)}
      "world" world-name
@@ -66,28 +66,27 @@ The engine logic is expected to handle many players.
 
 (defn null [#* args #** kwargs] ; -> response
   "Server no-op."
-  {"error" "No valid function specified."})
+  {"error" "No valid engine function specified."})
 
 (defn motd [#* args #** kwargs] ; -> response
   "Server MOTD."
-  {"result" (info "# Welcome to CHASM
+  {"result"
+   (info
+     (slurp (or (+ (os.path.dirname __file__) "/motd.md")
+                "chasm/motd.md")))})
 
-Please don't do anything illegal or antisocial.
-All messages are transmitted in the clear and are logged.
-This is a public space.")})
-
-(defn spawn-player [player-name #* args #** kwargs] ; -> response
+(defn/a spawn-player [player-name #* args #** kwargs] ; -> response
   "Start the game. Make sure there's a recent message. Return the whole visible state."
   (try
-    (place.extend-map (Coords 0 0))
+    (await (place.extend-map (Coords 0 0)))
     (let [coords (random-coords)
-          player (character.spawn :name player-name :loaded kwargs :coords coords) 
+          player (await (character.spawn :name player-name :loaded kwargs :coords coords)) 
           narrative (or (get-narrative player-name)
                         (set-narrative [(assistant (describe-place player))] player-name))]
 
-      (place.extend-map coords)
+      (await (place.extend-map coords))
       (update-character player :npc False)
-      (payload narrative (last narrative) player.name))
+      (await (payload narrative (last narrative) player.name)))
     (except [err [Exception]]
       (log.error "engine/spawn-player:" :exception err)
       (error f"Engine error: {(repr err)}"))))
@@ -97,7 +96,7 @@ This is a public space.")})
   (slurp (or (+ (os.path.dirname __file__) "/help.md")
              "chasm/help.md")))
 
-(defn parse [player-name line #* args #** kwargs] ; -> response
+(defn/a parse [player-name line #* args #** kwargs] ; -> response
   "Process the player's input and return the whole visible state."
   (log.info f"engine/parse: {player-name}: {line}")
   (let [_player (or (get-character player-name) (character.spawn :name player-name :loaded kwargs))
@@ -115,18 +114,18 @@ This is a public space.")})
                    (give? line) (info (item.fuzzy-give player #* (give? line)))
                    (.startswith line "/characters") (info (or (character.describe-at player.coords :exclude player.name) "Nobody interesting here but you.")) ; for debugging
                    (.startswith line "/help") (info (help-str))
-                   (.startswith line "/hint") (info (hint messages player line))
+                   (.startswith line "/hint") (info (await (hint messages player line)))
                    (.startswith line "/hist") (msg "history" "The story so far...")
                    (.startswith line "/items") (info (item.describe-at player.coords)) ; for debugging
-                   (.startswith line "/map") (info (print-map player.coords))
+                   (.startswith line "/map") (info (await (print-map player.coords)))
                    (.startswith line "/spy") (info (spy (last (.partition line " ")))) ; for debugging
-                   (.startswith line "/what-if") (info (narrate (append (user (last (.partition line))) messages) player)) ; for debugging
+                   (.startswith line "/what-if") (info (await (narrate (append (user (last (.partition line))) messages) player))) ; for debugging
                    ;; responses as assistant
-                   (look? line) (assistant (place.describe player :messages messages :length "short"))
+                   (look? line) (assistant (await (place.describe player :messages messages :length "short")))
                    (command? line) (error "I didn't understand that command.")
-                   (go? line) (assistant (move (append user-msg messages) player))
+                   (go? line) (assistant (await (move (append user-msg messages) player)))
                    ;(talk? line) (assistant (converse (append user-msg messages) player)) ; this one needs thinking about
-                   line (assistant (narrate (append user-msg messages) player)))
+                   line (assistant (await (narrate (append user-msg messages) player))))
                  (except [err [APIConnectionError]]
                    (log.error "engine/parse: model API connection error.")
                    (error "Server error: call to language model failed."))
@@ -140,46 +139,46 @@ This is a public space.")})
     (when (and result (= (:role result) "assistant"))
       (.extend narrative [user-msg result])
       (set-narrative (cut narrative -1000 None) player-name) ; keep just last 1000 messages
-      (move-characters narrative))
+      (await (move-characters narrative)))
     (log.debug f"engine/parse: -> {result}")
     ; always return the most recent state
-    (payload narrative result player-name)))
+    (await (payload narrative result player-name))))
       
 ;;; -----------------------------------------------------------------------------
 ;;; World functions (background tasks)
 ;;; -----------------------------------------------------------------------------
 
-(defn init []
+(defn/a init []
   "When first starting the engine, create a few places to go."
   (for [x (range -4 5)
         y (range -4 5)]
-    (place.extend-map (Coords x y))))
+    (await (place.extend-map (Coords x y)))))
 
-(defn extend-world [] ; -> place or None
+(defn/a extend-world [] ; -> place or None
   "Make sure the map covers all characters. Add items, new characters if necessary.
 This function does not use vdb memory so should be thread-safe."
   (for [n (.keys characters)]
     (let [c (get-character n)
           coords c.coords]
       (unless c.npc
-        (place.extend-map coords)))))
+        (await (place.extend-map coords))))))
 
-(defn spawn-items [] ; -> item or None
+(defn/a spawn-items [] ; -> item or None
   "Spawn items when needed at existing places."
   (let [coords (random-coords)]
     (when (< (* item-density (len-places))
              (len-items))
-      (item.spawn coords))))
+      (await (item.spawn coords)))))
   
-(defn spawn-characters [] ; -> char or None
+(defn/a spawn-characters [] ; -> char or None
   "Spawn characters when needed at existing places."
   (let [coords (random-coords)]
     (unless (character.get-at coords)
       (when (< (* character-density (len-places))
                (len-characters))
-        (character.spawn :name None :coords coords)))))
+        (await (character.spawn :name None :coords coords))))))
   
-(defn develop [] ; -> char or None
+(defn/a develop [] ; -> char or None
   "Move the plot and characters along.
 Writes to vdb memory so is not thread-safe."
   (when develop-queue
@@ -190,16 +189,16 @@ Writes to vdb memory so is not thread-safe."
           recent-messages (cut messages -4 None)]
       (when (and player-name player messages)
         ; new plot point, record in vdb, db and recent events
-        (plot.extract-point recent-messages player)
+        (await (plot.extract-point recent-messages player))
         ; all players get developed
         (for [c (character.get-at player.coords)]
-          (character.develop-lines c recent-messages))
+          (await (character.develop-lines c recent-messages)))
         ; Summon npcs to the player's location
         (for [c-name (character.get-new recent-messages player)]
           (let [c (get-character c-name)]
             (if (and c c.npc)
               (character.move c player.coords) ; make sure they're here if the narrator says so
-              (character.spawn :name c-name :coords player.coords)))))))) ; new characters may randomly spawn if mentioned
+              (await (character.spawn :name c-name :coords player.coords))))))))) ; new characters may randomly spawn if mentioned
 
 (defn set-offline-players []
   "Set characters not accessed in last hour to NPC."
@@ -282,33 +281,33 @@ Writes to vdb memory so is not thread-safe."
 ;;; functions -> msg or None (with output)
 ;;; -----------------------------------------------------------------------------
 
-(defn describe-place [char]
+(defn/a describe-place [char]
   "Short context-free description of a place and its occupants."
   ; don't include context so we force the narrative location to change.
-  (let [description (place.describe char)
+  (let [description (await (place.describe char))
         chars-here (character.list-at-str char.coords :exclude char.name)]
     (.join "\n\n" [description chars-here])))
 
-(defn move [messages player] ; -> msg or None
+(defn/a move [messages player] ; -> msg or None
   "Move the player. Describe. `dirn` may be a compass direction like 'n' or a place name like 'Small House'"
   (let [user-msg (last messages)
         line (:content user-msg)
         dirn (go? line)
-        new-coords (place.go dirn player.coords)
+        new-coords (await (place.go dirn player.coords))
         here (get-place player.coords)]
     (log.info f"engine/move: {player.name} to {dirn} {player.coords} -> {new-coords}")
     (cond
       new-coords (do (character.move player new-coords)
                      ; and make sure to pass character with updated position to place.describe
-                     (describe-place (get-character player.name)))
-      (fuzzy-in dirn here.rooms) (narrate messages player) ; going to a room
+                     (await (describe-place (get-character player.name))))
+      (fuzzy-in dirn here.rooms) (await (narrate messages player)) ; going to a room
       :else (choice [f"You can't go to '{dirn}'."
                      f"Is '{dirn}' where you meant?"
                      f"I'm not sure '{dirn}' is a place that you can go to."
                      f"'{dirn}' doesn't seem to be a location you can go."
                      f"'{dirn}' isn't accessible from here. Try somewhere else."]))))
 
-(defn hint [messages player line]
+(defn/a hint [messages player line]
   (let [[cmd _ obj] (.partition line " ")
         items-here (item.describe-at player.coords)
         characters-here (character.describe-at player.coords :long True)
@@ -325,7 +324,7 @@ Story setting: {world}"
 {items-here}
 
 These places are accessible:
-{(place.nearby-str player.coords)}
+{(await (place.nearby-str player.coords))}
 {(place.rooms player.coords)}
 
 {characters-here}
@@ -337,15 +336,16 @@ Now give the hint."
                        (if line
                            f"The hint must relate to the following question: {line}"
                            "The hint should be a riddle, maybe cryptic."))]
-    (->> [(system story-guidance)
-          #* messages
-          (system instruction)
-          (user local-guidance)]
-         (truncate)
-         (respond)
-         (trim-prose))))
+    (-> [(system story-guidance)
+         #* messages
+         (system instruction)
+         (user local-guidance)]
+        (truncate)
+        (respond)
+        (await)
+        (trim-prose))))
 
-(defn narrate [messages player]
+(defn/a narrate [messages player]
   "Narrate the story, in the fictional universe."
   (let [items-here-str (item.describe-at player.coords)
         here (get-place player.coords)
@@ -390,7 +390,7 @@ An extract of the narrative is below."
         local-guidance f"Information useful to continue the narrative:
 {present-str}
 These places are accessible:
-{(place.nearby-str player.coords)}
+{(await (place.nearby-str player.coords))}
 {(place.rooms player.coords)}
 
 {items-here-str}
@@ -408,11 +408,12 @@ Continue the narrative."]
     (log.info f"engine/narrate: story: {(token-length story-guidance)}; local {(token-length local-guidance)}")
     (log.info f"engine/narrate: inventory-str\n{inventory-str}")
     (.add develop-queue player.name) ; add the player to the development queue
-    (-> [(system story-guidance)
-         (system local-guidance)
-         #* messages]
-        (truncate)
+    (-> (-> [(system story-guidance)
+             (system local-guidance)
+             #* messages]
+            (truncate))
         (respond)
+        (await)
         (trim-prose)
         (or ""))))
 
@@ -426,20 +427,21 @@ Continue the narrative."]
 ; FIXME: This is not written for the new client-server paradigm
 
 ; FIXME: makes no sense in a server context
-(defn converse [messages player]
-  "Have a chat with a character."
-  (let [user-msg (last messages)
-        _line (:content user-msg)
-        line (talk? _line)
-        recent (text->topic (format-msgs (msgs->dlg player.name "narrator" (cut messages -8 None))))
-        here (get-place player.coords)
-        items-here-str (item.describe-at player.coords)
-        character-names-here (lfor c (character.get-at player.coords :exclude player.name) c.name)
-        characters-here (character.describe-at player.coords :long True)
-        talk-to-guess (first (.split line))
-        talk-to (best-of character-names-here talk-to-guess)]
-    (if (and talk-to (similar talk-to talk-to-guess))
-        (let [story-guidance f"You are playing the character of {talk-to} in an improvised, continuous dialogue between {player.name} and {talk-to}. The user plays the part of {player.name}.
+
+#_(defn/a converse [messages player]
+    "Have a chat with a character."
+    (let [user-msg (last messages)
+          _line (:content user-msg)
+          line (talk? _line)
+          recent (text->topic (format-msgs (msgs->dlg player.name "narrator" (cut messages -8 None))))
+          here (get-place player.coords)
+          items-here-str (item.describe-at player.coords)
+          character-names-here (lfor c (character.get-at player.coords :exclude player.name) c.name)
+          characters-here (character.describe-at player.coords :long True)
+          talk-to-guess (first (.split line))
+          talk-to (best-of character-names-here talk-to-guess)]
+      (if (and talk-to (similar talk-to talk-to-guess))
+          (let [story-guidance f"You are playing the character of {talk-to} in an improvised, continuous dialogue between {player.name} and {talk-to}. The user plays the part of {player.name}.
 {player.name} may speak about their thoughts, feelings, intentions etc. If necessary, indicate acting directions or actions like this: *smiles* or *shakes his head*. You both must never break the 'fourth wall'.
 
 The setting for the dialogue is:
@@ -451,43 +453,43 @@ The setting for the dialogue is:
 {player.name} and {talk-to} are talking here at the {here.name}. Do not go anywhere else.
 
 Do not say you're an AI assistant or similar. To end the conversation, just say the codewords 'END CONVERSATION'. {player.name} will speak, then give your reply playing the part of {talk-to}, keeping in-character."
-              dialogue [(user f"*Greets {talk-to}*")
-                        (assistant f"*Waves back at {player.name}*")]]
-          (talk-status dialogue (get-character talk-to))
-          (setv chat-line (.strip (rlinput f"{player.name}: " :prefill (.join " " (rest (.split line))))))
-          (log.info f"{player.name} is talking to {talk-to}.")
-          ; context-stuff previous chats
-          (while (and (= "assistant" (:role (last dialogue)))
-                      chat-line
-                      (not (.startswith chat-line "/q")))
-            (.append dialogue (user chat-line))
-            (let [response (respond [(system story-guidance)
-                                     #* dialogue
-                                     (user line)])
-                  reply-msg (-> response
-                                (trim-prose)
-                                (assistant))]
-              (unless (or (similar "END CONVERSATION" (:content reply-msg))
-                          (similar "." (:content reply-msg)))
-                (.append dialogue reply-msg)
-                (print-message (msg->dlg player.name talk-to reply-msg) :padding #(0 3 0 0))
-                (talk-status dialogue (get-character talk-to))
-                (setv chat-line (.strip (rlinput f"{player.name}: "))))))
-          (when (> (len dialogue) 5)
-            (let [dlg (cut dialogue 2 None)]
-              (character.develop-lines (get-character talk-to) (msgs->dlg player.name talk-to dlg))
-              (character.develop-lines player (msgs->dlg player.name talk-to dlg))
-              (assistant (text->topic (format-msgs (msgs->dlg player.name talk-to dlg)))))))
-        (assistant (if talk-to
-                       f"Why don't you talk to {talk-to} instead?"
-                       f"There's nobody available with the name {talk-to-guess}.")))))
+                dialogue [(user f"*Greets {talk-to}*")
+                          (assistant f"*Waves back at {player.name}*")]]
+            (talk-status dialogue (get-character talk-to))
+            (setv chat-line (.strip (rlinput f"{player.name}: " :prefill (.join " " (rest (.split line))))))
+            (log.info f"{player.name} is talking to {talk-to}.")
+            ; context-stuff previous chats
+            (while (and (= "assistant" (:role (last dialogue)))
+                        chat-line
+                        (not (.startswith chat-line "/q")))
+              (.append dialogue (user chat-line))
+              (let [response (await (respond [(system story-guidance)
+                                              #* dialogue
+                                              (user line)]))
+                    reply-msg (-> response
+                                  (trim-prose)
+                                  (assistant))]
+                (unless (or (similar "END CONVERSATION" (:content reply-msg))
+                            (similar "." (:content reply-msg)))
+                  (.append dialogue reply-msg)
+                  (print-message (msg->dlg player.name talk-to reply-msg) :padding #(0 3 0 0))
+                  (talk-status dialogue (get-character talk-to))
+                  (setv chat-line (.strip (rlinput f"{player.name}: "))))))
+            (when (> (len dialogue) 5)
+              (let [dlg (cut dialogue 2 None)]
+                (await (character.develop-lines (get-character talk-to) (msgs->dlg player.name talk-to dlg)))
+                (await (character.develop-lines player (msgs->dlg player.name talk-to dlg)))
+                (await (assistant (text->topic (format-msgs (msgs->dlg player.name talk-to dlg))))))))
+          (assistant (if talk-to
+                         f"Why don't you talk to {talk-to} instead?"
+                         f"There's nobody available with the name {talk-to-guess}.")))))
 
-(defn move-characters [messages]
+(defn/a move-characters [messages]
   "Move characters to their targets."
   (for [c (map get-character characters)]
     (when c.npc ; don't randomly move a player, only NPCs
       ; don't test for accessibility
-      (for [p (place.nearby c.coords :place True :list-inaccessible True)]
+      (for [p (await (place.nearby c.coords :place True :list-inaccessible True))]
         (when (and (similar c.destination p.name)
                    (dice 16)
                    ; don't move them if they've been mentioned in the last move or two
@@ -499,12 +501,12 @@ Do not say you're an AI assistant or similar. To end the conversation, just say 
 ;;; Main engine loop
 ;;; -----------------------------------------------------------------------------
 
-(defn print-map [coords [compass False]]
+(defn/a print-map [coords [compass False]]
   "Get your bearings."
   (if compass
       (let [cx (:x coords)
             cy (:y coords)
-            accessible-places (place.accessible coords :min-places 4)]
+            accessible-places (await (place.accessible coords :min-places 4))]
         (.join "\n"
           (lfor dy [1 0 -1]
                 (.join ""
@@ -516,7 +518,7 @@ Do not say you're an AI assistant or similar. To end the conversation, just say 
       (.join "\n\n"
           [f"***{(place.name coords)}***"
            f"{(.join ", " (place.rooms coords :as-string False))}"
-           f"*{(place.nearby-str coords)}*"])))
+           f"*{(await (place.nearby-str coords))}*"])))
 
 (defn spy [char-name]
   (character.describe

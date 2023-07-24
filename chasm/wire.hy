@@ -16,12 +16,12 @@ The signature verification happens in server.hy, not here, because it involves l
 
 (defn wrap [payload]
   "Format and wrap message."
-  (json.dumps {"payload" payload
-               "proto_version" CHASM_PROTOCOL_VERSION
-               "server_version" CHASM_SERVER_VERSION
-               "zmq_version" zmq.__version__
-               "sender_id" sender-id
-               "sender_time" (str (time))}))
+  (.encode (json.dumps {"payload" payload
+                        "proto_version" CHASM_PROTOCOL_VERSION
+                        "server_version" CHASM_SERVER_VERSION
+                        "zmq_version" zmq.__version__
+                        "sender_id" sender-id
+                        "sender_time" (str (time))})))
 
 (defn unwrap [zmsg]
   "Unwrap message. Return None if it doesn't decode. Otherwise, return function and data."
