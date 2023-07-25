@@ -124,7 +124,6 @@ See documentation:
   (await (engine.init))
   (print "Ready for players.")
   (while True
-    (print "tick")
     (try
       (await (engine.extend-world))
       (await (engine.develop))
