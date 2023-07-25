@@ -43,6 +43,7 @@ See documentation:
   socket)
 
 (setv frontend (start-router-socket (config "listen")))
+(log.info (config "listen"))
 
 ;;; -----------------------------------------------------------------------------
 
@@ -113,7 +114,7 @@ See documentation:
       (await (handle-frames (await (.recv-multipart frontend))))
       (except [zmq.Again])
       (except [KeyboardInterrupt]
-        (print "Interrupted server loop {n}, quitting.")
+        (print f"Interrupted server loop {n}, quitting.")
         (log.info f"server/server-loop: {n} quit")
         (break)))))
 
@@ -134,7 +135,7 @@ See documentation:
 
 (defn/a serve []
   (print f"Starting server at {(.isoformat (datetime.today))}")
-  (log.info f"Starting server at {(.isoformat (datetime.today))}")
+  (log.info f"Starting server")
   (print "Initial map generation...")
   (await (engine.init))
   (print "Ready for players.")
