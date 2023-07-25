@@ -120,6 +120,9 @@ See documentation:
 
 (defn/a background-loop []
   "Background service tasks."
+  (print "Initial map generation...")
+  (await (engine.init))
+  (print "Ready for players.")
   (while True
     (try
       (or (await (engine.extend-world))
@@ -136,9 +139,6 @@ See documentation:
 (defn/a serve []
   (print f"Starting server at {(.isoformat (datetime.today))}")
   (log.info f"Starting server")
-  (print "Initial map generation...")
-  (await (engine.init))
-  (print "Ready for players.")
   (let [tasks (lfor n (range N_CONCURRENT_CLIENTS) (asyncio.create-task (server-loop n)))
         bg-task (asyncio.create-task (background-loop))]
     (await (asyncio.wait [bg-task #* tasks]))))
