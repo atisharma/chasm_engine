@@ -194,7 +194,7 @@ Writes to vdb memory so is not thread-safe."
         (for [c (character.get-at player.coords)]
           (await (character.develop-lines c recent-messages)))
         ; Summon npcs to the player's location
-        (for [c-name (character.get-new recent-messages player)]
+        (for [c-name (await (character.get-new recent-messages player))]
           (let [c (get-character c-name)]
             (if (and c c.npc)
               (character.move c player.coords) ; make sure they're here if the narrator says so
