@@ -143,7 +143,7 @@ If you just want those at a location, use `get-items`."
 (defn describe-inventory [character]
   "The prosaic version of get-items for an inventory."
   (let [items (inventory character)
-        items-str (.join "\n" (lfor i (state.get-items) f"- {(get-desc i.name)}"))]
+        items-str (.join "\n" (lfor i items f"- {(get-desc i.name)}"))]
     (if items-str
         f"{character.name} has the following items in their inventory:\n{items-str}"
         f"{character.name} has no inventory.")))
