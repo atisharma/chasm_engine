@@ -76,11 +76,10 @@ Write a very short sentence (max 10 words) for appearance and another for usage.
                          :template template
                          :attributes item-attributes))]
     (try
-      (let [name (:name details (:item details None))]
+      (let [_name (or (.pop details "name" None) (.pop details "item" None))
+            name (word-chars _name)]
         (log.info f"Creating item '{name}'")
         (when name
-          (.pop details "name" None)
-          (.pop details "item" None)
           (Item #** (| {"type" "object"
                         "appearance" "Looks like you'd expect."
                         "usage" "Usage unknown."}

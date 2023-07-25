@@ -131,10 +131,11 @@ The name should have {seed} in the first few letters. The place might be {(choic
                          :context context
                          :template template
                          :instruction instruction
-                         :attributes place-attributes))]
-    (when (and (:name details None)
+                         :attributes place-attributes))
+        name (word-chars (:name details ""))]
+    (when (and name
                (< (len (.split (:name details ""))) 4))
-      details)))
+      (| details {"name" name}))))
 
 (defn/a gen-rooms [place-dict]
   "Make up some rooms for a place."
@@ -162,8 +163,10 @@ Now list its rooms, if any.")]
               (map capwords)
               (sieve)
               (filter (fn [x] (not (in x "None"))))
+              ;(map word-chars)
+              ;(sieve)
               (list))
-         1 6)))
+         3 7)))
 
 ;; FIXME: it's a bit flaky
 (defn/a guess-room [messages coords]

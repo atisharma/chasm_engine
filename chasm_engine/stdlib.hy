@@ -236,6 +236,13 @@ force to lowercase, remove 'the' from start of line."
   "Remove non-word and non-punctuation characters."
   (re.sub r"[^\w&-,.!?']+" "" s))
   
+(defn word-chars [s]
+  "Match just word characters (\\w and space)."
+  (let [m (re.match r"[\w ]*\w" s)]
+    (if m
+        (.group m)
+        "")))
+  
 (defn last-word? [s1 s2]
   "Is one string the last word of the other?"
   (let [ss1 (.split s1)

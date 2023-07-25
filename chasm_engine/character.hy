@@ -68,7 +68,6 @@ Functions that deal with characters.
   "Make up some plausible character based on a name."
   (let [seed (choice alphabet)
         name-str (or name f"the character (invent one whose first name begins with '{seed}')")
-        name-dict (if name {"name" name} {})
         place (get-place coords)
         place-name (if place place.name "a typical place in this world")
         card f"name: '{name-str}'
@@ -92,8 +91,10 @@ Make up a brief few words, with comma separated values, for each attribute. Be i
                          :context setting
                          :template card
                          :instruction instruction
-                         :attributes initial-character-attributes))]
-    (log.info f"'{(:name details None)}'")
+                         :attributes initial-character-attributes))
+        name (word-chars (or name (:name details "")))
+        name-dict (if name {"name" name} {})]
+    (log.info name)
     (Character #** (| (._asdict default-character)
                       details
                       name-dict
