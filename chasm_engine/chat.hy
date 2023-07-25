@@ -13,6 +13,7 @@ Chat management functions.
 
 (import chasm_engine.stdlib *)
 
+(setv providers (cycle (.keys (config "providers"))))
 
 ;;; -----------------------------------------------------------------------------
 
@@ -125,7 +126,8 @@ Return modified messages."
         respond [messages #** kwargs]
   "Reply to a list of messages and return just content.
 The messages should already have the standard roles."
-  (let [params (config "providers" (config "provider"))
+  (let [provider (next providers)
+        params (config "providers" provider)
         defaults {"api_key" "n/a"
                   "max_tokens" (config "max_tokens")
                   "model" "gpt-3.5-turbo"}
