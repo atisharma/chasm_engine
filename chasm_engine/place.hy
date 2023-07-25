@@ -291,7 +291,9 @@ This function is not deterministic, because we ask the model to decide."
   (lfor a (await (accessible coords :min-places min-places))
         a.coords))
 
-(defn/a extend-map [coords]
+(defn/a
+  [(retry :stop (stop-after-attempt 4))]
+  extend-map [coords]
   "Extend the map so neighbouring places exist."
   (let [cx (:x coords)
         cy (:y coords)
