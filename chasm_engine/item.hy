@@ -5,15 +5,15 @@ Functions that deal with items.
 (require hyrule.argmove [-> ->>])
 (require hyrule.control [unless])
 
-(import chasm [log])
+(import chasm_engine [log])
 
-(import chasm.stdlib *)
-(import chasm.constants [alphanumeric item-attributes full-inventory-messages inventory-capacity])
-(import chasm [place state])
-(import chasm.types [Item Coords at?])
-(import chasm.state [world get-item set-item update-item get-item-names])
-(import chasm.chat [complete-json complete-lines
-                    system user assistant])
+(import chasm_engine.stdlib *)
+(import chasm_engine.constants [alphanumeric item-attributes full-inventory-messages inventory-capacity])
+(import chasm_engine [place state])
+(import chasm_engine.types [Item Coords at?])
+(import chasm_engine.state [world get-item set-item update-item get-item-names])
+(import chasm_engine.chat [complete-json complete-lines
+                           system user assistant])
 
 
 (defclass ItemError [Exception])

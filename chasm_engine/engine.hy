@@ -8,26 +8,26 @@ The engine logic is expected to handle many players.
 
 (import time [time])
 
-(import chasm [log])
+(import chasm_engine [log])
 
-(import chasm.stdlib *)
-(import chasm [place item character plot])
-(import chasm.types [Coords])
-(import chasm.constants [character-density item-density compass-directions])
-(import chasm.state [world world-name
-                     characters
-                     len-items
-                     get-place len-places
-                     random-coords
-                     get-character update-character len-characters
-                     get-account update-account get-accounts
-                     get-narrative set-narrative])
-(import chasm.chat [APIConnectionError ChatError respond
-                    msgs->topic text->topic msgs->points
-                    msg->dlg msgs->dlg
-                    truncate standard-roles
-                    token-length
-                    msg user assistant system])
+(import chasm_engine.stdlib *)
+(import chasm_engine [place item character plot])
+(import chasm_engine.types [Coords])
+(import chasm_engine.constants [character-density item-density compass-directions])
+(import chasm_engine.state [world world-name
+                            characters
+                            len-items
+                            get-place len-places
+                            random-coords
+                            get-character update-character len-characters
+                            get-account update-account get-accounts
+                            get-narrative set-narrative])
+(import chasm_engine.chat [APIConnectionError ChatError respond
+                           msgs->topic text->topic msgs->points
+                           msg->dlg msgs->dlg
+                           truncate standard-roles
+                           token-length
+                           msg user assistant system])
 
 
 (defclass EngineError [Exception])

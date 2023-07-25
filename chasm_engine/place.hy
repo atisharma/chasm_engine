@@ -7,14 +7,14 @@ Functions that manage place.
 
 (import async-lru [alru-cache])
 
-(import chasm [log])
+(import chasm_engine [log])
 
-(import chasm.stdlib *)
-(import chasm.constants [compass-directions alphanumeric place-types place-attributes])
-(import chasm.state [world get-place set-place update-place])
-(import chasm.types [Coords Place])
-(import chasm.chat [respond complete-json complete-lines msgs->dlg
-                    system user assistant])
+(import chasm_engine.stdlib *)
+(import chasm_engine.constants [compass-directions alphanumeric place-types place-attributes])
+(import chasm_engine.state [world get-place set-place update-place])
+(import chasm_engine.types [Coords Place])
+(import chasm_engine.chat [respond complete-json complete-lines msgs->dlg
+                           system user assistant])
 
 
 (defclass PlaceError [Exception])

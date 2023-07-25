@@ -3,7 +3,7 @@ Chat management functions.
 "
 (require hyrule.argmove [-> ->>])
 
-(import chasm [log])
+(import chasm_engine [log])
 
 (import tiktoken)
 (import openai [ChatCompletion])
@@ -11,7 +11,7 @@ Chat management functions.
 
 (import tenacity [retry stop-after-attempt wait-random-exponential])
 
-(import chasm.stdlib *)
+(import chasm_engine.stdlib *)
 
 
 ;;; -----------------------------------------------------------------------------

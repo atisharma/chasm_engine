@@ -12,16 +12,16 @@ Develop the plot / world events
 (import time [time])
 (import datetime [datetime timezone])
         
-(import chasm.stdlib *)
-(import chasm.types *)
+(import chasm_engine.stdlib *)
+(import chasm_engine.types *)
 
-(import chasm [log])
+(import chasm_engine [log])
 
-(import chasm [place character memory])
-(import chasm.state [world])
-(import chasm.chat [truncate respond
-                    system user assistant
-                    msgs->dlg])
+(import chasm_engine [place character memory])
+(import chasm_engine.state [world])
+(import chasm_engine.chat [truncate respond
+                           system user assistant
+                           msgs->dlg])
 
 
 ;;; -----------------------------------------------------------------------------

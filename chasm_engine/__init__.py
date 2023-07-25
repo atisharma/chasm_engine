@@ -3,7 +3,7 @@ import logging
 import hy
 from importlib.metadata import version, PackageNotFoundError
 
-from chasm.server import serve
+from chasm_engine.server import serve
 
 
 try:

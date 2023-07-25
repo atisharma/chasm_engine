@@ -7,23 +7,23 @@ Functions that deal with characters.
 
 (import time [time])
 
-(import chasm [log])
+(import chasm_engine [log])
 
-(import chasm.stdlib *)
-(import chasm.constants [alphabet default-character banned-names])
-(import chasm.types [Coords Character Item at?
-                     mutable-character-attributes
-                     initial-character-attributes])
-(import chasm [place memory])
+(import chasm_engine.stdlib *)
+(import chasm_engine.constants [alphabet default-character banned-names])
+(import chasm_engine.types [Coords Character Item at?
+                            mutable-character-attributes
+                            initial-character-attributes])
+(import chasm_engine [place memory])
 
-(import chasm.state [world path
-                     get-place
-                     get-character set-character update-character character-key get-characters])
-(import chasm.chat [respond yes-no
-                    complete-json complete-lines
-                    token-length truncate
-                    user assistant system
-                    msgs->dlg])
+(import chasm_engine.state [world path
+                            get-place
+                            get-character set-character update-character character-key get-characters])
+(import chasm_engine.chat [respond yes-no
+                           complete-json complete-lines
+                           token-length truncate
+                           user assistant system
+                           msgs->dlg])
 
 
 (defclass CharacterError [Exception])

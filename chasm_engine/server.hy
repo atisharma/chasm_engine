@@ -17,36 +17,38 @@ See documentation:
 (import zmq)
 (import zmq.asyncio)
 
-(import chasm [log])
+(import chasm_engine [log])
 
-(import chasm [crypto])
-(import chasm [engine])
-(import chasm.stdlib [config hash-id inc])
-(import chasm.state [get-account set-account update-account])
-(import chasm.wire [wrap unwrap zerror])
+(import chasm_engine [crypto])
+(import chasm_engine [engine])
+(import chasm_engine.stdlib [config hash-id prepend inc])
+(import chasm_engine.state [get-account set-account update-account])
+(import chasm_engine.wire [wrap unwrap zerror])
 
 
+(setv N_CONCURRENT_CLIENTS 10000
+      BACKGROUND_TICK 30)
 ;;; -----------------------------------------------------------------------------
 
 (setv context (zmq.asyncio.Context))
 
-(defn start-server-socket []
+(defn start-router-socket [address]
   (setv socket (.socket context zmq.ROUTER))
   ; see https://stackoverflow.com/questions/26915347/zeromq-reset-req-rep-socket-state
   ; server will tick every 2s
   (.setsockopt socket zmq.RCVTIMEO 2000)
   (.setsockopt socket zmq.SNDTIMEO 1000)
   (.setsockopt socket zmq.LINGER 2000)
-  (.bind socket (config "listen"))
+  (.bind socket address)
   socket)
 
-(setv socket (start-server-socket))
+(setv frontend (start-router-socket (config "listen")))
 
 ;;; -----------------------------------------------------------------------------
 
 (defn/a send [zmsg]
   (try
-    (await (.send-multipart socket zmsg))
+    (await (.send-multipart frontend zmsg))
     (except [zmq.EAGAIN]
       (log.error "server/send: client send failed."))))
   
@@ -104,26 +106,38 @@ See documentation:
     (log.debug f"server/serve: {msg}")
     (await (send [q ident z (wrap response)]))))
 
-(defn/a serve []
+(defn/a server-loop [[n 0]]
   "Call a method on the server."
-  ; TODO: change to a broker model
+  (while True
+    (try
+      (await (handle-frames (await (.recv-multipart frontend))))
+      (except [zmq.Again])
+      (except [KeyboardInterrupt]
+        (print "Interrupted server loop {n}, quitting.")
+        (log.info f"server/server-loop: {n} quit")
+        (break)))))
+
+(defn/a backround-loop []
+  "Background service tasks."
+  (while True
+    (try
+      (or (await (engine.extend-world))
+          (await (engine.develop))
+          (await (engine.spawn-characters))
+          (await (engine.spawn-items))
+          (engine.set-offline-players))
+      (await (asyncio.sleep BACKGROUND_TICK))
+      (except [KeyboardInterrupt]
+        (print "Interrupted background loop, quitting.")
+        (log.info f"server/background-loop: quit")
+        (break)))))
+
+(defn/a serve []
   (print f"Starting server at {(.isoformat (datetime.today))}")
   (log.info f"Starting server at {(.isoformat (datetime.today))}")
   (print "Initial map generation...")
   (await (engine.init))
   (print "Ready for players.")
-  (while True
-    (try
-      ; FIXME: for/a over queue
-      (await (handle-frames (await (.recv-multipart socket))))
-      (except [zmq.Again]
-        ; only process world if there is no message queue
-        #_(or (await (engine.extend-world))
-              (await (engine.develop))
-              (await (engine.spawn-characters))
-              (await (engine.spawn-items))
-              (engine.set-offline-players)))
-      (except [KeyboardInterrupt]
-        (print "Interrupted, quitting.")
-        (log.info f"server/serve: quit")
-        (break)))))
+  (let [tasks (lfor n (range N_CONCURRENT_CLIENTS) (asyncio.create-task (server-loop n)))
+        bg-task (asyncio.create-task (background-loop))]
+    (await (asyncio.wait [bg-task #* tasks]))))

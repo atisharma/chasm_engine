@@ -5,7 +5,7 @@ N.B. don't change the order of attributes, because the serialisation is order-de
 "
 (require hyrule.argmove [-> ->>])
 
-(import chasm [log])
+(import chasm-engine [log])
 
 (import json)
 (import collections [namedtuple])

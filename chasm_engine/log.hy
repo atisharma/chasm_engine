@@ -2,7 +2,7 @@
 
 (import logging)
 
-(import chasm.stdlib *)
+(import chasm_engine.stdlib *)
 
 ;; TODO: per-module log configuration
 

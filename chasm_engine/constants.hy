@@ -1,4 +1,4 @@
-(import chasm.types [Character Coords])
+(import chasm_engine.types [Character Coords])
 
 
 (setv alphabet "ABCDEFGHIJKLMNOPQRSTUVWXYZ"

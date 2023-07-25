@@ -5,7 +5,7 @@ Thing in themselves and relationships between things.
 "
 (require hyrule.argmove [-> ->>])
 
-(import chasm [log])
+(import chasm_engine [log])
 
 (import json)
 (import pathlib [Path])
@@ -15,8 +15,8 @@ Thing in themselves and relationships between things.
 (import sqlitedict [SqliteDict])
 ; consider using diskcache
 
-(import chasm.stdlib *)
-(import chasm.types [Place Item Character Coords])
+(import chasm_engine.stdlib *)
+(import chasm_engine.types [Place Item Character Coords])
 
 
 ;;; -----------------------------------------------------------------------------
