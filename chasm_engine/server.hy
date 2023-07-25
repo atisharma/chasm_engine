@@ -117,7 +117,7 @@ See documentation:
         (log.info f"server/server-loop: {n} quit")
         (break)))))
 
-(defn/a backround-loop []
+(defn/a background-loop []
   "Background service tasks."
   (while True
     (try
