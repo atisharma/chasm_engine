@@ -37,7 +37,7 @@ Thing in themselves and relationships between things.
                 (.read-text)
                 (.strip)))
 
-(log.info f"state/world: {world-name}")
+(log.info f"{world-name}")
 
 ;;; -----------------------------------------------------------------------------
 ;;; db functions

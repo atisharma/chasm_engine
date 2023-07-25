@@ -268,9 +268,9 @@ in adjacent cells, accessible or not."
                            :atmosphere (:atmosphere details None)
                            :appearance (:appearance details None)
                            :terrain (:terrain details None))]
-          (log.info f"place/new: {place.name} @ {coords}")
+          (log.info f"{place.name} @ {coords}")
           (set-place place))
-      (log.error f"place/new: generation failed @ {coords}\n{near-places}\n-> {details}"))))
+      (log.error f"generation failed @ {coords}\n{near-places}\n-> {details}"))))
 
 (defn/a accessible [coords * min-places]
   "A list of the accessible Places the player can move to.

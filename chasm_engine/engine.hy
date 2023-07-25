@@ -88,7 +88,7 @@ The engine logic is expected to handle many players.
       (update-character player :npc False)
       (await (payload narrative (last narrative) player.name)))
     (except [err [Exception]]
-      (log.error "engine/spawn-player:" :exception err)
+      (log.error "unknown exception" :exception err)
       (error f"Engine error: {(repr err)}"))))
 
 (defn help-str []
@@ -98,7 +98,7 @@ The engine logic is expected to handle many players.
 
 (defn/a parse [player-name line #* args #** kwargs] ; -> response
   "Process the player's input and return the whole visible state."
-  (log.info f"engine/parse: {player-name}: {line}")
+  (log.info f"{player-name}: {line}")
   (let [_player (or (get-character player-name) (character.spawn :name player-name :loaded kwargs))
         player (update-character _player :npc False)
         narrative (get-narrative player-name)
@@ -127,20 +127,20 @@ The engine logic is expected to handle many players.
                    ;(talk? line) (assistant (converse (append user-msg messages) player)) ; this one needs thinking about
                    line (assistant (await (narrate (append user-msg messages) player))))
                  (except [err [APIConnectionError]]
-                   (log.error "engine/parse: model API connection error.")
+                   (log.error "model API connection error.")
                    (error "Server error: call to language model failed."))
                  (except [err [ChatError]]
-                   (log.error "engine/parse:" :exception err)
+                   (log.error "Empty reply" :exception err)
                    (info "There was no reply."))
                  (except [err [Exception]]
-                   (log.error "engine/parse:" :exception err)
+                   (log.error "Engine error" :exception err)
                    (error f"Engine error: {(repr err)}")))]
     ; info, error do not extend narrative.
     (when (and result (= (:role result) "assistant"))
       (.extend narrative [user-msg result])
       (set-narrative (cut narrative -1000 None) player-name) ; keep just last 1000 messages
       (await (move-characters narrative)))
-    (log.debug f"engine/parse: -> {result}")
+    (log.debug f"-> {result}")
     ; always return the most recent state
     (await (payload narrative result player-name))))
       
@@ -168,6 +168,7 @@ This function does not use vdb memory so should be thread-safe."
   (let [coords (random-coords)]
     (when (< (* item-density (len-places))
              (len-items))
+      (log.info "spawn-items")
       (await (item.spawn coords)))))
   
 (defn/a spawn-characters [] ; -> char or None
@@ -182,7 +183,7 @@ This function does not use vdb memory so should be thread-safe."
   "Move the plot and characters along.
 Writes to vdb memory so is not thread-safe."
   (when develop-queue
-    (log.info f"engine/develop: queue: {develop-queue}")
+    (log.info f"queue: {develop-queue}")
     (let [player-name (.pop develop-queue)
           player (get-character player-name)
           messages (get-narrative player-name)
@@ -295,7 +296,7 @@ Writes to vdb memory so is not thread-safe."
         dirn (go? line)
         new-coords (await (place.go dirn player.coords))
         here (get-place player.coords)]
-    (log.info f"engine/move: {player.name} to {dirn} {player.coords} -> {new-coords}")
+    (log.info f"{player.name} to {dirn} {player.coords} -> {new-coords}")
     (cond
       new-coords (do (character.move player new-coords)
                      ; and make sure to pass character with updated position to place.describe
@@ -401,12 +402,12 @@ These places are accessible:
 
 Keep {player.name} at {here.name}.
 Continue the narrative."]
-    (log.info f"engine/narrate: {player.name} {player.coords}")
+    (log.info f"{player.name} {player.coords}")
     ;(log.info f"{characters-here}\n{items-here-str}")
-    (log.info f"engine/narrate: news:\n{(plot.news)}")
-    (log.info f"engine/narrate: memories:\n{memories}")
-    (log.info f"engine/narrate: story: {(token-length story-guidance)}; local {(token-length local-guidance)}")
-    (log.info f"engine/narrate: inventory-str\n{inventory-str}")
+    (log.info f"news:\n{(plot.news)}")
+    (log.info f"memories:\n{memories}")
+    (log.info f"story: {(token-length story-guidance)}; local {(token-length local-guidance)}")
+    (log.info f"inventory-str\n{inventory-str}")
     (.add develop-queue player.name) ; add the player to the development queue
     (-> (-> [(system story-guidance)
              (system local-guidance)
@@ -494,7 +495,7 @@ Do not say you're an AI assistant or similar. To end the conversation, just say 
                    (dice 16)
                    ; don't move them if they've been mentioned in the last move or two
                    (not (in c.name (str (cut messages -4 None)))))
-          (log.info f"engine/move-characters: {c.name} -> {p.name}")
+          (log.info f"{c.name} -> {p.name}")
           (character.move c p.coords))))))
 
 ;;; -----------------------------------------------------------------------------

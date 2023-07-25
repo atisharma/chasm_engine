@@ -27,7 +27,7 @@ The signature verification happens in server.hy, not here, because it involves l
   "Unwrap message. Return None if it doesn't decode. Otherwise, return function and data."
   (try (json.loads zmsg)
     (except [json.JSONDecodeError]
-      (log.error f"wire/unwrap: {zmsg}"))))
+      (log.error f"{zmsg}"))))
     
 (defn zerror [code message]
   {"error" {"code" code "message" message}})

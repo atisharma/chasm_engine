@@ -52,16 +52,16 @@ Functions that deal with characters.
             character (Character #** (| (._asdict default-character)
                                         (._asdict char)
                                         filtered))]
-        (log.info f"character/spawn {char.name}")
-        (when loaded (log.info f"character/spawn loaded: {sanitised}"))
+        (log.info f"{char.name}")
+        (when loaded (log.info f"loaded: {sanitised}"))
         (if (and character.name (valid-key? (character-key character.name)) (< retries 5))
             (set-character character)
             ; keep trying until it works
             (do
-              (log.error f"character/spawn: retrying for {name} at {coords}.")
+              (log.error f"retrying for {name} at {coords}.")
               (await (spawn name coords loaded (inc retries)))))))
     (except [e [Exception]]
-      (log.error f"character/spawn: failed for {name} at {coords}.")
+      (log.error f"failed for {name} at {coords}.")
       (log.error e))))
 
 (defn/a gen-lines [coords [name None]] ; -> Character or None
@@ -93,7 +93,7 @@ Make up a brief few words, with comma separated values, for each attribute. Be i
                          :template card
                          :instruction instruction
                          :attributes initial-character-attributes))]
-    (log.info f"character/gen-lines '{(:name details None)}'")
+    (log.info f"'{(:name details None)}'")
     (Character #** (| (._asdict default-character)
                       details
                       name-dict
@@ -130,7 +130,7 @@ Make up a brief few words, comma separated, for each attribute. Be imaginative a
                          :context setting
                          :instruction instruction))]
     (when details
-      (log.info f"character/gen '{(:name details None)}'")
+      (log.info f"'{(:name details None)}'")
       (Character #** (| (._asdict default-character)
                         details
                         name-dict
@@ -195,7 +195,7 @@ This loops over all characters."
                                 (user setting)]
                                :context (.join "\n\n" [objective (format-msgs dialogue)])
                                :query query))]
-    (log.info f"character/increment-score? {verdict}")
+    (log.info f"{verdict}")
     verdict))
 
 (defn/a develop-lines [character dialogue]
@@ -233,7 +233,7 @@ The dialogue is as follows:
                                    :threshold 0.7)
                           character.score
                           (inc character.score))]
-        (log.info f"character/develop-lines {character.name}")
+        (log.info f"{character.name}")
         (remember character (.pop details "new_memory" ""))
         (update-character character
                           :score new-score
@@ -245,7 +245,7 @@ The dialogue is as follows:
 
 (defn remember [character new-memory]
   "Commit memory to vector db."
-  (log.info f"character/remember {character.name} {new-memory}")
+  (log.info f"{character.name} {new-memory}")
   (let [mem-class (re.search r"\[(\w+)\]" new-memory)
         mem-point (re.search r"\][- ]*([\w ,.']+)" new-memory)]
     (when (and mem-class
@@ -292,5 +292,5 @@ They will appear at the player's location."
                                  (filter (fn [x] (< (len (.split x)) 3))) ; exclude long rambling non-names
                                  (filter valid-key?)
                                  (list))]
-    (log.info f"character/get-new: {filtered-char-list}")
+    (log.info f"{filtered-char-list}")
     (cut filtered-char-list 3)))

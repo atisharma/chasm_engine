@@ -90,7 +90,7 @@ Write a very short sentence (max 10 words) for appearance and another for usage.
                 :owner None)))
       (except [e [Exception]]
         ; generating to template sometimes fails 
-        (log.error "item/gen: Bad new item" e)
+        (log.error "Bad new item" e)
         (log.error place)
         (log.error seed)
         (log.error kvs)))))
@@ -192,7 +192,7 @@ This implements picking it up, taking etc."
 
 (defn fuzzy-give [owner obj recipient]
   "Check `obj` is owned, then assign it to character's inventory."
-  (log.info f"item/fuzzy-give: {owner.name}: {obj} -> {recipient.name}")
+  (log.info f"{owner.name}: {obj} -> {recipient.name}")
   (let [inv (inventory owner)
         inv-names (lfor i inv i.name)]
     (if (fuzzy-in obj inv-names)

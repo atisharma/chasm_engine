@@ -51,7 +51,7 @@ See documentation:
   (try
     (await (.send-multipart frontend zmsg))
     (except [zmq.EAGAIN]
-      (log.error "server/send: client send failed."))))
+      (log.error "client send failed."))))
   
 (defn auth [player-name pub-key]
   "Store the public key if it's not already known. Return the stored public key. First-come first-served."
@@ -104,7 +104,7 @@ See documentation:
         response (cond (not (time-ok? client-time)) (zerror "STALE" f"Message stale, off by {(int (- (float client-time) (time)))}s, server was probably busy.")
                        (verify msg) (await (handoff-request player-name client-time method #* args #** kwargs))
                        :else (zerror "SIGNATURE" "Failed to verify signature. Maybe your name/passphrase is wrong."))]
-    (log.debug f"server/serve: {msg}")
+    (log.debug f"{msg}")
     (await (send [q ident z (wrap response)]))))
 
 (defn/a server-loop [[n 0]]
@@ -115,7 +115,7 @@ See documentation:
       (except [zmq.Again])
       (except [KeyboardInterrupt]
         (print f"Interrupted server loop {n}, quitting.")
-        (log.info f"server/server-loop: {n} quit")
+        (log.info f"{n} quit")
         (break)))))
 
 (defn/a background-loop []
@@ -130,7 +130,7 @@ See documentation:
       (await (asyncio.sleep BACKGROUND_TICK))
       (except [KeyboardInterrupt]
         (print "Interrupted background loop, quitting.")
-        (log.info f"server/background-loop: quit")
+        (log.info f"quit")
         (break)))))
 
 (defn/a serve []

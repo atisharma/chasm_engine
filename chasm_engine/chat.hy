@@ -215,9 +215,9 @@ JSON completion is a bit unreliable, depending on the model."
               (.groups)
               (first)
               (json.loads))
-          (log.error f"chat/complete-json: bad JSON creation, can't match:\n{response}"))
+          (log.error f"bad JSON creation, can't match:\n{response}"))
       (except [json.decoder.JSONDecodeError]
-        (log.error f"chat/complete-json: bad JSON creation, can't decode:\n{response}")))))
+        (log.error f"bad JSON creation, can't decode:\n{response}")))))
 
 (defn/a complete-lines [template instruction context attributes [max-tokens 600]]
   "Fill in a template according to context, one per line. Return dict or None.

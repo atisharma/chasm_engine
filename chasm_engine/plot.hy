@@ -64,8 +64,8 @@ Develop the plot / world events
         classification (re.search r"\[(\w+)\]" sanitised)
         point (re.search r"\][- ]*([\w ,.'-]+)" sanitised)]
     (when (and point classification)
-      (log.info f"plot/extract-point: {(first (classification.groups))}")
-      (log.info f"plot/extract-point: {(first (point.groups))}")
+      (log.info f"{(first (classification.groups))}")
+      (log.info f"{(first (point.groups))}")
       (let [chars-here (lfor c (append player (character.get-at player.coords)) c.name)
             meta {"time" f"{(time):015.2f}"
                   "place" (place.name player.coords)

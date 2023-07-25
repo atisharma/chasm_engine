@@ -52,7 +52,7 @@ Functions that deal with recall and vector databases.
           (SentenceTransformerEmbeddingFunction :model-name model)))))
 
 (defn collection [name]
-  (log.info f"memory/collection {name}")
+  (log.info f"{name}")
   (_vdb.get-or-create-collection :name f"C-{name}"
                                  :embedding-function (get-embedding-fn)))
 
