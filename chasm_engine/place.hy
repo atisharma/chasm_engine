@@ -7,6 +7,8 @@ Functions that manage place.
 
 (import async-lru [alru-cache])
 
+(import tenacity [retry stop-after-attempt wait-random-exponential])
+
 (import chasm_engine [log])
 
 (import chasm_engine.stdlib *)
@@ -61,7 +63,11 @@ The player is sometimes called 'user' or '{player.name}' - these refer to the sa
         response (await (respond messages))]
     (trim-prose response)))
 
-(defn/a [(alru-cache :maxsize 1000)] gen-description [nearby-str coords [world-str world]]
+(defn/a
+  [(alru-cache :maxsize 1000)
+   (retry :stop (stop-after-attempt 4))]
+  gen-description
+  [nearby-str coords [world-str world]]
   "Make up a single-paragraph place description from its name."
   (let [place (get-place coords)
         prelude f"Your purpose is to generate short, fun, imaginative descriptions of a place, in keeping with the information you have. Make the reader feel viscerally like they are present in the place. Set the scene. Write in the second person, using 'you'. Be concise. Don't mention any people or characters that may be present here, concentrate on things that won't change. Write in plain, unformatted text.
