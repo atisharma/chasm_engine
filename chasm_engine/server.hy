@@ -116,7 +116,9 @@ See documentation:
       (except [zmq.Again])
       (except [KeyboardInterrupt]
         (log.info f"Interrupted, closing {n}")
-        (break)))))
+        (break))
+      (except [err [Exception]]
+        (log.exception f"server-loop error:" err)))))
 
 (defn/a background-loop []
   "Background service tasks."

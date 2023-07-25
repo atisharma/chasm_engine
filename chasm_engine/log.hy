@@ -1,33 +1,33 @@
 (require hyrule.argmove [-> ->>])
 
 (import logging)
+(import logging.config [dictConfig])
 
 (import chasm_engine.stdlib *)
 
 ;; TODO: per-module log configuration
 
+(setv logger (logging.getLogger __name__))
 
 (setv log-name (-> (config "world")
                    (.split "/")
                    (last)))
-
 (setv logfile (or (config "logfile") f"{log-name}.log"))
+(setv loglevel (.upper (or (config "loglevel") "WARNING")))
+(setv handler (logging.FileHandler :filename logfile))
 
+(handler.setFormatter (logging.Formatter "%(asctime)s : %(levelname)s : %(module)s/%(funcName)s : %(message)s"))
+(logger.addHandler handler)
+(logger.setLevel loglevel)
 
-;; overrides root logger to capture logs of any badly-behaved imported modules
-(logging.basicConfig :filename logfile
-                     :level (getattr logging (.upper (or (config "loglevel") "WARNING")))
-                     :format "%(asctime)s : %(levelname)s : %(module)s/%(funcName)s : %(message)s"
-                     :encoding "utf-8")
+(logger.info (* "-" 80))
 
-(logging.info (* "-" 80))
-
-(setv debug logging.debug)
-(setv info logging.info)
-(setv warn logging.warn)
+(setv debug logger.debug)
+(setv info logger.info)
+(setv warn logger.warn)
 
 (defn error [msg [exception None] [mode "a"] [logfile logfile]]
-  (logging.error msg)
+  (logger.error msg)
   (when exception
     (with [f (open logfile :mode mode :encoding "UTF-8")]
       (import traceback)

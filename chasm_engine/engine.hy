@@ -99,7 +99,7 @@ The engine logic is expected to handle many players.
 (defn/a parse [player-name line #* args #** kwargs] ; -> response
   "Process the player's input and return the whole visible state."
   (log.info f"{player-name}: {line}")
-  (let [_player (or (get-character player-name) (character.spawn :name player-name :loaded kwargs))
+  (let [_player (or (get-character player-name) (await (character.spawn :name player-name :loaded kwargs)))
         player (update-character _player :npc False)
         narrative (get-narrative player-name)
         messages (truncate (standard-roles narrative)
