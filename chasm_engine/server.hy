@@ -26,7 +26,7 @@ See documentation:
 (import chasm_engine.wire [wrap unwrap zerror])
 
 
-(setv N_CONCURRENT_CLIENTS 10000
+(setv N_CONCURRENT_CLIENTS 1000
       BACKGROUND_TICK 1)
 
 ;;; -----------------------------------------------------------------------------
