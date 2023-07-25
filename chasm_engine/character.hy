@@ -200,7 +200,7 @@ This loops over all characters."
 
 (defn/a develop-lines [character dialogue]
   "Develop a character's attributes based on the dialogue."
-  (let [nearby-places (.join ", " (place.nearby character.coords :name True))
+  (let [nearby-places (.join ", " (await (place.nearby character.coords :name True)))
         card f"name: {character.name}
 appearance: {character.appearance}
 health: {character.health}
