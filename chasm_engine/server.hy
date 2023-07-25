@@ -125,11 +125,11 @@ See documentation:
   (print "Ready for players.")
   (while True
     (try
-      (or (await (engine.extend-world))
-          (await (engine.develop))
-          (await (engine.spawn-characters))
-          (await (engine.spawn-items))
-          (engine.set-offline-players))
+      (await (engine.extend-world))
+      (await (engine.develop))
+      (await (engine.spawn-characters))
+      (await (engine.spawn-items))
+      (engine.set-offline-players)
       (await (asyncio.sleep BACKGROUND_TICK))
       (except [KeyboardInterrupt]
         (print "Interrupted background loop, quitting.")
