@@ -115,8 +115,7 @@ See documentation:
       (await (handle-frames (await (.recv-multipart frontend))))
       (except [zmq.Again])
       (except [KeyboardInterrupt]
-        (print f"Interrupted server loop {n}, quitting.")
-        (log.info f"{n} quit")
+        (log.info f"Interrupted, closing {n}")
         (break)))))
 
 (defn/a background-loop []
@@ -125,6 +124,7 @@ See documentation:
   (await (engine.init))
   (print "Ready for players.")
   (while True
+    (print "tick")
     (try
       (await (engine.extend-world))
       (await (engine.develop))
@@ -132,14 +132,20 @@ See documentation:
       (await (engine.spawn-items))
       (engine.set-offline-players)
       (await (asyncio.sleep BACKGROUND_TICK))
-      (except [KeyboardInterrupt]
-        (print "Interrupted background loop, quitting.")
-        (log.info f"quit")
-        (break)))))
+      (except [err [Exception]]
+        (log.error "bg loop exception" :exception err)))))
 
 (defn/a serve []
   (print f"Starting server at {(.isoformat (datetime.today))}")
   (log.info f"Starting server")
   (let [tasks (lfor n (range N_CONCURRENT_CLIENTS) (asyncio.create-task (server-loop n)))
         bg-task (asyncio.create-task (background-loop))]
-    (await (asyncio.wait [bg-task #* tasks] :return-when asyncio.FIRST_COMPLETED))))
+    (try
+      ;(setv [done pending] (await (asyncio.wait [bg-task #* tasks])))
+      (await (asyncio.wait [bg-task #* tasks]))
+      #_(except [KeyboardInterrupt]
+          (print "Interrupted, quitting.")
+          (log.info f"Interrupted, quitting")
+          (for [t pending]
+             (t.cancel))))))
+

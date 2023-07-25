@@ -166,17 +166,18 @@ This function does not use vdb memory so should be thread-safe."
 (defn/a spawn-items [] ; -> item or None
   "Spawn items when needed at existing places."
   (let [coords (random-coords)]
-    (when (< (* item-density (len-places))
+    (when (> (* item-density (len-places))
              (len-items))
-      (log.info "spawn-items")
+      (log.info f"New item at {coords}")
       (await (item.spawn coords)))))
   
 (defn/a spawn-characters [] ; -> char or None
   "Spawn characters when needed at existing places."
   (let [coords (random-coords)]
     (unless (character.get-at coords)
-      (when (< (* character-density (len-places))
+      (when (> (* character-density (len-places))
                (len-characters))
+        (log.info f"New character at {coords}")
         (await (character.spawn :name None :coords coords))))))
   
 (defn/a develop [] ; -> char or None
