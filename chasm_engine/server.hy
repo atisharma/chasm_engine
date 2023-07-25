@@ -27,7 +27,8 @@ See documentation:
 
 
 (setv N_CONCURRENT_CLIENTS 10000
-      BACKGROUND_TICK 30)
+      BACKGROUND_TICK 1)
+
 ;;; -----------------------------------------------------------------------------
 
 (setv context (zmq.asyncio.Context))
