@@ -142,4 +142,4 @@ See documentation:
   (log.info f"Starting server")
   (let [tasks (lfor n (range N_CONCURRENT_CLIENTS) (asyncio.create-task (server-loop n)))
         bg-task (asyncio.create-task (background-loop))]
-    (await (asyncio.wait [bg-task #* tasks] :return-when asyncio.FIRST_EXCEPTION))))
+    (await (asyncio.wait [bg-task #* tasks] :return-when asyncio.FIRST_COMPLETED))))
