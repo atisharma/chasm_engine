@@ -93,12 +93,14 @@ Make up a brief few words, with comma separated values, for each attribute. Be i
                          :instruction instruction
                          :attributes initial-character-attributes))
         name (word-chars (or name (:name details "")))
+        objective (word-chars (:objective details ""))
         name-dict (if name {"name" name} {})]
     (log.info name)
     (Character #** (| (._asdict default-character)
                       details
                       name-dict
-                      {"coords" coords}))))
+                      {"coords" coords
+                       "objective" objective}))))
 
 (defn/a gen-json [coords [name None]] ; -> Character or None
   "Make up some plausible character based on a name."
@@ -227,7 +229,8 @@ The dialogue is as follows:
                          :context context
                          :template card
                          :instruction instruction
-                         :attributes (append "new_memory" mutable-character-attributes)))]
+                         :attributes (append "new_memory" mutable-character-attributes)))
+        objective (word-chars (.pop details "objective" ""))]
     (try
       (let [new-score (if (similar (or character.objective "")
                                    (:objective details "")
@@ -235,9 +238,11 @@ The dialogue is as follows:
                           character.score
                           (inc character.score))]
         (log.info f"{character.name}")
+        (.pop details "name" None) ; leave the name alone
         (remember character (.pop details "new_memory" ""))
         (update-character character
                           :score new-score
+                          :objective objective
                           #** details))
       (except [e [Exception]]
         ; generating to template sometimes fails 

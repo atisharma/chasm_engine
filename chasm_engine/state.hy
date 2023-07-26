@@ -13,6 +13,7 @@ Thing in themselves and relationships between things.
 
 (import atexit)
 (import sqlitedict [SqliteDict])
+(import sqlite3 [OperationalError])
 ; consider using diskcache
 
 (import chasm_engine.stdlib *)
@@ -61,6 +62,13 @@ Thing in themselves and relationships between things.
     (.register atexit t.close)
     t))
 
+(defn safe-commit [table]
+  "If database is locked, shrug and carry on.
+But you're probably using autocommit anyway."
+  (try
+    (.commit table)
+    (except [OperationalError])))
+  
 ;;; -----------------------------------------------------------------------------
 ;;; Characters
 ;;; key is character name, value is Character
@@ -86,7 +94,6 @@ Thing in themselves and relationships between things.
 (defn set-character [char]
   (log.debug f"Setting character {char.name}.")
   (setv (get characters (character-key char.name)) (dict (sorted (.items (._asdict char)))))
-  (.commit characters)
   char)
 
 (defn update-character [char #** kwargs]
@@ -116,7 +123,6 @@ Thing in themselves and relationships between things.
 (defn set-place [loc]
   (let [key (str loc.coords)]
     (setv (get places key) (dict (sorted (.items (._asdict loc))))))
-  (.commit places)
   loc)
 
 (defn update-place [loc #** kwargs]
@@ -150,7 +156,6 @@ Thing in themselves and relationships between things.
 
 (defn set-item [item]
   (setv (get items item.name) (dict (sorted (.items (._asdict item)))))
-  (.commit items)
   item)
 
 (defn update-item [item #** kwargs]
@@ -183,7 +188,6 @@ Thing in themselves and relationships between things.
 
 (defn set-narrative [messages player-name]
   (setv (get narratives (character-key player-name)) messages)
-  (.commit narratives)
   messages)
 
 ;;; -----------------------------------------------------------------------------
@@ -203,7 +207,6 @@ Thing in themselves and relationships between things.
 (defn set-account [account player-name]
   (log.debug f"Setting account {player-name}.")
   (setv (get accounts (character-key player-name)) account)
-  (.commit accounts)
   account)
 
 (defn update-account [player-name #** kwargs]

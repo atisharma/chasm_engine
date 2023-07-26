@@ -52,12 +52,13 @@ Functions that deal with recall and vector databases.
           (SentenceTransformerEmbeddingFunction :model-name model)))))
 
 (defn collection [name]
-  (log.info f"{name}")
+  (log.info name)
   (_vdb.get-or-create-collection :name f"C-{name}"
                                  :embedding-function (get-embedding-fn)))
 
 (defn [(retry :wait (wait-random-exponential :min 0.5 :max 30)
-              :stop (stop-after-attempt 6))] remote-embed [text #** kwargs]
+              :stop (stop-after-attempt 6))]
+  remote-embed [text #** kwargs]
   "Get an embedding from text via the API."
   (let [params (config "providers" (config "memory" "embedding_provider"))
         model {"model" (or (config "memory" "embedding") "all-mpnet-base-v2")}
@@ -80,7 +81,7 @@ Functions that deal with recall and vector databases.
               :metadatas metadata
               :ids (hash-id text))))
 
-(defn query [name text [n 6] [where None]]
+(defn query [name text [n 5] [where None]]
   "Recall related memories."
   (let [vdbc (collection name)]
     ; can use where field to filter on metadata
@@ -88,7 +89,7 @@ Functions that deal with recall and vector databases.
                 :n-results n
                 :where where)))
       
-(defn recent [name [n 6] [where None]]
+(defn recent [name [n 5] [where None]]
   (let [c (collection name)
         ct (.count c)]
     (.get c

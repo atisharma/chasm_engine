@@ -349,7 +349,8 @@ Now give the hint."
 
 (defn/a narrate [messages player]
   "Narrate the story, in the fictional universe."
-  (let [items-here-str (item.describe-at player.coords)
+  (let [news (.join "\n" [(plot.news) #* (cut messages -2 None)]) ; smallest embedding model only takes 256 tokens
+        items-here-str (item.describe-at player.coords)
         here (get-place player.coords)
         ; this includes the player
         characters-here (character.get-at player.coords)
@@ -364,12 +365,12 @@ Now give the hint."
         present-str (if (> (len character-names-here) 1)
                         (+ (.join ", " character-names-here) f" are here at the {here.name}.")
                         f"{player.name} is at the {here.name}.")
-        ; TODO: improve memory cues
-        plot-points (.join "\n" (plot.recall-points (plot.news)))
+        plot-points (.join "\n" (plot.recall-points news))
         memories (.join "\n\n" (lfor c (character.get-at player.coords)
-                                     (let [mem (bullet (character.recall c (.join "\n" [#* character-descs-here
+                                     (let [mem (bullet (character.recall c (.join "\n" [character.objective
                                                                                         plot-points
-                                                                                        (plot.news)])
+                                                                                        #* character-names-here
+                                                                                        news])
                                                                            :n 6))]
                                        (if mem
                                            f"{c.name} recalls the memories:\n{mem}."
