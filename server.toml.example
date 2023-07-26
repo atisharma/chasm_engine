@@ -4,15 +4,14 @@ world = "worlds/generic-world-name"
 # params passed to the model are defined in their own section below
 provider = "local"
 # context_length is the context window of the model.
-context_length = 3000
+context_length = 3700
 
 # max_tokens limits the text generation
-max_tokens = 200
+max_tokens = 250
 
 loglevel = "warning"
 
-#[memory]
-# There is no good reason not to use the default.
+# There is no good reason not to use the default embedding.
 # If you change embedding provider, the embedding of your previous data will be unreadable
 # Leaving unset will use Sentence Transformers,
 # which uses pytorch, so will use CUDA if available.
@@ -21,6 +20,8 @@ loglevel = "warning"
 # If using ooba, the embedding model is set by environment variable when starting the ooba API.
 #embedding_provider = "OpenAI"
 #embedding = "text-embedding-ada-002"
+
+# The engine will round-robin over available providers.
 
 [providers.OpenAI]
 model = "gpt-3.5-turbo"

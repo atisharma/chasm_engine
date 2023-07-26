@@ -3,8 +3,8 @@
 Chasm is a ***generative text adventure game*** in a ***world you
 specify***. It uses generative artificial intelligence to generate
 scenes and characters as you play. Unlike simply role-playing with a
-chatbot, important state persists (locations, characters, dialogue
-etc.)
+chatbot, important state mutates and persists (locations, characters,
+dialogue etc.)
 
 **This is the server software that clients connect to.**
 **It runs the 'world'.**
@@ -13,7 +13,7 @@ You can use it with a local model (LLaMA derivative like
 Wizard-Vicuna) or OpenAI's models. See the config file for examples.
 It works very well with a 30B LLaMA model and acceptably with a 13B
 one. It 'kind-of-works' with a 7B LLaMA model, but the results aren't
-great.
+great. Llama2-Chat 70B is the best so far.
 
 Chasm is still being written. It's already pretty great though,
 with a good model.
@@ -27,18 +27,19 @@ with a good model.
 * [x] continue / save file for game
 * [x] persistent items
 * [x] character inventory
-* [x] take, drop, use items
-* [ ] permanently modify items
 * [x] per-character event memory
 * [x] per-character quests
-* [x] NPCs should travel
+* [x] take, drop, use items
+* [ ] permanently modify items
+* [ ] natural item interaction
 * [ ] NPCs should interact with items
 * [ ] NPCs should interact with plot, follow quests
+* [x] NPCs should travel
 * [x] persistent global event memory (plot events in vector db)
 * [x] per-character dialogue memory (snippets in vector db)
 * [x] play as any character
-* [ ] world editor for manual world construction
-* [x] multiplayer - separate server & client
+* [ ] world editor / admin repl for manual world construction
+* [x] multiplayer - separate async server with many clients
 * [x] player authentication
 
 

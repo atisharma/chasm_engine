@@ -27,6 +27,8 @@ Functions that deal with recall and vector databases.
 
 (setv path (config "world"))
 
+(setv DEFAULT_EMBEDDING "all-mpnet-base-v2")
+
 (defn chroma [vdb-path]
   "Return the chroma client."
   (chromadb.PersistentClient
@@ -39,16 +41,16 @@ Functions that deal with recall and vector databases.
 
 (defn get-embedding-fn []
   "Return the configured embedding function."
-  (let [provider (config "memory" "embedding_provider")]
+  (let [provider (config "embedding_provider")]
     (if provider
         (let [params (config "providers" provider)
-              model (or (config "memory" "embedding") "text-embedding-ada-002")]
+              model (or (config "embedding") "text-embedding-ada-002")]
           (OpenAIEmbeddingFunction :model-name model
                                    :api-key (:api-key params "N/A")
                                    :api-base (:api-base params None)
                                    :api-type (:api-type params None)
                                    :organization-id (:organization-id params None))) 
-        (let [model (or (config "memory" "embedding") "all-MiniLM-L6-v2")]
+        (let [model (or (config "embedding") DEFAULT_EMBEDDING)]
           (SentenceTransformerEmbeddingFunction :model-name model)))))
 
 (defn collection [name]
@@ -60,8 +62,8 @@ Functions that deal with recall and vector databases.
               :stop (stop-after-attempt 6))]
   remote-embed [text #** kwargs]
   "Get an embedding from text via the API."
-  (let [params (config "providers" (config "memory" "embedding_provider"))
-        model {"model" (or (config "memory" "embedding") "all-mpnet-base-v2")}
+  (let [params (config "providers" (config "embedding_provider"))
+        model {"model" (or (config "embedding") DEFAULT_EMBEDDING)}
         response (Embedding.create :input text
                                    #** (| params kwargs model))]
     (-> response
