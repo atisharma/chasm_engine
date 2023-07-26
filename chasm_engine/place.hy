@@ -5,8 +5,6 @@ Functions that manage place.
 (require hyrule [-> ->>])
 (require hyrule [unless])
 
-(import async-lru [alru-cache])
-
 (import tenacity [retry stop-after-attempt wait-random-exponential])
 
 (import chasm_engine [log])

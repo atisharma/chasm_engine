@@ -279,10 +279,13 @@ The dialogue is as follows:
 (defn/a get-new [messages player]
   "Are any new or existing characters mentioned in the messages?
 They will appear at the player's location."
+  ; messages will already have been truncated
   (let [setting (system f"Story setting: {world}")
-        prelude (system f"Give a list of names of individuals (if any), one per line, that are obviously referred to in the text as being physically present at the current location ({(place.name player.coords)}) and time. Do not invent new characters. Exclude places and objects, only people's proper names count, no pronouns. Give the names as they appear in the text. Setting and narrative appear below.")
+        place-name (place.name player.coords)
+        prelude (system f"Give a list of names of individuals (if any), one per line, that are obviously referred to in the text as being physically present at the current location ({place-name}) and time. Do not invent new characters. Exclude places and objects, only people's proper names count, no pronouns. Give the names as they appear in the text. Setting and narrative appear below.")
         instruction (user "Now, give the list of characters.")
-        char-list (await (respond (->> (cut messages -6 None)
+        disallowed (+ [player.name place-name] banned-names)
+        char-list (await (respond (->> messages
                                        (prepend setting)
                                        (prepend prelude)
                                        (append instruction)
@@ -294,7 +297,7 @@ They will appear at the player's location."
                                  (.split :sep "\n")
                                  (map capwords)
                                  (sieve)
-                                 (filter (fn [x] (not (fuzzy-in x (append player.name banned-names)))))
+                                 (filter (fn [x] (not (fuzzy-in x disallowed))))
                                  (filter (fn [x] (< (len (.split x)) 3))) ; exclude long rambling non-names
                                  (filter valid-key?)
                                  (list))]

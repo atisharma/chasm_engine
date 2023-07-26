@@ -188,19 +188,21 @@ Writes to vdb memory so is not thread-safe."
     (let [player-name (.pop develop-queue)
           player (get-character player-name)
           messages (get-narrative player-name)
-          recent-messages (cut messages -4 None)]
+          recent-messages (cut messages -2 None) ; just new messages
+          characters-here (character.get-at player.coords)]
       (when (and player-name player messages)
         ; new plot point, record in vdb, db and recent events
         (await (plot.extract-point recent-messages player))
         ; all players get developed
-        (for [c (character.get-at player.coords)]
+        (for [c characters-here]
           (await (character.develop-lines c recent-messages)))
-        ; Summon npcs to the player's location
-        (for [c-name (await (character.get-new recent-messages player))]
-          (let [c (get-character c-name)]
-            (if (and c c.npc)
-              (character.move c player.coords) ; make sure they're here if the narrator says so
-              (await (character.spawn :name c-name :coords player.coords))))))))) ; new characters may randomly spawn if mentioned
+        ; Summon npcs to the player's location if < 4 here
+        (when (< (len characters-here) 4)
+          (for [c-name (await (character.get-new recent-messages player))]
+            (let [c (get-character c-name)]
+              (if (and c c.npc)
+                (character.move c player.coords) ; make sure they're here if the narrator says so
+                (await (character.spawn :name c-name :coords player.coords)))))))))) ; new characters may randomly spawn if mentioned
 
 (defn set-offline-players []
   "Set characters not accessed in last hour to NPC."
@@ -348,7 +350,8 @@ Now give the hint."
 
 (defn/a narrate [messages player]
   "Narrate the story, in the fictional universe."
-  (let [news (.join "\n" [(plot.news) #* (cut messages -2 None)]) ; smallest embedding model only takes 256 tokens
+  (let [topic (await (text->topic (format-msgs (msgs->dlg player.name "narrator" (cut messages -6 None)))))
+        news (.join "\n" [(plot.news) topic]) ; smallest embedding model only takes 256 tokens
         items-here-str (item.describe-at player.coords)
         here (get-place player.coords)
         ; this includes the player
@@ -366,7 +369,7 @@ Now give the hint."
                         f"{player.name} is at the {here.name}.")
         plot-points (.join "\n" (plot.recall-points news))
         memories (.join "\n\n" (lfor c (character.get-at player.coords)
-                                     (let [mem (bullet (character.recall c (.join "\n" [character.objective
+                                     (let [mem (bullet (character.recall c (.join "\n" [c.objective
                                                                                         plot-points
                                                                                         #* character-names-here
                                                                                         news])
@@ -491,13 +494,16 @@ Do not say you're an AI assistant or similar. To end the conversation, just say 
   (for [c (map get-character characters)]
     (when c.npc ; don't randomly move a player, only NPCs
       ; don't test for accessibility
-      (for [p (await (place.nearby c.coords :place True :list-inaccessible True))]
-        (when (and (similar c.destination p.name)
+      (let [ps (await (place.nearby c.coords :place True :list-inaccessible True))
+            pnames (lfor p ps p.name)
+            pname (fuzzy-in c.destination pnames)]
+        (when (and pname
                    (dice 16)
                    ; don't move them if they've been mentioned in the last move or two
                    (not (in c.name (str (cut messages -4 None)))))
-          (log.info f"{c.name} -> {p.name}")
-          (character.move c p.coords))))))
+          (let [p (first (lfor p ps :if (= p.name pname) p))]
+            (log.info f"{c.name} -> {p.name}")
+            (character.move c p.coords)))))))
 
 ;;; -----------------------------------------------------------------------------
 ;;; Main engine loop
@@ -523,6 +529,6 @@ Do not say you're an AI assistant or similar. To end the conversation, just say 
            f"*{(await (place.nearby-str coords))}*"])))
 
 (defn spy [char-name]
-  (character.describe
-    (get-character char-name)
-    :long True))
+  (-> (get-character char-name)
+      (._asdict) 
+      (json.dumps :indent 4)))

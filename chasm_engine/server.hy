@@ -118,7 +118,7 @@ See documentation:
         (log.info f"Interrupted, closing {n}")
         (break))
       (except [err [Exception]]
-        (log.exception f"server-loop error:" err)))))
+        (log.error f"server-loop {n} error:" :exception err)))))
 
 (defn/a background-loop []
   "Background service tasks."
@@ -142,6 +142,7 @@ See documentation:
   (let [tasks (lfor n (range N_CONCURRENT_CLIENTS) (asyncio.create-task (server-loop n)))
         bg-task (asyncio.create-task (background-loop))]
     (try
+      ; TODO: clean exit
       ;(setv [done pending] (await (asyncio.wait [bg-task #* tasks])))
       (await (asyncio.wait [bg-task #* tasks]))
       #_(except [KeyboardInterrupt]

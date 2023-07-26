@@ -3,6 +3,8 @@
 (import hyrule [inc dec rest butlast starmap distinct])
 
 (import functools [partial cache lru-cache])
+(import async-lru [alru-cache])
+
 (import itertools *)
 
 (import argparse)
@@ -237,8 +239,8 @@ force to lowercase, remove 'the' from start of line."
   (re.sub r"[^\w&-,.!?']+" "" s))
   
 (defn word-chars [s]
-  "Match just word characters (\\w and space)."
-  (let [m (re.match r"[\w ]*\w" s)]
+  "Match just word characters (\\w, - and space)."
+  (let [m (re.match r"[\w -]*\w" s)]
     (if m
         (.group m)
         "")))

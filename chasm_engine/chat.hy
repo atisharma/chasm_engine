@@ -99,7 +99,7 @@ Return modified message."
           (= role assistant-name) (assistant (:content message))
           :else (system f"{role}: {(:content message)}"))))
     
-(defn dlg->msgs  [user-name assistant-name messages]
+(defn dlg->msgs [user-name assistant-name messages]
   "Replace given names with standard roles and replace other roles with system messages.
 Return modified messages."
   (->> messages
@@ -123,7 +123,7 @@ Return modified messages."
       (await)))
 
 (defn/a [(retry :wait (wait-random-exponential :min 0.5 :max 30) :stop (stop-after-attempt 6))]
-        respond [messages #** kwargs]
+  respond [messages #** kwargs]
   "Reply to a list of messages and return just content.
 The messages should already have the standard roles."
   (let [provider (next providers)

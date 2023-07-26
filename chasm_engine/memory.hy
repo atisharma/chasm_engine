@@ -15,6 +15,7 @@ Functions that deal with recall and vector databases.
 (import chromadb.config [Settings])
 (import chromadb.utils.embedding-functions [OpenAIEmbeddingFunction
                                             SentenceTransformerEmbeddingFunction])
+(.setLevel chromadb.logger "ERROR")
 
 (import chasm_engine [log])
 
