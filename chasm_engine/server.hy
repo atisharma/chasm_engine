@@ -126,13 +126,13 @@ See documentation:
   (await (engine.init))
   (print "Ready for players.")
   (while True
+    (await (asyncio.sleep BACKGROUND_TICK))
     (try
       (await (engine.extend-world))
       (await (engine.develop))
       (await (engine.spawn-characters))
       (await (engine.spawn-items))
       (engine.set-offline-players)
-      (await (asyncio.sleep BACKGROUND_TICK))
       (except [err [Exception]]
         (log.error "bg loop exception" :exception err)))))
 
