@@ -92,7 +92,6 @@ Write a very short sentence (max 10 words) for appearance and another for usage.
         (log.error "Bad new item" e)
         (log.error place)
         (log.error seed)
-        (log.error kvs)))))
 
 (defn/a spawn [coords]
   "Invent a new item from a place name, store it and return it.
