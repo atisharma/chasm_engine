@@ -9,15 +9,14 @@ dialogue etc.)
 **This is the server software that clients connect to.**
 **It runs the 'world'.**
 
-To play, you need [the client](https://github.com/atisharma/chasm).
-You can use it with a local model (LLaMA derivative like
-Wizard-Vicuna) or OpenAI's models. See the config file for examples.
-It works very well with a 30B LLaMA model and acceptably with a 13B
-one. It 'kind-of-works' with a 7B LLaMA model, but the results aren't
-great. Llama2-Chat 70B is the best so far of the models I've tried.
+To play, you need [the client](https://github.com/atisharma/chasm). You can use
+it with a local model (Llama derivative like Wizard-Vicuna) or OpenAI's models.
+See the config file for examples. I recommend Llama2-based models or ChatGPT.
+It 'kind-of-works' with a 7B model, but the results aren't great. Llama2-Chat
+70B is the best so far of the models I've tried.
 
 Chasm is still being written. It's already pretty great though,
-with a good model.
+with a good model. Think of it as a playable proof-of-concept.
 
 
 ## Features
@@ -48,8 +47,11 @@ with a good model.
 
 ### Configuring a world on the server
 
-Place a text file named after your world in a subdirectory called
-"worlds" (see the config file `server.toml`).
+Place a text file named after your world in a subdirectory called "worlds" (see
+the config file `server.toml` - copy the `server.toml.example`) and adjust as
+necessary. The `context_length` is the context length of the model, which
+should match what the API expects. **Check you have enough VRAM and your model
+works with the context length if you're running a local model.**
 
 The world information (text file) should contain two or three
 sentences about the world that won't change (not specific places,

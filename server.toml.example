@@ -38,3 +38,9 @@ api_key = "sk-your-super-secret-key"
 api_base = "http://localhost:5001"
 api_key = "N/A"
 stop = ["</s>", "Assistant:"]
+
+#[providers.local2]
+# If you have enough VRAM, you can run multiple local models simultaneously
+#api_base = "http://localhost:5002"
+#api_key = "N/A"
+#stop = ["</s>", "Assistant:"]
