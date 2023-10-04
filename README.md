@@ -45,6 +45,32 @@ with a good model. Think of it as a playable proof-of-concept.
 
 ## Installing and running
 
+### Installing
+
+There are a lot of dependencies so it's recommended you install everything in a
+virtual environment. You can use the same environment for client and server if
+you want (for example, with a single player, it might make sense).
+
+Either clone the repo, install
+the `requirements.txt` and run the module
+```bash
+$ <activate your venv>
+$ git clone https://github.com/atisharma/chasm_engine
+$ cd chasm_engine
+$ pip install -r requirements.txt
+$ python -m chasm_engine
+```
+
+Or, install using pip (recommended)
+```bash
+$ <activate your venv>
+$ pip install -U git+https://github.com/atisharma/chasm_engine
+```
+
+You may want to consider using pyenv for complete control over your python
+version.
+
+
 ### Configuring a world on the server
 
 Place a text file named after your world in a subdirectory called "worlds" (see
@@ -70,4 +96,5 @@ This will create a world called 'New York' and scenes appropriate to it.
 
 ## Problems / bugs
 
-There are still many.
+There are still many. If you find a bug running a local model, test with
+ChatGPT to compare - it might be a bug in oobabooga/text-generation-webui.
