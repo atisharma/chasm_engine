@@ -233,7 +233,6 @@ force to lowercase, remove 'the' from start of line."
         m (re.match r"(^.*[.?!*\"])|^\S[^.?!]" text :flags re.S)]
         ; m (re.match r"(.*[.?!*\"])[^.?!*\"]+" text :flags re.S)]
     (when m
-      (print m)
       (first (m.groups)))))
   
 (defn just-text [s]
