@@ -7,6 +7,7 @@ Chat management functions.
 
 (import tiktoken)
 (import openai [AsyncOpenAI])
+(import openai [APIConnectionError APIError OpenAIError])
 
 (import tenacity [retry stop-after-attempt wait-random-exponential])
 
