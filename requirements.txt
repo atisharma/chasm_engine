@@ -1,7 +1,7 @@
 hy
 hyrule
 sqlitedict
-openai[datalib]==0.28
+openai[datalib]
 tomli
 jaro-winkler
 tiktoken

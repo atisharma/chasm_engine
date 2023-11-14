@@ -6,7 +6,7 @@ Chat management functions.
 (import chasm_engine [log])
 
 (import tiktoken)
-(import openai [ChatCompletion])
+(import openai [AsyncOpenAI])
 (import openai.error [APIConnectionError])
 
 (import tenacity [retry stop-after-attempt wait-random-exponential])
@@ -127,18 +127,21 @@ Return modified messages."
   "Reply to a list of messages and return just content.
 The messages should already have the standard roles."
   (let [provider (next providers)
-        params (config "providers" provider)
+        conf (config "providers" provider)
         defaults {"api_key" "n/a"
                   "max_tokens" (config "max_tokens")
                   "model" "gpt-3.5-turbo"}
+        params (| defaults conf kwargs)
+        client (AsyncOpenAI :api-key (.pop params "api_key")
+                            :base_url (.pop params "api_base"))
         response (await
-                   (ChatCompletion.acreate
+                   (client.chat.completions.create
                      :messages (standard-roles messages)
-                     #** (| defaults params kwargs)))]
+                     #** params))]
     (-> response.choices
         (first)
-        (:message)
-        (:content))))
+        (. message)
+        (. content))))
 
 (defn/a chat [messages #** kwargs] ; -> message
   "An assistant response (message) to a list of messages.
