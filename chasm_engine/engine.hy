@@ -22,7 +22,7 @@ The engine logic is expected to handle many players.
                             get-character update-character len-characters
                             get-account update-account get-accounts
                             get-narrative set-narrative])
-(import chasm_engine.chat [APIConnectionError ChatError respond
+(import chasm_engine.chat [OpenAIError APIError APIConnectionError ChatError respond
                            msgs->topic text->topic msgs->points
                            msg->dlg msgs->dlg
                            truncate standard-roles
@@ -118,7 +118,6 @@ The engine logic is expected to handle many players.
                    (.startswith line "/hist") (msg "history" "The story so far...")
                    (.startswith line "/items") (info (item.describe-at player.coords)) ; for debugging
                    (.startswith line "/map") (info (await (print-map player.coords)))
-                   (.startswith line "/spy") (info (spy (last (.partition line " ")))) ; for debugging
                    (.startswith line "/what-if") (info (await (narrate (append (user (last (.partition line))) messages) player))) ; for debugging
                    ;; responses as assistant
                    (look? line) (assistant (await (place.describe player :messages messages :length "short")))
@@ -126,9 +125,15 @@ The engine logic is expected to handle many players.
                    (go? line) (assistant (await (move (append user-msg messages) player)))
                    ;(talk? line) (assistant (converse (append user-msg messages) player)) ; this one needs thinking about
                    line (assistant (await (narrate (append user-msg messages) player))))
-                 (except [err [APIConnectionError]]
-                   (log.error "model API connection error.")
+                 (except [err [APIError]]
+                   (log.error "Server API error (APIError).")
                    (error "Server error: call to language model failed."))
+                 (except [err [APIConnectionError]]
+                   (log.error "model API connection error (APIConnectionError).")
+                   (error "Server error: call to language model failed."))
+                 (except [err [OpenAIError]]
+                   (log.error "model API error (OpenAIError).")
+                   (error "Server error: call to language model server failed."))
                  (except [err [ChatError]]
                    (log.error "Empty reply" :exception err)
                    (info "There was no reply."))
@@ -138,7 +143,7 @@ The engine logic is expected to handle many players.
     ; info, error do not extend narrative.
     (when (and result (= (:role result) "assistant"))
       (.extend narrative [user-msg result])
-      (set-narrative (cut narrative -1000 None) player-name) ; keep just last 1000 messages
+      (set-narrative (cut narrative -100 None) player-name) ; keep just last 100 messages
       (await (move-characters narrative)))
     (log.debug f"-> {result}")
     ; always return the most recent state

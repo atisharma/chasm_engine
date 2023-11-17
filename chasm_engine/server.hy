@@ -21,7 +21,7 @@ See documentation:
 
 (import chasm_engine [crypto])
 (import chasm_engine [engine])
-(import chasm_engine.stdlib [config hash-id prepend inc])
+(import chasm_engine.stdlib [config-file config hash-id prepend inc])
 (import chasm_engine.state [get-account set-account update-account])
 (import chasm_engine.wire [wrap unwrap zerror])
 
@@ -137,8 +137,8 @@ See documentation:
         (log.error "bg loop exception" :exception err)))))
 
 (defn/a serve []
-  (print f"Starting server at {(.isoformat (datetime.today))}")
-  (log.info f"Starting server")
+  (print f"Starting server at {(.isoformat (datetime.today))} for {config-file}")
+  (log.info f"Starting server for {config-file}")
   (let [tasks (lfor n (range N_CONCURRENT_CLIENTS) (asyncio.create-task (server-loop n)))
         bg-task (asyncio.create-task (background-loop))]
     (try
@@ -150,4 +150,3 @@ See documentation:
           (log.info f"Interrupted, quitting")
           (for [t pending]
              (t.cancel))))))
-

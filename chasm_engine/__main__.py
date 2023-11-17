@@ -1,7 +1,5 @@
 import hy
-import sys
-import asyncio
-import chasm_engine
+import chasm_engine.cli
 
 if __name__ == "__main__":
- sys.exit(asyncio.run(chasm_engine.serve()) or 0)
+  chasm_engine.cli.chasm()

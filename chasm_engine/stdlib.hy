@@ -33,6 +33,7 @@
 ;;; config function
 ;;; -----------------------------------------------------------------------------
 
+; this args parser swallows the help provided by the main one in cli
 (setv args-parser (.ArgumentParser argparse :description "Run the chasm server."))
 (.add-argument args-parser
                "--config" "-c"
@@ -40,7 +41,7 @@
                :dest "config"
                :default "server.toml"
                :help "specify alternative config file")
-(setv args (.parse-args args-parser))
+(setv [args _] (.parse-known-args args-parser))
 (setv config-file args.config)
 
 (defn config [#* keys]
