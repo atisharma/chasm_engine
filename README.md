@@ -34,12 +34,12 @@ with a good model. Think of it as a playable proof-of-concept.
 * [ ] permanently modify items
 * [ ] natural item interaction
 * [ ] NPCs should interact with items
-* [ ] NPCs should interact with plot, follow quests
+* [.] NPCs should interact with plot, follow quests
 * [x] NPCs should travel
 * [x] persistent global event memory (plot events in vector db)
 * [x] per-character dialogue memory (snippets in vector db)
 * [x] play as any character
-* [ ] world editor / admin repl for manual world construction
+* [.] world editor / admin repl for manual world construction
 * [x] multiplayer - separate async server with many clients
 * [x] player authentication
 
@@ -52,20 +52,19 @@ There are a lot of dependencies so it's recommended you install everything in a
 virtual environment. You can use the same environment for client and server if
 you want (for example, with a single player, it might make sense).
 
-Either clone the repo, install
-the `requirements.txt` and run the module
-```bash
-$ <activate your venv>
-$ git clone https://github.com/atisharma/chasm_engine
-$ cd chasm_engine
-$ pip install -r requirements.txt
-$ python -m chasm_engine
-```
+The chasm engine depends on sentence-transformers, which in turn
+depends on pytorch. If you want to use only the CPU version of
+pytorch (instead of the *huge* cuda libraries which are not needed for
+this), you should [install that first](https://pytorch.org/get-started/locally/).
 
-Or, install using pip (recommended)
 ```bash
 $ <activate your venv>
+# if installing only the CPU version of pytorch...
+$ pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+# to install the server
 $ pip install -U git+https://github.com/atisharma/chasm_engine
+# then edit server.toml a copy
+$ chasm -c server.toml serve
 ```
 
 You may want to consider using pyenv for complete control over your python
@@ -74,11 +73,13 @@ version.
 
 ### Configuring a world on the server
 
-Place a text file named after your world in a subdirectory called "worlds" (see
-the config file `server.toml` - copy the `server.toml.example`) and adjust as
-necessary. The `context_length` is the context length of the model, which
-should match what the API expects. **Check you have enough VRAM and your model
-works with the context length if you're running a local model.**
+Place a text file named after your world in a subdirectory called
+"worlds" (see the config file `server.toml` - copy the
+`server.toml.example`) and adjust as necessary. The `context_length`
+is the context length of the model, which should match what the API
+expects. **Check you have enough VRAM and your model works with the
+context length if you're running a local model. If you are getting
+garbage, it's probably your model.**
 
 The world information (text file) should contain two or three
 sentences about the world that won't change (not specific places,
@@ -97,5 +98,7 @@ This will create a world called 'New York' and scenes appropriate to it.
 
 ## Problems / bugs
 
-There are still many. If you find a bug running a local model, test with
-ChatGPT to compare - it might be a bug in oobabooga/text-generation-webui.
+There are still many. If you find a bug running a local model, test
+with ChatGPT to compare - it might be a bug in
+oobabooga/text-generation-webui or whatever's serving your local
+model.
