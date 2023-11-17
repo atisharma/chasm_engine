@@ -9,11 +9,12 @@ dialogue etc.)
 **This is the server software that clients connect to.**
 **It runs the 'world'.**
 
-To play, you need [the client](https://github.com/atisharma/chasm). You can use
-it with a local model (Llama derivative like Wizard-Vicuna) or OpenAI's models.
-See the config file for examples. I recommend Llama2-based models or ChatGPT.
-It 'kind-of-works' with a 7B model, but the results aren't great. Llama2-Chat
-70B is the best so far of the models I've tried.
+To play, you need [the client](https://github.com/atisharma/chasm). You can use it with a local model
+(Llama derivative like Wizard-Vicuna) or OpenAI's models. See the
+config file for examples. I recommend Llama2-based models or ChatGPT.
+It 'kind-of-works' with a 7B model, but the results aren't great.
+Llama2 70B derivatives like Euryale are the best so far of the models
+I've tried.
 
 Chasm is still being written. It's already pretty great though,
 with a good model. Think of it as a playable proof-of-concept.
