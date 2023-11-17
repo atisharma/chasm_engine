@@ -3,8 +3,6 @@ import sys
 import asyncio
 import argparse
 
-from chasm_engine import stdlib, server, edit
-
 def chasm():
     "Main entry point."
     args_parser = argparse.ArgumentParser(description="The chasm engine.")
@@ -42,16 +40,21 @@ def chasm():
 
 
 def _serve(args):
+    from chasm_engine import server
     sys.exit(asyncio.run(server.serve()) or 0)
 
 def _edit_account(args):
+    from chasm_engine import edit
     edit.edit_account(args.name)
 
 def _edit_character(args):
+    from chasm_engine import edit
     edit.edit_character(args.name)
 
 def _edit_item(args):
+    from chasm_engine import edit
     edit.edit_item(args.name)
 
 def _edit_place(args):
+    from chasm_engine import edit
     edit.edit_place(args.x, args.y)
