@@ -6,7 +6,7 @@ scenes and characters as you play. Unlike simply role-playing with a
 chatbot, important state mutates and persists (locations, characters,
 dialogue etc.)
 
-**This is the server software that clients connect to.**
+**This is the server software that clients connect to over the network.**
 **It runs the 'world'.**
 
 To play, you need [the client](https://github.com/atisharma/chasm). You can use it with a local model
@@ -63,7 +63,7 @@ $ <activate your venv>
 $ pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 # to install the server
 $ pip install -U git+https://github.com/atisharma/chasm_engine
-# then edit server.toml a copy
+# then edit server.toml or a copy
 $ chasm -c server.toml serve
 ```
 
