@@ -10,7 +10,7 @@
                    "a large outdoor space"
                    "an underground space"
                    "a space high up"]
-      place-attributes ["name" "appearance" "atmosphere" "terrain" "vibe"])
+      place-attributes ["name" "appearance" "atmosphere" "terrain"])
 
 (setv item-attributes ["name" "appearance" "type" "usage" "item"])
 
