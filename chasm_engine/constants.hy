@@ -10,7 +10,7 @@
                    "a large outdoor space"
                    "an underground space"
                    "a space high up"]
-      place-attributes ["name" "appearance" "atmosphere" "terrain"])
+      place-attributes ["name" "appearance" "atmosphere" "terrain" "vibe"])
 
 (setv item-attributes ["name" "appearance" "type" "usage" "item"])
 
@@ -34,7 +34,7 @@
                           :emotions None
                           :npc True))
 
-(setv banned-names ["None" "You" "###" "." "Me" "Incorrect" "narrator" "She" "He" "Myself" "Yourself" "Sure" "Characters" "Individuals"])
+(setv banned-names ["None" "You" "###" "." "Me" "Incorrect" "narrator" "She" "He" "Myself" "Yourself" "Sure" "Characters" "Individuals" "User" "Assistant" "Empty" "Sorry"])
 
 (setv compass-directions ["n" "north"
                           "ne" "northeast"

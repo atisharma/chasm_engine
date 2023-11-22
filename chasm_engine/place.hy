@@ -123,7 +123,7 @@ appearance: a few keywords to describe
 atmosphere: a few keywords
 terrain: the terrain"
         instruction f"Complete the template for a place you want to explore, that's distinct from those nearby, but that's in keeping with the story's setting. Avoid adjectives used in nearby places; be interesting and imaginative.
-Example names would include: 'Residential Buildings', 'Mysterious Ruins', 'Junction', 'Inn', 'Architect's Office', 'Corner Shop', 'Palace', 'Nightclub', 'Small White House', 'Ship', 'Castle', 'Secret Cave'.
+Example names would include: 'Residential Buildings', 'Mysterious Ruins', 'Junction', 'Inn', 'Architect's Office', 'Corner Shop', 'Palace', 'Nightclub', 'Small White House', 'Ship', 'Castle', 'Secret Cave', 'Bridge'.
 The name should have {seed} in the first few letters. The place might be {(choice place-types)}."
         details (await (complete-lines
                          :context context

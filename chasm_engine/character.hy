@@ -215,7 +215,7 @@ new_memory: [classification] - any significant or poignant thing worth rememberi
 Update any attribute that has changed describing the character, appropriate to the given context.
 Appearance may change where a character changes clothes etc.
 Destination should be just one of {nearby-places} or to stay at {(place.name character.coords)}.
-Objective should align with the where the plot needs to go, the character's role (less than 8 words). It must give the character urgency and purpose. Either keep it the same or, if it's stale or superseded by a more important one, abandon it for a new mission.
+Objective should align with the where the plot needs to go long-term, and the character's role (less than 8 words). It must give the character urgency and purpose. Either keep it the same or, if it's stale or superseded by a more important one, abandon it for a new mission.
 Classify new memories into [significant], [minor] or [forgettable] (note square brackets).
 Don't mention the original attribute if it is unchanged.
 Use a brief few words, comma separated, for each attribute. Be concise and very specific."
