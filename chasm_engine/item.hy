@@ -76,8 +76,9 @@ Write a very short sentence (max 10 words) for appearance and another for usage.
                          :template template
                          :attributes item-attributes))]
     (try
-      (let [_name (or (.pop details "name" None) (.pop details "item" None))
-            name (word-chars _name)]
+      (let [_name (.pop details "name" None)
+            _alt-name (.pop details "item" None)
+            name (word-chars (or _name alt-name))]
         (log.info f"Creating item '{name}'")
         (when name
           (Item #** (| {"type" "object"
