@@ -67,12 +67,11 @@ def _edit_place(args):
 
 def _look_place(args):
     from chasm_engine.types import Coords
-    from chasm_engine import character, item
-    from chasm_engine import engine
+    from chasm_engine import character, item, place
     print(
         "\n\n".join(
             [
-                asyncio.run(engine.print_map(Coords(args.x, args.y))),
+                place.name(Coords(args.x, args.y)),
                 character.describe_at(Coords(args.x, args.y)),
                 item.describe_at(Coords(args.x, args.y))
             ]
