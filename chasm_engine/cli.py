@@ -70,7 +70,7 @@ def _edit_place(args):
     edit.edit_place(args.x, args.y)
 
 def _dump_narrative(args):
-    from chasm_engine import state, chat
+    from chasm_engine import state, stdlib
     print(
         stdlib.format_msgs(
             state.get_narrative(args.name)
