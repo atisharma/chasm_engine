@@ -112,13 +112,13 @@ The engine logic is expected to handle many players.
                    (take? line) (info (item.fuzzy-claim (take? line) player))
                    (drop? line) (info (item.fuzzy-drop (drop? line) player))
                    (give? line) (info (item.fuzzy-give player #* (give? line)))
-                   (.startswith line "/characters") (info (or (character.describe-at player.coords :exclude player.name) "Nobody interesting here but you.")) ; for debugging
                    (.startswith line "/help") (info (help-str))
                    (.startswith line "/hint") (info (await (hint messages player line)))
                    (.startswith line "/hist") (msg "history" "The story so far...")
-                   (.startswith line "/items") (info (item.describe-at player.coords)) ; for debugging
                    (.startswith line "/map") (info (await (print-map player.coords)))
-                   (.startswith line "/what-if") (info (await (narrate (append (user (last (.partition line))) messages) player))) ; for debugging
+                   ;(.startswith line "/characters") (info (or (character.describe-at player.coords :exclude player.name) "Nobody interesting here but you.")) ; for debugging
+                   ;(.startswith line "/items") (info (item.describe-at player.coords)) ; for debugging
+                   ;(.startswith line "/what-if") (info (await (narrate (append (user (last (.partition line))) messages) player))) ; for debugging
                    ;; responses as assistant
                    (look? line) (assistant (await (place.describe player :messages messages :length "short")))
                    (command? line) (error "I didn't understand that command.")
