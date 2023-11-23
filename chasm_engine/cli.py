@@ -36,6 +36,10 @@ def chasm():
     p_place.add_argument("y", type=int, help="Northings (y-location)")
     p_place.set_defaults(func=_edit_place)
 
+    p_character = subparser.add_parser("narrative", help="Dump a character's narrative")
+    p_character.add_argument("name", help="name of character")
+    p_character.set_defaults(func=_dump_narrative)
+
     p_place = subparser.add_parser("look", help="Look at a place and its objects")
     p_place.add_argument("x", type=int, help="Eastings (x-location)")
     p_place.add_argument("y", type=int, help="Northings (y-location)")
@@ -64,6 +68,18 @@ def _edit_item(args):
 def _edit_place(args):
     from chasm_engine import edit
     edit.edit_place(args.x, args.y)
+
+def _dump_narrative(args):
+    from chasm_engine import state, chat
+    print(
+        stdlib.format_msgs(
+            chat.dlg->msgs(
+                args.name,
+                "narrator",
+                state.get_narrative(args.name)
+            )
+        )
+    )
 
 def _look_place(args):
     from chasm_engine.types import Coords
