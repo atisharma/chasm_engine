@@ -73,11 +73,7 @@ def _dump_narrative(args):
     from chasm_engine import state, chat
     print(
         stdlib.format_msgs(
-            chat.dlg->msgs(
-                args.name,
-                "narrator",
-                state.get_narrative(args.name)
-            )
+            state.get_narrative(args.name)
         )
     )
 
