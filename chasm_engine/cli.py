@@ -3,6 +3,7 @@ import sys
 import asyncio
 import argparse
 
+
 def chasm():
     "Main entry point."
     args_parser = argparse.ArgumentParser(description="The chasm engine.")
@@ -35,6 +36,11 @@ def chasm():
     p_place.add_argument("y", type=int, help="Northings (y-location)")
     p_place.set_defaults(func=_edit_place)
 
+    p_place = subparser.add_parser("look", help="Look at a place and its objects")
+    p_place.add_argument("x", type=int, help="Eastings (x-location)")
+    p_place.add_argument("y", type=int, help="Northings (y-location)")
+    p_place.set_defaults(func=_look_place)
+
     args = args_parser.parse_args()
     args.func(args)
 
@@ -58,3 +64,15 @@ def _edit_item(args):
 def _edit_place(args):
     from chasm_engine import edit
     edit.edit_place(args.x, args.y)
+
+def _look_place(args):
+    from chasm_engine.types import Coords
+    from chasm_engine import character, item
+    from chasm_engine import engine
+    print(
+        "\n\n".join(
+            engine.print_map(Coords(args.x, args.y))
+            character.describe_at(Coords(args.x, args.y))
+            item.describe_at(Coords(args.x, args.y))
+        )
+    )
