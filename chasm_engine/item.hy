@@ -78,7 +78,7 @@ Write a very short sentence (max 10 words) for appearance and another for usage.
     (try
       (let [_name (.pop details "name" None)
             _alt-name (.pop details "item" None)
-            name (word-chars (or _name alt-name))]
+            name (word-chars (or _name _alt-name))]
         (log.info f"Creating item '{name}'")
         (when name
           (Item #** (| {"type" "object"
