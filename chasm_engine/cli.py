@@ -72,7 +72,7 @@ def _look_place(args):
     print(
         "\n\n".join(
             [
-                await engine.print_map(Coords(args.x, args.y)),
+                asyncio.run(engine.print_map(Coords(args.x, args.y))),
                 character.describe_at(Coords(args.x, args.y)),
                 item.describe_at(Coords(args.x, args.y))
             ]
