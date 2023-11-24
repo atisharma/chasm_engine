@@ -34,7 +34,7 @@
                           :emotions None
                           :npc True))
 
-(setv banned-names ["None" "You" "###" "." "Me" "Incorrect" "narrator" "She" "He" "Myself" "Yourself" "Sure" "Characters" "Individuals" "User" "Assistant" "Empty" "Sorry"])
+(setv banned-names ["None" "You" "###" "." "Me" "Incorrect" "narrator" "She" "He" "Myself" "Yourself" "Sure" "Characters" "Individuals" "User" "Assistant" "Empty" "Sorry" "There" "Unfortunately" "These"])
 
 (setv compass-directions ["n" "north"
                           "ne" "northeast"

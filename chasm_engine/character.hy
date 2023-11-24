@@ -58,7 +58,7 @@ Functions that deal with characters.
             (set-character character)
             ; keep trying until it works
             (do
-              (log.error f"retrying for {name} at {coords}.")
+              (log.error f"retrying spawn for character {name} at {coords}.")
               (await (spawn name coords loaded (inc retries)))))))
     (except [e [Exception]]
       (log.error f"failed for {name} at {coords}.")
