@@ -58,13 +58,12 @@ Functions that deal with characters.
                  (valid-key? (character-key character.name))
                  (< retries 5))
             (do
-              (set-character character)
-              (log.info f"set character {name} -> {char.name}"))
+              (log.info f"set character {name} -> {char.name}")
               ;(log.info (json.dumps (._asdict character))))
-            ; else keep trying until it works
+              (set-character character))
             (do
+              ; else keep trying until it works
               (log.warn f"invalid spawn for character {character.name} at {coords}, retrying...")
-              ;(log.info (json.dumps (._asdict character)))
               (await (spawn name coords loaded (inc retries)))))))
     (except [e [Exception]]
       (log.error f"spawn failed for {name} at {coords}.")

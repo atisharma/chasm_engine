@@ -84,6 +84,7 @@ The engine logic is expected to handle many players.
           player (await (character.spawn :name player-name :loaded kwargs :coords coords)) 
           narrative (or (get-narrative player-name)
                         (set-narrative [(assistant (await (describe-place player)))] player-name))]
+      (update-character player :npc False)
       (await (payload narrative (last narrative) player.name))
       (await (place.extend-map coords)))
     (except [err [Exception]]
