@@ -134,7 +134,7 @@ See documentation:
       (await (engine.spawn-items))
       (engine.set-offline-players)
       (except [err [Exception]]
-        (log.error "bg loop exception" :exception err)))))
+        (log.error "background-loop exception" :exception err)))))
 
 (defn/a serve []
   (print f"Starting server at {(.isoformat (datetime.today))} for {config-file}")

@@ -45,6 +45,10 @@ def chasm():
     p_place.add_argument("y", type=int, help="Northings (y-location)")
     p_place.set_defaults(func=_look_place)
 
+    p_place = subparser.add_parser("config", help="dump parsed config param")
+    p_character.add_argument("param", help="parameter")
+    p_place.set_defaults(func=_dump_config)
+
     args = args_parser.parse_args()
     args.func(args)
 
@@ -89,3 +93,7 @@ def _look_place(args):
             ]
         )
     )
+
+def _dump_config(args):
+    from chasm_engine import stdlib
+    print(stdlib.config(args.param))
