@@ -45,9 +45,9 @@ def chasm():
     p_place.add_argument("y", type=int, help="Northings (y-location)")
     p_place.set_defaults(func=_look_place)
 
-    p_place = subparser.add_parser("config", help="dump parsed config param")
-    p_character.add_argument("param", help="parameter")
-    p_place.set_defaults(func=_dump_config)
+    p_config = subparser.add_parser("config", help="dump parsed config parameter")
+    p_config.add_argument("param", help="parameter to show")
+    p_config.set_defaults(func=_dump_config)
 
     args = args_parser.parse_args()
     args.func(args)
