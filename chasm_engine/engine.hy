@@ -72,9 +72,9 @@ The engine logic is expected to handle many players.
   "Server MOTD."
   {"result"
    (info
-     (slurp (or (config "motd")
-                (+ (os.path.dirname __file__) "/motd.md")
-                "chasm/motd.md")))})
+     (or (config "motd")
+         (slurp (or (+ (os.path.dirname __file__) "/motd.md")
+                    "chasm/motd.md"))))})
 
 (defn/a spawn-player [player-name #* args #** kwargs] ; -> response
   "Start the game. Make sure there's a recent message. Return the whole visible state."
