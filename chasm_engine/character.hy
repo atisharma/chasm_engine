@@ -59,15 +59,15 @@ Functions that deal with characters.
                  (< retries 5))
             (do
               (set-character character)
-              (log.info f"set character {char.name}"))
+              (log.info f"set character {name} -> {char.name}"))
               ;(log.info (json.dumps (._asdict character))))
             ; else keep trying until it works
             (do
-              (log.error f"retrying spawn for character {character.name} at {coords}.")
+              (log.warn f"invalid spawn for character {character.name} at {coords}, retrying...")
               ;(log.info (json.dumps (._asdict character)))
               (await (spawn name coords loaded (inc retries)))))))
     (except [e [Exception]]
-      (log.error f"failed for {name} at {coords}.")
+      (log.error f"spawn failed for {name} at {coords}.")
       (log.error e))))
 
 (defn/a gen-lines [coords [name None]] ; -> Character or None
