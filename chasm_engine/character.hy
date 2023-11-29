@@ -18,7 +18,7 @@ Functions that deal with characters.
 
 (import chasm_engine.state [world path
                             get-place
-                            accounts
+                            get-accounts
                             get-character set-character update-character character-key get-characters])
 (import chasm_engine.chat [respond yes-no
                            complete-json complete-lines
