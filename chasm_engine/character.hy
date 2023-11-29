@@ -312,7 +312,7 @@ They will appear at the player's location."
 
 (defn online [[long False]]
   "List of player-characters with :npc False."
-  (let [chars-online (lfor a (get-accounts) :if (< (- (time) a.last-verified) 600) (:name a))]
+  (let [chars-online (lfor a (get-accounts) :if (< (- (time) (:last-verified a)) 600) (:name a))]
     (if long
         (if chars-online
             (+ (.join ", " chars-online) ".")
