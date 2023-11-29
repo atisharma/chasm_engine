@@ -240,7 +240,8 @@ Writes to vdb memory so is not thread-safe."
         cmd (.lower _cmd)]
     (cond (= cmd "/go") (re.sub "^to " "" (sstrip dirn))
           (= cmd "go") (re.sub "^to " "" (sstrip dirn))
-          (and (command? cmd) (in (rest cmd) compass-directions)) (rest cmd)))) ; /sw etc
+          (and (command? cmd) (in (rest cmd) compass-directions)) (rest (sstrip cmd)) ; '/sw' etc
+          (in cmd compass-directions) (sstrip cmd)))) ; plain 'east' etc
 
 (defn take? [line] ; -> obj or None
   "Are you trying to pick up an item?"
