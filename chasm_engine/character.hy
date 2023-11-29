@@ -311,7 +311,7 @@ They will appear at the player's location."
 
 (defn online [[long False]]
   "List of player-characters with :npc False."
-  (let [chars-online (lfor n (.keys state.accounts)) :if (not (get-character n)) n]
+  (let [chars-online (lfor n (.keys state.accounts) :if (not (get-character n)) n)]
     (if long
         (+ (.join ", " chars-online) ".")
         chars-online)))
