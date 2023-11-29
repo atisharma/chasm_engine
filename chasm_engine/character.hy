@@ -308,3 +308,10 @@ They will appear at the player's location."
                                  (list))]
     (log.info f"{filtered-char-list}")
     (cut filtered-char-list 3)))
+
+(defn online [[long False]]
+  "List of player-characters with :npc False."
+  (let [chars-online (lfor c (characters.values) :if (not c.npc) c.name)]
+    (if long
+        (+ (.join ", " chars-online) ".")
+        chars-online)))

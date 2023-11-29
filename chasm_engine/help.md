@@ -15,6 +15,7 @@ The only exception is lines beginning with `go` which are understood to be an in
 The usual readline shortcuts should be available (up-arrow for previous commands, etc).
 
 - **/help /h**                   Show this helpful text
+- **/online**                    List player-characters who are currently online
 - **/quit /q /exit**             Quit
 
 - **/take sparkly thing**        Add the item called 'sparkly thing' to your inventory

@@ -116,6 +116,7 @@ The engine logic is expected to handle many players.
                    (.startswith line "/hint") (info (await (hint messages player line)))
                    (.startswith line "/hist") (msg "history" "The story so far...")
                    (.startswith line "/map") (info (await (print-map player.coords)))
+                   (.startswith line "/online") (info (await (character.online)))
                    ;(.startswith line "/characters") (info (or (character.describe-at player.coords :exclude player.name) "Nobody interesting here but you.")) ; for debugging
                    ;(.startswith line "/items") (info (item.describe-at player.coords)) ; for debugging
                    ;(.startswith line "/what-if") (info (await (narrate (append (user (last (.partition line))) messages) player))) ; for debugging
