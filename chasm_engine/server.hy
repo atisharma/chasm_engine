@@ -102,7 +102,7 @@ See documentation:
         args (:args payload [])
         kwargs (:kwargs payload [])
         client-time (:sender-time msg Inf)
-        response (cond (not (time-ok? client-time)) (zerror "STALE" f"Message stale, off by {(int (- (float client-time) (time)))}s, server was probably busy.")
+        response (cond (not (time-ok? client-time)) (zerror "STALE" f"Message stale, off by {(int (- (float client-time) (time)))}s, server was probably busy or your clock is wrong.")
                        (verify msg) (await (handoff-request player-name client-time method #* args #** kwargs))
                        :else (zerror "SIGNATURE" "Failed to verify signature. Maybe your name/passphrase is wrong."))]
     (log.debug f"{msg}")
