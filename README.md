@@ -33,13 +33,14 @@ with a good model. Think of it as a playable proof-of-concept.
 * [x] take, drop, use items
 * [ ] permanently modify items
 * [ ] natural item interaction
+* [ ] natural item spawning from narrative
 * [ ] NPCs should interact with items
 * [ ] NPCs should interact with plot, follow quests
 * [x] NPCs should travel
 * [x] persistent global event memory (plot events in vector db)
 * [x] per-character dialogue memory (snippets in vector db)
 * [x] play as any character
-* [ ] world editor / admin repl for manual world construction
+* [x] world editor / admin repl for manual world construction
 * [x] multiplayer - separate async server with many clients
 * [x] player authentication
 

@@ -5,6 +5,7 @@ For instance,
 > Splash around at the water's edge.
 > Go north
 > Go to the crossroads.
+> n
 > Tell so-and-so about thingy.
 > Ask about the secret treasure.
 > "Hey, why can't I fly in my dreams?"
