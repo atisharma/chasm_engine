@@ -21,7 +21,7 @@ loglevel = "warning"
 #embedding_provider = "OpenAI"
 #embedding = "text-embedding-ada-002"
 
-# The engine will round-robin over available providers.
+# The engine will pick a provider at random for each call
 
 [providers.OpenAI]
 model = "gpt-3.5-turbo"
@@ -37,7 +37,7 @@ api_key = "sk-your-super-secret-key"
 # Guanaco 65B is very good.
 api_base = "http://localhost:5001"
 api_key = "N/A"
-stop = ["</s>", "Assistant:"]
+stop = ["</s>", "Assistant:", "ASSISTANT:", "User:", "USER:"]
 
 #[providers.local2]
 # If you have enough VRAM, you can run multiple local models simultaneously
