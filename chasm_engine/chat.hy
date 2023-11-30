@@ -151,7 +151,9 @@ Return modified messages."
 
 (defn/a _replicate [params messages]
   "Replicate-compatible API calls: https://replicate.com/docs"
-  (let [api-token (or (.pop params "api_key" None) (.pop params "api_token" None))
+  (.pop params "api_key" None)
+  (log.info f"params {params}") 
+  (let [api-token (.pop params "api_token" None)
         model (.pop params "model")
         system-tag (.pop params "system_tag" None)
         assistant-tag (.pop params "assistant_tag" None)
@@ -160,12 +162,12 @@ Return modified messages."
         assistant-close-tag (.pop params "assistant_close_tag" None)
         user-close-tag (.pop params "user_close_tag" None)
         client (replicate.client.Client :api-token api-token)
-        response (client.async_run
-                   model
-                   :input {"prompt" (llama-format (standard-roles messages)
-                                                  :system-tag system-tag :assistant-tag assistant-tag :user-tag user-tag 
-                                                  :system-close-tag system-close-tag :assistant-close-tag assistant-close-tag :user-close-tag user-close-tag) 
-                           #** params})]
+        response (await (client.async_run
+                          model
+                          :input {"prompt" (llama-format (standard-roles messages)
+                                                         :system-tag system-tag :assistant-tag assistant-tag :user-tag user-tag 
+                                                         :system-close-tag system-close-tag :assistant-close-tag assistant-close-tag :user-close-tag user-close-tag) 
+                                  #** params}))]
     response))
 
 (defn/a [(retry :wait (wait-random-exponential :min 0.5 :max 30) :stop (stop-after-attempt 6))]
@@ -182,14 +184,9 @@ The messages should already have the standard roles."
         params (| defaults conf kwargs)
         api-scheme (.pop params "api_scheme")]
     (match api-scheme
-           "replicate" (_replicate params messages)
-           "openai"    (_openai params messages)
-           _           (_openai params messages))
-           
-    (-> response.choices
-        (first)
-        (. message)
-        (. content))))
+           "replicate" (await (_replicate params messages))
+           "openai"    (await (_openai params messages))
+           _           (await (_openai params messages)))))
 
 (defn/a chat [messages #** kwargs] ; -> message
   "An assistant response (message) to a list of messages.
