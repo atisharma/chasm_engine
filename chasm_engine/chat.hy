@@ -164,12 +164,15 @@ Return modified messages."
         client (replicate.client.Client :api-token api-token)
         response (await (client.async_run
                           model
+                          :stream False
                           :input {"prompt" (llama-format (standard-roles messages)
                                                          :system-tag system-tag :assistant-tag assistant-tag :user-tag user-tag 
                                                          :system-close-tag system-close-tag :assistant-close-tag assistant-close-tag :user-close-tag user-close-tag) 
                                   #** params}))]
-    (log.info response)
-    response))
+    ; async client sometimes returns an iterator, sometimes not, but we are not streaming (yet)
+    (if (isinstance response str)
+        response
+        (.join "" response))))
 
 (defn/a [(retry :wait (wait-random-exponential :min 0.5 :max 30) :stop (stop-after-attempt 6))]
   respond [messages #** kwargs]
