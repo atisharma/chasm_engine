@@ -124,7 +124,9 @@ Return modified messages."
   respond [messages #** kwargs]
   "Reply to a list of messages and return just content.
 The messages should already have the standard roles."
-  (let [provider (choice (list (.keys (config "providers"))))
+  (let [providers (list (.keys (config "providers")))
+        provider (choice providers)
+        _ (log.info provider)
         conf (config "providers" provider)
         defaults {"api_key" "n/a"
                   "max_tokens" (config "max_tokens")

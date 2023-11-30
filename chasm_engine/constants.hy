@@ -57,9 +57,10 @@
                     "There"
                     "Unfortunately"
                     "These"
-                    "Mr"
                     "Br"
                     "Dr"
+                    "Mr"
+                    "Mrs"
                     "Breakfast"
                     "Bar"])
 
