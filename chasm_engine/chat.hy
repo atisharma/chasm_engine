@@ -8,6 +8,7 @@ Chat management functions.
 (import tiktoken)
 (import openai [AsyncOpenAI])
 (import openai [APIConnectionError APIError OpenAIError])
+(import replicate)
 
 (import tenacity [retry stop-after-attempt wait-random-exponential])
 
@@ -107,6 +108,21 @@ Return modified messages."
 (defn flip-roles [messages]
   (dlg->msgs "assistant" "user" messages))
 
+(defn llama-format [messages
+                    [system-tag "SYSTEM:"] [assistant-tag "ASSISTANT:"] [user-tag "USER:"]
+                    [system-close-tag ""] [assistant-close-tag ""] [user-close-tag ""]]
+  "Format standard role messages to Llama 2 tags. Remove system prompts."
+  (+ (.join "\n"
+            (lfor m messages
+                  (let [role (:role m)
+                        content (:content m)]
+                    (match role
+                           "system" f"{system-tag}{content}{system-close-tag}"
+                           "assistant" f"{assistant-tag}{content}{assistant-close-tag}"
+                           "user" f"{user-tag}{content}{user-close-tag}"))))
+     f"\n{assistant-tag}"))
+    
+
 ;;; -----------------------------------------------------------------------------
 ;;; Remote API calls
 ;;; -----------------------------------------------------------------------------
@@ -120,17 +136,49 @@ Return modified messages."
       (respond #** kwargs)
       (await)))
 
+(defn/a _openai [params messages]
+  "Openai-compatible API calls: https://platform.openai.com/docs/api-reference"
+  (let [client (AsyncOpenAI :api-key (.pop params "api_key")
+                            :base_url (.pop params "api_base"))
+        response (await
+                   (client.chat.completions.create
+                     :messages (standard-roles messages)
+                     #** params))]
+    (-> response.choices
+        (first)
+        (. message)
+        (. content))))
+
+(defn/a _replicate [params messages]
+  "Replicate-compatible API calls: https://replicate.com/docs"
+  (let [api-token (or (.pop params "api_key" None) (.pop params "api_token" None))
+        model (.pop params "model")
+        system-tag (.pop params "system_tag" None)
+        assistant-tag (.pop params "assistant_tag" None)
+        user-tag (.pop params "user_tag" None)
+        system-close-tag (.pop params "system_close_tag" None)
+        assistant-close-tag (.pop params "assistant_close_tag" None)
+        user-close-tag (.pop params "user_close_tag" None)
+        client (replicate.client.Client :api-token api-token)
+        response (client.async_run
+                   model
+                   :input {"prompt" (llama-format (standard-roles messages)
+                                                  :system-tag system-tag :assistant-tag assistant-tag :user-tag user-tag 
+                                                  :system-close-tag system-close-tag :assistant-close-tag assistant-close-tag :user-close-tag user-close-tag) 
+                           #** params})]
+    response))
+
 (defn/a [(retry :wait (wait-random-exponential :min 0.5 :max 30) :stop (stop-after-attempt 6))]
   respond [messages #** kwargs]
   "Reply to a list of messages and return just content.
 The messages should already have the standard roles."
   (let [providers (list (.keys (config "providers")))
         provider (choice providers)
-        _ (log.info provider)
         conf (config "providers" provider)
         defaults {"api_key" "n/a"
                   "max_tokens" (config "max_tokens")
                   "model" "gpt-3.5-turbo"}
+        api-scheme (or (.pop params "api_scheme") "openai")
         params (| defaults conf kwargs)
         client (AsyncOpenAI :api-key (.pop params "api_key")
                             :base_url (.pop params "api_base"))
@@ -138,6 +186,11 @@ The messages should already have the standard roles."
                    (client.chat.completions.create
                      :messages (standard-roles messages)
                      #** params))]
+    (match api-scheme
+           "replicate" (_replicate params messages)
+           "openai"    (_openai params messages)
+           _           (_openai params messages))
+           
     (-> response.choices
         (first)
         (. message)
