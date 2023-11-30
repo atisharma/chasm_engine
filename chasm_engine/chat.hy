@@ -177,15 +177,10 @@ The messages should already have the standard roles."
         conf (config "providers" provider)
         defaults {"api_key" "n/a"
                   "max_tokens" (config "max_tokens")
-                  "model" "gpt-3.5-turbo"}
-        api-scheme (or (.pop params "api_scheme") "openai")
+                  "model" "gpt-3.5-turbo"
+                  "api_scheme" "openai"}
         params (| defaults conf kwargs)
-        client (AsyncOpenAI :api-key (.pop params "api_key")
-                            :base_url (.pop params "api_base"))
-        response (await
-                   (client.chat.completions.create
-                     :messages (standard-roles messages)
-                     #** params))]
+        api-scheme (.pop params "api_scheme")]
     (match api-scheme
            "replicate" (_replicate params messages)
            "openai"    (_openai params messages)
