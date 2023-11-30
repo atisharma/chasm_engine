@@ -2,7 +2,6 @@ listen = "tcp://*:25566"
 world = "worlds/generic-world-name"
 
 # params passed to the model are defined in their own section below
-provider = "local"
 # context_length is the context window of the model.
 context_length = 3700
 
@@ -31,10 +30,8 @@ api_key = "sk-your-super-secret-key"
 [providers.local]
 # Oobabooga's text-generation-webui works well using the "openai" extension
 # and setting the base url appropriately. Exllama is fast.
-# I've been using Guanaco and Wizard-Vicuna-Uncensored, both 30B 4bit, with good results.
-# I've tried Nous-Hermes 13B and it seems to be OK
-# Lazarus 8k is patchy for instruction following, but does work.
-# Guanaco 65B is very good.
+# I now use llama-api.
+# Mythomax 13B is recommended.
 api_base = "http://localhost:5001"
 api_key = "N/A"
 stop = ["</s>", "Assistant:", "ASSISTANT:", "User:", "USER:"]

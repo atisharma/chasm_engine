@@ -152,7 +152,7 @@ Return modified messages."
 (defn/a _replicate [params messages]
   "Replicate-compatible API calls: https://replicate.com/docs"
   (.pop params "api_key" None)
-  (log.info f"params {params}") 
+  ;(log.info f"params {params}") 
   (let [api-token (.pop params "api_token" None)
         model (.pop params "model")
         system-tag (.pop params "system_tag" None)
@@ -168,6 +168,7 @@ Return modified messages."
                                                          :system-tag system-tag :assistant-tag assistant-tag :user-tag user-tag 
                                                          :system-close-tag system-close-tag :assistant-close-tag assistant-close-tag :user-close-tag user-close-tag) 
                                   #** params}))]
+    (log.info response)
     response))
 
 (defn/a [(retry :wait (wait-random-exponential :min 0.5 :max 30) :stop (stop-after-attempt 6))]
