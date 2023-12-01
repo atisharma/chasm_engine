@@ -67,11 +67,11 @@ def _serve(args):
     from chasm_engine import server
     sys.exit(asyncio.run(server.serve()) or 0)
 
-def _accounts(args):
+def _list_accounts(args):
     from chasm_engine import state
     print("\n".join(state.accounts.keys()))
 
-def _characters(args):
+def _list_characters(args):
     from chasm_engine import state
     print("\n".join(state.characters.keys()))
 
