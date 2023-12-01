@@ -23,6 +23,12 @@ def chasm():
     p_serve = subparser.add_parser("serve", help="Run the server")
     p_serve.set_defaults(func=_serve)
 
+    p_account = subparser.add_parser("accounts", help="List accounts")
+    p_account.set_defaults(func=_list_accounts)
+
+    p_account = subparser.add_parser("characters", help="List characters")
+    p_account.set_defaults(func=_list_characters)
+
     p_account = subparser.add_parser("account", help="Edit an account")
     p_account.add_argument("name", help="name of account")
     p_account.set_defaults(func=_edit_account)
@@ -60,6 +66,14 @@ def chasm():
 def _serve(args):
     from chasm_engine import server
     sys.exit(asyncio.run(server.serve()) or 0)
+
+def _accounts(args):
+    from chasm_engine import state
+    print("\n".join(state.accounts.keys()))
+
+def _characters(args):
+    from chasm_engine import state
+    print("\n".join(state.characters.keys()))
 
 def _edit_account(args):
     from chasm_engine import edit, state
