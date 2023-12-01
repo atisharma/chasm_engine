@@ -14,6 +14,10 @@ def chasm():
                              default="server.toml",
                              help="specify a different config file (defaults to server.toml)")
 
+    args_parser.add_argument("--delete", "-d",
+                             action="store_true",
+                             help="delete the entity")
+
     subparser = args_parser.add_subparsers(required=True, help="Run the server, or edit a chasm entity.")
 
     p_serve = subparser.add_parser("serve", help="Run the server")
@@ -58,20 +62,32 @@ def _serve(args):
     sys.exit(asyncio.run(server.serve()) or 0)
 
 def _edit_account(args):
-    from chasm_engine import edit
-    edit.edit_account(args.name)
+    from chasm_engine import edit, state
+    if args.delete:
+        edit.edit_account(args.name)
+    else:
+        state.delete_account(args.name)
 
 def _edit_character(args):
-    from chasm_engine import edit
-    edit.edit_character(args.name)
+    from chasm_engine import edit, state
+    if args.delete:
+        edit.edit_character(args.name)
+    else:
+        state.delete_character(args.name)
 
 def _edit_item(args):
-    from chasm_engine import edit
-    edit.edit_item(args.name)
+    from chasm_engine import edit, state
+    if args.delete:
+        edit.edit_item(args.name)
+    else:
+        state.delete_item(args.name)
 
 def _edit_place(args):
-    from chasm_engine import edit
-    edit.edit_place(args.x, args.y)
+    from chasm_engine import edit, state, types
+    if args.delete:
+        edit.edit_place(args.x, args.y)
+    else:
+        state.delete_place(types.Coords(args.x, args.y))
 
 def _dump_narrative(args):
     from chasm_engine import state, stdlib

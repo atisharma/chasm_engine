@@ -101,6 +101,11 @@ But you're probably using autocommit anyway."
   (log.debug f"Updating character {char.name}, {kwargs}.")
   (set-character (Character #** (| (._asdict char) kwargs))))
 
+(defn delete-character [char-name]
+  "Completely remove a character."
+  (log.debug f"Deleting character {char-name}.")
+  (.pop characters (character-key char-name)))
+
 (defn get-characters []
   (gfor c characters (get-character c)))
 
@@ -131,6 +136,13 @@ But you're probably using autocommit anyway."
   (log.debug f"Updating place {loc.name}, {kwargs}.")
   (set-place (Place #** (| (._asdict loc) kwargs))))
 
+(defn delete-place [loc]
+  "Completely remove a place."
+  (let [key (str coords)
+        p (get-place coords)]
+    (log.debug f"Deleting place {p.name}.")
+    (.pop places key)))
+  
 (defn len-places []
   (len places))
   
@@ -163,6 +175,11 @@ But you're probably using autocommit anyway."
   (log.debug f"Updating item {item.name}, {kwargs}.")
   (set-item (Item #** (| (._asdict item) kwargs))))
 
+(defn delete-item [item-name]
+  "Completely remove an item."
+  (log.debug f"Deleting item {item-name}.")
+  (.pop items item-name))
+  
 (defn len-items []
   (len items))
 
@@ -190,6 +207,11 @@ But you're probably using autocommit anyway."
   (setv (get narratives (character-key player-name)) messages)
   messages)
 
+(defn delete-narrative [player-name]
+  "Completely remove a narrative."
+  (log.debug f"Deleting narrative {player-name}.")
+  (.pop narrative (character-key player-name)))
+  
 ;;; -----------------------------------------------------------------------------
 ;;; accounts
 ;;; key is player name
@@ -214,6 +236,11 @@ But you're probably using autocommit anyway."
   (log.debug f"Updating account {player-name}, {kwargs}.")
   (let [account (or (get-account player-name) {})]
     (set-account (| account kwargs) player-name)))
+
+(defn delete-account [player-name]
+  "Completely remove an account."
+  (log.debug f"Deleting account {player-name}.")
+  (.pop accounts (character-key player-name)))
 
 (defn get-accounts []
   (gfor p accounts (get-account p)))
