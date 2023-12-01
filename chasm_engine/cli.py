@@ -64,30 +64,30 @@ def _serve(args):
 def _edit_account(args):
     from chasm_engine import edit, state
     if args.delete:
-        edit.edit_account(args.name)
-    else:
         state.delete_account(args.name)
+    else:
+        edit.edit_account(args.name)
 
 def _edit_character(args):
     from chasm_engine import edit, state
     if args.delete:
-        edit.edit_character(args.name)
-    else:
         state.delete_character(args.name)
+    else:
+        edit.edit_character(args.name)
 
 def _edit_item(args):
     from chasm_engine import edit, state
     if args.delete:
-        edit.edit_item(args.name)
-    else:
         state.delete_item(args.name)
+    else:
+        edit.edit_item(args.name)
 
 def _edit_place(args):
     from chasm_engine import edit, state, types
     if args.delete:
-        edit.edit_place(args.x, args.y)
-    else:
         state.delete_place(types.Coords(args.x, args.y))
+    else:
+        edit.edit_place(args.x, args.y)
 
 def _dump_narrative(args):
     from chasm_engine import state, stdlib
