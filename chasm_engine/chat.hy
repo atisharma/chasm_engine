@@ -8,6 +8,7 @@ Chat management functions.
 (import tiktoken)
 (import openai [AsyncOpenAI])
 (import openai [APIConnectionError APIError OpenAIError])
+(import replicate)
 
 (import tenacity [retry stop-after-attempt wait-random-exponential])
 
@@ -107,6 +108,21 @@ Return modified messages."
 (defn flip-roles [messages]
   (dlg->msgs "assistant" "user" messages))
 
+(defn llama-format [messages
+                    [system-tag "SYSTEM:"] [assistant-tag "ASSISTANT:"] [user-tag "USER:"]
+                    [system-close-tag ""] [assistant-close-tag ""] [user-close-tag ""]]
+  "Format standard role messages to Llama 2 tags. Remove system prompts."
+  (+ (.join "\n"
+            (lfor m messages
+                  (let [role (:role m)
+                        content (:content m)]
+                    (match role
+                           "system" f"{system-tag}{content}{system-close-tag}"
+                           "assistant" f"{assistant-tag}{content}{assistant-close-tag}"
+                           "user" f"{user-tag}{content}{user-close-tag}"))))
+     f"\n{assistant-tag}"))
+    
+
 ;;; -----------------------------------------------------------------------------
 ;;; Remote API calls
 ;;; -----------------------------------------------------------------------------
@@ -120,17 +136,9 @@ Return modified messages."
       (respond #** kwargs)
       (await)))
 
-(defn/a [(retry :wait (wait-random-exponential :min 0.5 :max 30) :stop (stop-after-attempt 6))]
-  respond [messages #** kwargs]
-  "Reply to a list of messages and return just content.
-The messages should already have the standard roles."
-  (let [provider (choice (list (.keys (config "providers"))))
-        conf (config "providers" provider)
-        defaults {"api_key" "n/a"
-                  "max_tokens" (config "max_tokens")
-                  "model" "gpt-3.5-turbo"}
-        params (| defaults conf kwargs)
-        client (AsyncOpenAI :api-key (.pop params "api_key")
+(defn/a _openai [params messages]
+  "Openai-compatible API calls: https://platform.openai.com/docs/api-reference"
+  (let [client (AsyncOpenAI :api-key (.pop params "api_key")
                             :base_url (.pop params "api_base"))
         response (await
                    (client.chat.completions.create
@@ -140,6 +148,49 @@ The messages should already have the standard roles."
         (first)
         (. message)
         (. content))))
+
+(defn/a _replicate [params messages]
+  "Replicate-compatible API calls: https://replicate.com/docs"
+  (.pop params "api_key" None)
+  ;(log.info f"params {params}") 
+  (let [api-token (.pop params "api_token" None)
+        model (.pop params "model")
+        system-tag (.pop params "system_tag" None)
+        assistant-tag (.pop params "assistant_tag" None)
+        user-tag (.pop params "user_tag" None)
+        system-close-tag (.pop params "system_close_tag" None)
+        assistant-close-tag (.pop params "assistant_close_tag" None)
+        user-close-tag (.pop params "user_close_tag" None)
+        client (replicate.client.Client :api-token api-token)
+        response (await (client.async_run
+                          model
+                          :stream False
+                          :input {"prompt" (llama-format (standard-roles messages)
+                                                         :system-tag system-tag :assistant-tag assistant-tag :user-tag user-tag 
+                                                         :system-close-tag system-close-tag :assistant-close-tag assistant-close-tag :user-close-tag user-close-tag) 
+                                  #** params}))]
+    ; async client sometimes returns an iterator, sometimes not, but we are not streaming (yet)
+    (if (isinstance response str)
+        response
+        (.join "" response))))
+
+(defn/a [(retry :wait (wait-random-exponential :min 0.5 :max 30) :stop (stop-after-attempt 6))]
+  respond [messages #** kwargs]
+  "Reply to a list of messages and return just content.
+The messages should already have the standard roles."
+  (let [providers (list (.keys (config "providers")))
+        provider (choice providers)
+        conf (config "providers" provider)
+        defaults {"api_key" "n/a"
+                  "max_tokens" (config "max_tokens")
+                  "model" "gpt-3.5-turbo"
+                  "api_scheme" "openai"}
+        params (| defaults conf kwargs)
+        api-scheme (.pop params "api_scheme")]
+    (match api-scheme
+           "replicate" (await (_replicate params messages))
+           "openai"    (await (_openai params messages))
+           _           (await (_openai params messages)))))
 
 (defn/a chat [messages #** kwargs] ; -> message
   "An assistant response (message) to a list of messages.

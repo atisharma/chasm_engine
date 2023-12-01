@@ -2,6 +2,7 @@ hy>=0.27.0
 hyrule>=0.4.0
 sqlitedict
 openai[datalib]
+replicate
 tomli
 jaro-winkler
 tiktoken
