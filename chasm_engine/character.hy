@@ -309,12 +309,3 @@ They will appear at the player's location."
                                  (list))]
     (log.info f"{filtered-char-list}")
     (cut filtered-char-list 3)))
-
-(defn online [[long False]]
-  "List of player-characters with :npc False."
-  (let [chars-online (lfor a (get-accounts) :if (< (- (time) (float (:last-verified a))) 600) (:name a))]
-    (if long
-        (if chars-online
-            (+ (.join ", " chars-online) ".")
-            "Nobody online.")
-        chars-online)))

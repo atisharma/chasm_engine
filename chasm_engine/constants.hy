@@ -54,6 +54,8 @@
                     "Import"
                     "Empty"
                     "Now"
+                    "Long"
+                    "Pirates"
                     "Tags"
                     "Question"
                     "Sorry"
