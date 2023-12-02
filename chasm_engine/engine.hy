@@ -420,7 +420,7 @@ These places are accessible:
 {inventory-str}
 
 Keep {player.name} at {here.name}.
-Continue the narrative."]
+Continue the narrative, being brief."]
     (log.info f"{player.name} {player.coords}")
     ;(log.info f"{characters-here}\n{items-here-str}")
     (log.info f"news:\n{(plot.news)}")
