@@ -210,7 +210,7 @@ But you're probably using autocommit anyway."
 (defn delete-narrative [player-name]
   "Completely remove a narrative."
   (log.debug f"Deleting narrative {player-name}.")
-  (.pop narrative (character-key player-name)))
+  (.pop narratives (character-key player-name)))
   
 ;;; -----------------------------------------------------------------------------
 ;;; accounts
