@@ -240,7 +240,8 @@ But you're probably using autocommit anyway."
 (defn delete-account [player-name]
   "Completely remove an account."
   (log.debug f"Deleting account {player-name}.")
-  (.pop accounts (character-key player-name)))
+  (.pop accounts (character-key player-name))
+  (delete-narrative player-name))
 
 (defn get-accounts []
   (gfor p accounts (get-account p)))
