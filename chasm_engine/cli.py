@@ -70,12 +70,12 @@ def _serve(args):
 def _list_accounts(args):
     from chasm_engine import state
     from datetime import datetime
-    as = []
+    tab = []
     for a in state.get_accounts():
         date = datetime.fromtimestamp(float(a["last_verified"]))
-        as.append(f'{date.strftime("%Y-%m-%d %H:%M:%S (%a)")}\t{a["name"]}')
-    as.sort()
-    print("\n".join(as))
+        tab.append(f'{date.strftime("%Y-%m-%d %H:%M:%S (%a)")}\t{a["name"]}')
+    tab.sort()
+    print("\n".join(tab))
 
 def _list_characters(args):
     from chasm_engine import state
