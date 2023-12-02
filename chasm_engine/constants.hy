@@ -60,6 +60,7 @@
                     "Question"
                     "Sorry"
                     "Apologies"
+                    "Additionally"
                     "There"
                     "Unfortunately"
                     "These"

@@ -79,7 +79,12 @@ def _list_accounts(args):
 
 def _list_characters(args):
     from chasm_engine import state
-    print("\n".join(state.characters.keys()))
+    names = sorted(state.characters.keys())
+    for n in names:
+        c = state.get_character(n)
+        x, y = c.coords.values()
+        pc = "" if c.npc else "\tONLINE"
+        print(f"{c.name.ljust(12)}@{x: 4},{y: 4}{pc}")
 
 def _edit_account(args):
     from chasm_engine import edit, state
