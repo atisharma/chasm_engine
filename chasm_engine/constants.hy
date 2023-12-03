@@ -41,6 +41,7 @@
                     "Me"
                     "Incorrect"
                     "Narrator"
+                    "Player"
                     "Voice"
                     "She"
                     "He"
