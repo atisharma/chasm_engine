@@ -131,7 +131,7 @@ The engine logic is expected to handle many players.
                    ;(.startswith line "/what-if") (info (await (narrate (append (user (last (.partition line))) messages) player))) ; for debugging
                    ;; responses as assistant
                    (look? line) (assistant (await (place.describe player :messages messages :length "short")))
-                   (command? line) (error "I didn't understand that command.")
+                   (command? line) (assistant (await (narrate (append user-msg messages) player)))
                    (go? line) (assistant (await (move (append user-msg messages) player)))
                    ;(talk? line) (assistant (converse (append user-msg messages) player)) ; this one needs thinking about
                    line (assistant (await (narrate (append user-msg messages) player))))
