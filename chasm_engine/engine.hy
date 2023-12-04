@@ -133,7 +133,8 @@ The engine logic is expected to handle many players.
                    (look? line) (assistant (await (place.describe player :messages messages :length "short")))
                    (go? line) (assistant (await (move (append user-msg messages) player)))
                    ;(talk? line) (assistant (converse (append user-msg messages) player)) ; this one needs thinking about
-                   (command? line) (assistant (await (narrate (append (user (rest line)) messages) player)))
+                   (command? line) (let [u-msg (user (get line (slice 1 None)))]
+                                     (assistant (await (narrate (append u-msg messages) player))))
                    line (assistant (await (narrate (append user-msg messages) player))))
                  (except [err [APIError]]
                    (log.error "Server API error (APIError).")
