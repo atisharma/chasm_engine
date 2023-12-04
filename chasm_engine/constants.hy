@@ -69,6 +69,8 @@
                     "Dr"
                     "Mr"
                     "Mrs"
+                    "Women"
+                    "Men"
                     "Breakfast"
                     "Bar"])
 
