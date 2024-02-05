@@ -69,11 +69,22 @@ def _serve(args):
 
 def _list_accounts(args):
     from chasm_engine import state
-    print("\n".join(state.accounts.keys()))
+    from datetime import datetime
+    tab = []
+    for a in state.get_accounts():
+        date = datetime.fromtimestamp(float(a["last_verified"]))
+        tab.append(f'{date.strftime("%Y-%m-%d %H:%M:%S (%a)")}\t{a["name"]}')
+    tab.sort()
+    print("\n".join(tab))
 
 def _list_characters(args):
     from chasm_engine import state
-    print("\n".join(state.characters.keys()))
+    names = sorted(state.characters.keys())
+    for n in names:
+        c = state.get_character(n)
+        x, y = c.coords.values()
+        pc = "" if c.npc else "\tONLINE"
+        print(f"{c.name.ljust(12)}@{x: 4},{y: 4}{pc}")
 
 def _edit_account(args):
     from chasm_engine import edit, state

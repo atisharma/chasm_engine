@@ -46,7 +46,6 @@ The engine logic is expected to handle many players.
 
 (defn/a payload [narrative result player-name]
   "What the client expects."
-  ; TODO: maybe move accounts logic to server
   (let [player (get-character player-name)
         account (get-account player-name)]
     (update-account player-name :turns (inc (:turns account 0)))
@@ -96,6 +95,15 @@ The engine logic is expected to handle many players.
   (slurp (or (+ (os.path.dirname __file__) "/help.md")
              "chasm/help.md")))
 
+(defn online [[long False] [seconds 600]]
+  "List of player-characters online since (600) seconds ago."
+  (let [chars-online (lfor a (get-accounts) :if (< (- (time) (float (:last-verified a))) seconds) (:name a))]
+    (if long
+        (if chars-online
+            (+ (.join ", " chars-online) ".")
+            "Nobody online.")
+        chars-online)))
+
 (defn/a parse [player-name line #* args #** kwargs] ; -> response
   "Process the player's input and return the whole visible state."
   (log.info f"{player-name}: {line}")
@@ -116,15 +124,17 @@ The engine logic is expected to handle many players.
                    (.startswith line "/hint") (info (await (hint messages player line)))
                    (.startswith line "/hist") (msg "history" "The story so far...")
                    (.startswith line "/map") (info (await (print-map player.coords)))
-                   (.startswith line "/online") (info (character.online :long True))
+                   (.startswith line "/exits") (msg (await (print-map player.coords)))
+                   (.startswith line "/online") (info (online :long True))
                    ;(.startswith line "/characters") (info (or (character.describe-at player.coords :exclude player.name) "Nobody interesting here but you.")) ; for debugging
                    ;(.startswith line "/items") (info (item.describe-at player.coords)) ; for debugging
                    ;(.startswith line "/what-if") (info (await (narrate (append (user (last (.partition line))) messages) player))) ; for debugging
                    ;; responses as assistant
                    (look? line) (assistant (await (place.describe player :messages messages :length "short")))
-                   (command? line) (error "I didn't understand that command.")
                    (go? line) (assistant (await (move (append user-msg messages) player)))
                    ;(talk? line) (assistant (converse (append user-msg messages) player)) ; this one needs thinking about
+                   (command? line) (let [u-msg (user (get line (slice 1 None)))]
+                                     (assistant (await (narrate (append u-msg messages) player))))
                    line (assistant (await (narrate (append user-msg messages) player))))
                  (except [err [APIError]]
                    (log.error "Server API error (APIError).")
@@ -385,14 +395,14 @@ Now give the hint."
                                            f"{c.name} recalls the memories:\n{mem}."
                                            ""))))
         story-guidance f"You are the narrator in an immersive, enjoyable, award-winning adventure / interactive fiction game.
-The player ({player.name} or user) interjects with questions or instructions/commands, to be interpreted as instructions for the player's avatar (also {player.name}) in the context of the story.
+The player ({player.name}, or User) interjects with questions or instructions/commands, to be interpreted as instructions for the player's avatar (also {player.name}) in the context of the story.
 Commands are meant for {player.name} and may be in first person ('I stand up') or imperative ('stand up', 'Look at X' or 'Ask Y about Z').
 Questions are meant in the context of the story ('What am I wearing?' really means 'Narrator, describe what {player.name} is wearing' etc).
-In the narrative, refer to {player.name} in the second person ('you do..., you go to...'), but a character speaking directly to them may address them directly as '{player.name}'.
+In the narrative, refer to {player.name} in the second person ('you do..., you go to...'), but an in-game character speaking directly to them may address them directly as '{player.name}'.
 Indicate acting directions or actions like this: *smiles* or *shakes head*. Never break the 'fourth wall'.
-Be descriptive, don't give instructions, don't break character.
-If the player's last instruction is highly inconsistent in context of the story (for example 'turn into a banana' when that's impossible), just say 'You can't do that' or some variation or interpret the instruction creatively.
-Make every effort to keep the story consistent. Any puzzles and events should develop the narrative arc.
+Be descriptive but brief, don't give instructions, don't break character. Don't describe emotions or internal state, rather, let the player infer it from events.
+If the player's last instruction is highly inconsistent in context of the story (for example 'turn into a banana' when that's impossible), just refuse to do it.
+Make every effort to keep the story consistent. Any puzzles and events should develop the narrative arc. Don't allow the player to dictate the effects of their action: the narrator is in charge.
 Don't describe yourself as an AI, chatbot or similar; if you can't do something, describe {player.name} doing it within the story. Don't apologize. Don't summarize. If you must refer to yourself, do so as the narrator.
 Story setting:
 {world}
@@ -412,7 +422,7 @@ These places are accessible:
 {inventory-str}
 
 Keep {player.name} at {here.name}.
-Continue the narrative."]
+Continue the narrative, being brief."]
     (log.info f"{player.name} {player.coords}")
     ;(log.info f"{characters-here}\n{items-here-str}")
     (log.info f"news:\n{(plot.news)}")
