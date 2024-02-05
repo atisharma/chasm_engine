@@ -184,7 +184,7 @@
 
 (defn dice [n]
   "True 1/n of the time."
-  (not (randint 0 (- n 1))))
+  (not (randint 0 n)))
 
 ;;; -----------------------------------------------------------------------------
 ;;; String functions
