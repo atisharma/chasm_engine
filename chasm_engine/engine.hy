@@ -358,8 +358,9 @@ Now give the hint."
                            "The hint should be a riddle, maybe cryptic."))]
     (-> [(system story-guidance)
          #* messages
-         (system instruction)
-         (user local-guidance)]
+         (user (.join "\n\n"
+                     [instruction
+                      local-guidance]))]
         (truncate)
         (respond)
         (await)
@@ -430,8 +431,7 @@ Continue the narrative, being brief."]
     (log.info f"story: {(token-length story-guidance)}; local {(token-length local-guidance)}")
     (log.info f"inventory-str\n{inventory-str}")
     (.add develop-queue player.name) ; add the player to the development queue
-    (-> (-> [(system story-guidance)
-             (system local-guidance)
+    (-> (-> [(system (.join "\n\n" [story-guidance local-guidance]))
              #* messages]
             (truncate))
         (respond)

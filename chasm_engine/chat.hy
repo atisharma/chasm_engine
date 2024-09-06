@@ -253,12 +253,14 @@ Respond with only one word, either 'yes' or 'no'.")
 (defn/a complete-json [template instruction context [max-tokens 600]]
   "Fill in a JSON template according to context. Return list, dict or None.
 JSON completion is a bit unreliable, depending on the model."
-  (let [messages [(system "You will be given a JSON template to complete. You must stick very closely to the format of the template.")
-                  (system instruction)
-                  (user context)
-                  (system "Below is the JSON template to complete.")
-                  (user template)
-                  (system "Now, complete the template. Give only valid JSON, no other text, context or explanation.")]
+  (let [messages [(system (.join "\n"
+                              ["You will be given a JSON template to complete. You must stick very closely to the format of the template."
+                               instruction]))
+                  (user (.join "\n\n"
+                               [context
+                                "Below is the JSON template to complete."
+                                template
+                                "Now, complete the template. Give only valid JSON, no other text, context or explanation."]))]
         response (await (respond messages :max-tokens max-tokens))
         match (re.search r"[^{\[]*([\[{].*[}\]])" response :flags re.S)]
     (try
@@ -277,13 +279,15 @@ Provided `attributes` should be a list of strings.
 Format is as
 `attribute_1: value
 attribute_2: value`"
-  (let [messages [(system "You will be given a template to complete. You must stick very closely to the format of the template.
-Give one attribute per line, no commentary, examples or other notes, just the template with the attribute values updated.")
-                  (system instruction)
-                  (user context)
-                  (system "Below is the template to complete.")
-                  (user template)
-                  (system "Now, complete the template, one attribute per line. Give only new values, no other text or explanation.")]
+  (let [messages [(system (.join "\n\n"
+                                 ["You will be given a template to complete. You must stick very closely to the format of the template.
+Give one attribute per line, no commentary, examples or other notes, just the template with the attribute values updated."
+                                  instruction]))
+                  (user (.join "\n\n"
+                               [context
+                                "Below is the template to complete."
+                                template
+                                "Now, complete the template, one attribute per line. Give only new values, no other text or explanation."]))]
         response (await (respond messages :max-tokens max-tokens))]
     (grep-attributes response attributes)))
 

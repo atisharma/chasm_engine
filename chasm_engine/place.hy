@@ -44,19 +44,21 @@ Respond with only either 'Yes' or 'No'.")
 
 (defn/a chat-gen-description [nearby-str place player messages [length "very short"]]
   "Make up a short place description from its name."
-  (let [messages [(system "Your purpose is to generate fun and exciting descriptions of places, in keeping with the information you have. Make the player feel viscerally like they are present in the place.")
-                  (user f"Story setting:\n'{world}'")
-                  (system "Next is some narrative leading up to now.")
+  (let [messages [(system (.join "\n\n"
+                                 ["Your purpose is to generate fun and exciting descriptions of places, in keeping with the information you have. Make the player feel viscerally like they are present in the place."
+                                  f"Story setting:\n'{world}'"
+                                  "Next is some narrative leading up to now."
+                                  "Finally, will follow some details about {player.name}'s location."]))
                   #* messages
-                  (system "Next follows details about {player.name}'s location.")
                   (user f"The player's location is 'The {place.name}', with the following attributes:
 {place}
 
 Nearby places:
 {nearby-str}
 
-The player is sometimes called 'user' or '{player.name}' - these refer to the same person whom is referred to in the second person by the assistant. If naming the player, only ever refer to them as {player.name}.")
-                  (system f"Generate a {length}, vivid description of what the player sees, hears, smells or touches from {place.name}.")
+The player is sometimes called 'user' or '{player.name}' - these refer to the same person whom is referred to in the second person by the assistant. If naming the player, only ever refer to them as {player.name}.
+                         
+Generate a {length}, vivid description of what the player sees, hears, smells or touches from {place.name}.")
                   (assistant f"The description of 'The {place.name}' is:")]
         response (await (respond messages))]
     (trim-prose response)))

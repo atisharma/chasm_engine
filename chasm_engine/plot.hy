@@ -55,9 +55,7 @@ Develop the plot / world events
         instruction "In the following narrative, classify events from the last two messages for significance to the story's narrative arc, as [major], [minor], [subplot] or [irrelevant]. Major events are relevant to more than one character or to the fictional world as a whole. Most will be minor or subplot. Use the square bracket format. Give a single concise bullet point (max 15 words) describing the plot point. Stay faithful to the story setting. If events relate to people, use their names. Give the classification, then the point. Don't justify your answer."
         setting f"Story setting: {world}"
         response (await (respond [(system instruction)
-                                  (user setting)
-                                  (user narrative)
-                                  (user "Give the plot point.")
+                                  (user (.join "\n\n" [setting narrative "Give the plot point."]))
                                   (assistant "The classification and plot point is:")]
                                  :max_tokens 100))
         sanitised (.replace response "\n" " ")

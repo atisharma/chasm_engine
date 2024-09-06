@@ -286,13 +286,11 @@ The dialogue is as follows:
   "Are any new or existing characters mentioned in the messages?
 They will appear at the player's location."
   ; messages will already have been truncated
-  (let [setting (system f"Story setting: {world}")
-        place-name (place.name player.coords)
-        prelude (system f"Give a list of names of individuals (if any), one per line, that are obviously referred to in the text as being physically present at the current location ({place-name}) and time. Do not invent new characters. Exclude places and objects, only people's proper names count, no pronouns. Give the names as they appear in the text. Setting and narrative appear below.")
+  (let [place-name (place.name player.coords)
+        prelude (system f"Story setting: {world}\n\nGive a list of names of individuals (if any), one per line, that are obviously referred to in the text as being physically present at the current location ({place-name}) and time. Do not invent new characters. Exclude places and objects, only people's proper names count, no pronouns. Give the names as they appear in the text. Setting and narrative appear below.")
         instruction (user "Now, give the list of characters.")
         disallowed (+ [player.name place-name] banned-names)
         char-list (await (respond (->> messages
-                                       (prepend setting)
                                        (prepend prelude)
                                        (append instruction)
                                        (truncate :spare-length 200)
