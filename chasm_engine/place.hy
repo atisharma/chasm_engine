@@ -48,7 +48,7 @@ Respond with only either 'Yes' or 'No'.")
                                  ["Your purpose is to generate fun and exciting descriptions of places, in keeping with the information you have. Make the player feel viscerally like they are present in the place."
                                   f"Story setting:\n'{world}'"
                                   "Next is some narrative leading up to now."
-                                  "Finally, will follow some details about {player.name}'s location."]))
+                                  "Finally, I will provide some details about {player.name}'s location."]))
                   #* messages
                   (user f"The player's location is 'The {place.name}', with the following attributes:
 {place}
@@ -58,8 +58,8 @@ Nearby places:
 
 The player is sometimes called 'user' or '{player.name}' - these refer to the same person whom is referred to in the second person by the assistant. If naming the player, only ever refer to them as {player.name}.
                          
-Generate a {length}, vivid description of what the player sees, hears, smells or touches from {place.name}.")
-                  (assistant f"The description of 'The {place.name}' is:")]
+Generate a {length}, vivid description of what the player sees, hears, smells or touches from {place.name}.")]
+                  ;(assistant f"The description of 'The {place.name}' is:")]
         response (await (respond messages))]
     (trim-prose response)))
 
@@ -80,9 +80,7 @@ The protagonist's new location is 'The {place.name}', with attributes:
 {place}"
         instruction "Now, generate the description."
         response (await (respond
-                          [(system prelude)
-                           (user (.join "\n\n" [context instruction]))]
-                           ;(assistant f"The description of 'The {place.name}' is:")]
+                          [(user (.join "\n\n" [prelude context instruction]))]
                           :max-tokens 100))]
     (.join "\n\n"
            [f"**{place.name}**"
