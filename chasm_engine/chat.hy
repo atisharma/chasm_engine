@@ -144,7 +144,7 @@ Return modified messages."
                    (client.chat.completions.create
                      :messages (standard-roles messages)
                      #** params))]
-    (. (. (-> response.choices (first) message) content))))
+    (. (. (first response.choices) message) content)))
 
 (defn/a _replicate [params messages]
   "Replicate-compatible API calls: https://replicate.com/docs"
