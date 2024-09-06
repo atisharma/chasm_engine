@@ -81,9 +81,8 @@ The protagonist's new location is 'The {place.name}', with attributes:
         instruction "Now, generate the description."
         response (await (respond
                           [(system prelude)
-                           (user context)
-                           (user instruction)
-                           (assistant f"The description of 'The {place.name}' is:")]
+                           (user (.join "\n\n" [context instruction]))]
+                           ;(assistant f"The description of 'The {place.name}' is:")]
                           :max-tokens 100))]
     (.join "\n\n"
            [f"**{place.name}**"
