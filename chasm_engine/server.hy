@@ -6,6 +6,7 @@ See documentation:
 - https://zeromq.org/get-started
 - https://zguide.zeromq.org
 "
+
 (require hyrule [defmain unless])
 
 (import sys)
@@ -29,11 +30,12 @@ See documentation:
 (setv N_CONCURRENT_CLIENTS 1000
       BACKGROUND_TICK 1)
 
-;;; -----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
 
 (setv context (zmq.asyncio.Context))
 
 (defn start-router-socket [address]
+  "Set up a ROUTER-REQ connection."
   (setv socket (.socket context zmq.ROUTER))
   ; see https://stackoverflow.com/questions/26915347/zeromq-reset-req-rep-socket-state
   ; server will tick every 2s
@@ -46,9 +48,9 @@ See documentation:
 (setv frontend (start-router-socket (config "listen")))
 (log.info (config "listen"))
 
-;;; -----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
 
-(defn/a send [zmsg]
+(defn :async send [zmsg]
   (try
     (await (.send-multipart frontend zmsg))
     (except [zmq.EAGAIN]
@@ -82,7 +84,7 @@ See documentation:
       (< diff threshold))
     (except [ValueError])))
 
-(defn/a handoff-request [player-name client-time method #* args #** kwargs]
+(defn :async handoff-request [player-name client-time method #* args #** kwargs]
   "Process the RPC in the engine and send the result."
   (let [account (get-account player-name)]
     (update-account player-name :last-verified client-time)
@@ -90,9 +92,13 @@ See documentation:
            "spawn" (await (engine.spawn-player #* args #** kwargs))
            "parse" (await (engine.parse #* args #** kwargs))
            "motd" (engine.motd #* args #** kwargs)
+           "status" (engine.status #* args #** kwargs)
+           "online" (engine.online #* args #** kwargs)
            "null" (engine.null #* args #** kwargs))))
 
-(defn/a handle-frames [frames]
+;; TODO: handle incoming requests separately from sending the replies
+;; That is, all output is either 'ACK' or streamed output
+(defn :async handle-frames [frames]
   "Unwrap, verify an incoming message."
   (let [[q ident z zmsg] frames
         msg (unwrap zmsg) ; no messages will raise zmq.Again
@@ -108,7 +114,7 @@ See documentation:
     (log.debug f"{msg}")
     (await (send [q ident z (wrap response)]))))
 
-(defn/a server-loop [[n 0]]
+(defn :async server-loop [[n 0]]
   "Call a method on the server."
   (while True
     (try
@@ -120,11 +126,13 @@ See documentation:
       (except [err [Exception]]
         (log.error f"server-loop {n} error:" :exception err)))))
 
-(defn/a background-loop []
+(defn :async background-loop []
   "Background service tasks."
+  ;; TODO set come sort of server status here
   (print "Initial map generation...")
   (await (engine.init))
   (print "Ready for players.")
+  ;; TODO set server status to ready
   (while True
     (await (asyncio.sleep BACKGROUND_TICK))
     (try
@@ -136,7 +144,7 @@ See documentation:
       (except [err [Exception]]
         (log.error "background-loop exception" :exception err)))))
 
-(defn/a serve []
+(defn :async serve []
   (print f"Starting server at {(.isoformat (datetime.today))} for {config-file}")
   (log.info f"Starting server for {config-file}")
   (let [tasks (lfor n (range N_CONCURRENT_CLIENTS) (asyncio.create-task (server-loop n)))

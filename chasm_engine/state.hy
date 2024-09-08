@@ -3,6 +3,7 @@ The global (mostly) mutable state.
 
 Thing in themselves and relationships between things.
 "
+
 (require hyrule.argmove [-> ->>])
 
 (import chasm_engine [log])
@@ -20,9 +21,8 @@ Thing in themselves and relationships between things.
 (import chasm_engine.types [Place Item Character Coords])
 
 
-;;; -----------------------------------------------------------------------------
-;;; World info
-;;; -----------------------------------------------------------------------------
+;; World info
+;; -----------------------------------------------------------------------------
 
 (setv path (config "world"))
 (.mkdir (Path path)
@@ -40,9 +40,8 @@ Thing in themselves and relationships between things.
 
 (log.info f"{world-name}")
 
-;;; -----------------------------------------------------------------------------
-;;; db functions
-;;; -----------------------------------------------------------------------------
+;; db functions
+;; -----------------------------------------------------------------------------
 
 (defn dumps [db]
   "Print a table of db."
@@ -69,10 +68,9 @@ But you're probably using autocommit anyway."
     (.commit table)
     (except [OperationalError])))
   
-;;; -----------------------------------------------------------------------------
-;;; Characters
-;;; key is character name, value is Character
-;;; -----------------------------------------------------------------------------
+;; Characters
+;; key is character name, value is Character
+;; -----------------------------------------------------------------------------
 
 (setv characters (get-table "characters"))
 
@@ -112,10 +110,9 @@ But you're probably using autocommit anyway."
 (defn len-characters []
   (len characters))
   
-;;; -----------------------------------------------------------------------------
-;;; Locations
-;;; key is string repr of coords, value is Location
-;;; -----------------------------------------------------------------------------
+;; Locations
+;; key is string repr of coords, value is Location
+;; -----------------------------------------------------------------------------
 
 (setv places (get-table "places"))
 
@@ -153,10 +150,9 @@ But you're probably using autocommit anyway."
   "Return a random place (usually to spawn at)."
   (. (choice (list (get-places))) coords))
 
-;;; -----------------------------------------------------------------------------
-;;; Items
-;;; key is item name, value is Item
-;;; -----------------------------------------------------------------------------
+;; Items
+;; key is item name, value is Item
+;; -----------------------------------------------------------------------------
 
 (setv items (get-table "items"))
 
@@ -189,10 +185,9 @@ But you're probably using autocommit anyway."
 (defn get-items []
   (gfor i items (get-item i)))
 
-;;; -----------------------------------------------------------------------------
-;;; narrative
-;;; key is player name
-;;; -----------------------------------------------------------------------------
+;; narrative
+;; key is player name
+;; -----------------------------------------------------------------------------
 
 (setv narratives (get-table "narratives"))
 
@@ -212,10 +207,9 @@ But you're probably using autocommit anyway."
   (log.debug f"Deleting narrative {player-name}.")
   (.pop narratives (character-key player-name)))
   
-;;; -----------------------------------------------------------------------------
-;;; accounts
-;;; key is player name
-;;; -----------------------------------------------------------------------------
+;; accounts
+;; key is player name
+;; -----------------------------------------------------------------------------
 
 (setv accounts (get-table "accounts"))
 

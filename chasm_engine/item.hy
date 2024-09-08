@@ -12,15 +12,14 @@ Functions that deal with items.
 (import chasm_engine [place state])
 (import chasm_engine.types [Item Coords at?])
 (import chasm_engine.state [world get-item set-item update-item get-item-names])
-(import chasm_engine.chat [complete-json complete-lines
-                           system user assistant])
+(import chasm_engine.chat [complete-json complete-lines])
 
 
 (defclass ItemError [Exception])
 
 ;; TODO: modify / damage / destroy items
 
-(defn/a gen-json [place]
+(defn :async gen-json [place]
   "Make up some fantastical item."
   (let [seed (choice alphanumeric)
         template f"{{
@@ -57,7 +56,7 @@ Write a very short sentence (max 10 words) for appearance and another for usage.
                 :coords place.coords
                 :owner None))))))
 
-(defn/a gen-lines [place]
+(defn :async gen-lines [place]
   "Make up some fantastical item."
   (let [seed (choice alphanumeric)
         template f"name: item name (has '{seed}' in the first few letters)
@@ -94,7 +93,7 @@ Write a very short sentence (max 10 words) for appearance and another for usage.
         (log.error place)
         (log.error seed)))))
 
-(defn/a spawn [coords]
+(defn :async spawn [coords]
   "Invent a new item from a place name, store it and return it.
 None if the place doesn't exist or if generation fails."
   (let [p (place.get-place coords)]
@@ -151,9 +150,8 @@ If you just want those at a location, use `get-items`."
  "Move an item to a location."
  (update-item item :owner None :coords coords))
 
-;;; -----------------------------------------------------------------------------
-;;; Item - Character interaction
-;;; -----------------------------------------------------------------------------
+;; Item - Character interaction
+;; -----------------------------------------------------------------------------
 
 (defn claim [item owner]
   "Set the owner of the item and remove its coords.

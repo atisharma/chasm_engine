@@ -22,7 +22,7 @@ Functions that deal with recall and vector databases.
 (import chasm_engine.stdlib *)
 
 
-;;; -----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
 
 (defclass MemoryError [Exception])
 
@@ -75,7 +75,7 @@ Functions that deal with recall and vector databases.
 (defn peek [name]
   (.peek (collection name)))
 
-;;; -----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
 
 (defn add [name metadata text]
   "Add text, metadata and vector embedding to the corresponding index."

@@ -40,11 +40,10 @@ The engine logic is expected to handle many players.
 (defn error [content]
   (msg "error" content))
 
-;;; -----------------------------------------------------------------------------
-;;; API functions
-;;; -----------------------------------------------------------------------------
+;; API functions
+;; -----------------------------------------------------------------------------
 
-(defn/a payload [narrative result player-name]
+(defn :async payload [narrative result player-name]
   "What the client expects."
   (let [player (get-character player-name)
         account (get-account player-name)]
@@ -67,6 +66,10 @@ The engine logic is expected to handle many players.
   "Server no-op."
   {"error" "No valid engine function specified."})
 
+(defn status [#* args #** kwargs] ; -> response
+  "Server status."
+  {"result" {"up" True}}) ; TODO: show busy (and with what), or ready for input
+
 (defn motd [#* args #** kwargs] ; -> response
   "Server MOTD."
   {"result"
@@ -75,14 +78,14 @@ The engine logic is expected to handle many players.
          (slurp (or (+ (os.path.dirname __file__) "/motd.md")
                     "chasm/motd.md"))))})
 
-(defn/a spawn-player [player-name #* args #** kwargs] ; -> response
+(defn :async spawn-player [player-name #* args #** kwargs] ; -> response
   "Start the game. Make sure there's a recent message. Return the whole visible state."
   (try
     (await (place.extend-map (Coords 0 0)))
     (let [coords (random-coords)
           player (await (character.spawn :name player-name :loaded kwargs :coords coords)) 
           narrative (or (get-narrative player-name)
-                        (set-narrative [(assistant (await (describe-place player)))] player-name))]
+                        (set-narrative [(user f"****") (assistant (await (describe-place player)))] player-name))]
       (update-character player :npc False)
       (await (place.extend-map coords))
       (await (payload narrative (last narrative) player.name)))
@@ -104,7 +107,7 @@ The engine logic is expected to handle many players.
             "Nobody online.")
         chars-online)))
 
-(defn/a parse [player-name line #* args #** kwargs] ; -> response
+(defn :async parse [player-name line #* args #** kwargs] ; -> response
   "Process the player's input and return the whole visible state."
   (log.info f"{player-name}: {line}")
   (let [_player (or (get-character player-name) (await (character.spawn :name player-name :loaded kwargs)))
@@ -160,17 +163,16 @@ The engine logic is expected to handle many players.
     ; always return the most recent state
     (await (payload narrative result player-name))))
       
-;;; -----------------------------------------------------------------------------
-;;; World functions (background tasks)
-;;; -----------------------------------------------------------------------------
+;; World functions (background tasks)
+;; -----------------------------------------------------------------------------
 
-(defn/a init []
+(defn :async init []
   "When first starting the engine, create a few places to go."
   (for [x (range -4 5)
         y (range -4 5)]
     (await (place.extend-map (Coords x y)))))
 
-(defn/a extend-world [] ; -> place or None
+(defn :async extend-world [] ; -> place or None
   "Make sure the map covers all characters. Add items, new characters if necessary.
 This function does not use vdb memory so should be thread-safe."
   (for [n (.keys characters)]
@@ -179,7 +181,7 @@ This function does not use vdb memory so should be thread-safe."
       (unless c.npc
         (await (place.extend-map coords))))))
 
-(defn/a spawn-items [] ; -> item or None
+(defn :async spawn-items [] ; -> item or None
   "Spawn items when needed at existing places."
   (let [coords (random-coords)]
     (when (> (* item-density (len-places))
@@ -187,7 +189,7 @@ This function does not use vdb memory so should be thread-safe."
       (log.info f"New item at {coords}")
       (await (item.spawn coords)))))
   
-(defn/a spawn-characters [] ; -> char or None
+(defn :async spawn-characters [] ; -> char or None
   "Spawn characters when needed at existing places."
   (let [coords (random-coords)]
     (unless (character.get-at coords)
@@ -196,7 +198,7 @@ This function does not use vdb memory so should be thread-safe."
         (log.info f"New character at {coords}")
         (await (character.spawn :name None :coords coords))))))
   
-(defn/a develop [] ; -> char or None
+(defn :async develop [] ; -> char or None
   "Move the plot and characters along.
 Writes to vdb memory so is not thread-safe."
   (when develop-queue
@@ -228,9 +230,8 @@ Writes to vdb memory so is not thread-safe."
       (when (> (abs dt) 3600)
         (update-character (get-character (:name a)) :npc True)))))
 
-;;; -----------------------------------------------------------------------------
-;;; Parser functions -> bool
-;;; -----------------------------------------------------------------------------
+;; Parser functions -> bool
+;; -----------------------------------------------------------------------------
 
 (defn command? [line]
   (.startswith line "/"))
@@ -287,7 +288,7 @@ Writes to vdb memory so is not thread-safe."
           (= cmd "tell") (sstrip char)
           (= cmd "ask") (sstrip char)))))
 
-;;; -----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
 
 (defn talk-status [dialogue character]
   "Show chat partner, place, tokens used."
@@ -297,18 +298,17 @@ Writes to vdb memory so is not thread-safe."
                        f"{(:x character.coords)} {(:y character.coords)}"
                        f"{(+ (token-length world) (token-length dialogue))} tkns"])))
 
-;;; -----------------------------------------------------------------------------
-;;; functions -> msg or None (with output)
-;;; -----------------------------------------------------------------------------
+;; functions -> msg or None (with output)
+;; -----------------------------------------------------------------------------
 
-(defn/a describe-place [char]
+(defn :async describe-place [char]
   "Short context-free description of a place and its occupants."
   ; don't include context so we force the narrative location to change.
   (let [description (await (place.describe char))
         chars-here (character.list-at-str char.coords :exclude char.name)]
     (.join "\n\n" [description chars-here])))
 
-(defn/a move [messages player] ; -> msg or None
+(defn :async move [messages player] ; -> msg or None
   "Move the player. Describe. `dirn` may be a compass direction like 'n' or a place name like 'Small House'"
   (let [user-msg (last messages)
         line (:content user-msg)
@@ -327,7 +327,7 @@ Writes to vdb memory so is not thread-safe."
                      f"'{dirn}' doesn't seem to be a location you can go."
                      f"'{dirn}' isn't accessible from here. Try somewhere else."]))))
 
-(defn/a hint [messages player line]
+(defn :async hint [messages player line]
   (let [[cmd _ obj] (.partition line " ")
         items-here (item.describe-at player.coords)
         characters-here (character.describe-at player.coords :long True)
@@ -366,7 +366,7 @@ Now give the hint."
         (await)
         (trim-prose))))
 
-(defn/a narrate [messages player]
+(defn :async narrate [messages player]
   "Narrate the story, in the fictional universe."
   (let [topic (await (text->topic (format-msgs (msgs->dlg player.name "narrator" (cut messages -6 None)))))
         news (.join "\n" [(plot.news) topic]) ; smallest embedding model only takes 256 tokens
@@ -405,6 +405,7 @@ Be descriptive but brief, don't give instructions, don't break character. Don't 
 If the player's last instruction is highly inconsistent in context of the story (for example 'turn into a banana' when that's impossible), just refuse to do it.
 Make every effort to keep the story consistent. Any puzzles and events should develop the narrative arc. Don't allow the player to dictate the effects of their action: the narrator is in charge.
 Don't describe yourself as an AI, chatbot or similar; if you can't do something, describe {player.name} doing it within the story. Don't apologize. Don't summarize. If you must refer to yourself, do so as the narrator.
+
 Story setting:
 {world}
 Important plot points:
@@ -446,11 +447,11 @@ Continue the narrative, being brief."]
   ; How is it being used?
   ; What happens to the item?
 
-; FIXME: This is not written for the new client-server paradigm
+; FIXME: This is not written for the current client-server paradigm
 
 ; FIXME: makes no sense in a server context
 
-#_(defn/a converse [messages player]
+#_(defn :async converse [messages player]
     "Have a chat with a character."
     (let [user-msg (last messages)
           _line (:content user-msg)
@@ -506,7 +507,7 @@ Do not say you're an AI assistant or similar. To end the conversation, just say 
                          f"Why don't you talk to {talk-to} instead?"
                          f"There's nobody available with the name {talk-to-guess}.")))))
 
-(defn/a move-characters [messages]
+(defn :async move-characters [messages]
   "Move characters to their targets."
   (for [c (map get-character characters)]
     (when c.npc ; don't randomly move a player, only NPCs
@@ -522,11 +523,10 @@ Do not say you're an AI assistant or similar. To end the conversation, just say 
             (log.info f"{c.name} -> {p.name}")
             (character.move c p.coords)))))))
 
-;;; -----------------------------------------------------------------------------
-;;; Main engine loop
-;;; -----------------------------------------------------------------------------
+;; Main engine loop
+;; -----------------------------------------------------------------------------
 
-(defn/a print-map [coords [compass False]]
+(defn :async print-map [coords [compass False]]
   "Get your bearings."
   (if compass
       (let [cx (:x coords)

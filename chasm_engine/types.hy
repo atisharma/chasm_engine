@@ -3,6 +3,7 @@ Various types used throughout.
 
 N.B. don't change the order of attributes, because the serialisation is order-dependent.
 "
+
 (require hyrule.argmove [-> ->>])
 
 (import chasm-engine [log])

@@ -23,7 +23,7 @@ Functions that deal with characters.
 (import chasm_engine.chat [respond yes-no
                            complete-json complete-lines
                            token-length truncate
-                           user assistant system
+                           user system
                            msgs->dlg])
 
 
@@ -32,7 +32,7 @@ Functions that deal with characters.
 (defn valid-key? [s]
   (re.match "^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$" s))
 
-(defn/a spawn [[name None] [coords (Coords 0 0)] [loaded {}] [retries 0]] ; -> Character
+(defn :async spawn [[name None] [coords (Coords 0 0)] [loaded {}] [retries 0]] ; -> Character
   "Spawn a character from card, db, or just generated."
   (try
     (let [; only allow to override some
@@ -70,7 +70,7 @@ Functions that deal with characters.
       (log.error f"spawn failed for {name} at {coords}.")
       (log.error e))))
 
-(defn/a gen-lines [coords [name None]] ; -> Character or None
+(defn :async gen-lines [coords [name None]] ; -> Character or None
   "Make up some plausible character based on a name."
   (let [seed (choice alphabet)
         name-str (or name f"the character (invent one whose first name begins with '{seed}')")
@@ -78,7 +78,7 @@ Functions that deal with characters.
         place-name (if place place.name "a typical place in this world")
         card f"name: '{name-str}'
 motivation: 'drives their behaviour, 4-5 words
-gender: 'their gender'
+gender: 'the gender'
 traits: 'shapes behaviour, MBTI, quirks/habits, 4-5 words'
 skills: 'what they are particularly good at'
 occupation: 'their usual job'
@@ -108,7 +108,7 @@ Make up a brief few words, with comma separated values, for each attribute. Be i
                       {"coords" coords
                        "objective" objective}))))
 
-(defn/a gen-json [coords [name None]] ; -> Character or None
+(defn :async gen-json [coords [name None]] ; -> Character or None
   "Make up some plausible character based on a name."
   (let [seed (choice alphabet)
         name-str (or name f"the character (whose first name begins with {seed})")
@@ -118,7 +118,7 @@ Make up a brief few words, with comma separated values, for each attribute. Be i
         card f"{{
     \"name\": \"{name-str}\",
     \"motivation\": \"drives their behaviour, 4-5 words\",
-    \"gender\": \"their gender\",
+    \"gender\": \"the character's gender\",
     \"traits\": \"shapes their behaviour, 4-5 words\",
     \"skills\": \"what they are particularly good at\",
     \"occupation\": \"their usual job\",
@@ -193,7 +193,7 @@ This loops over all characters."
   (update-character character :coords coords)
   coords)
 
-(defn/a increment-score? [character messages]
+(defn :async increment-score? [character messages]
   "Has the character done something worthwhile?"
   (let [setting f"Story setting: {world}"
         objective f"In the narrative, {character.name} has the following objective: {character.objective}"
@@ -207,7 +207,7 @@ This loops over all characters."
     (log.info f"{verdict}")
     verdict))
 
-(defn/a develop-lines [character dialogue]
+(defn :async develop-lines [character dialogue]
   "Develop a character's attributes based on the dialogue."
   (let [nearby-places (.join ", " (await (place.nearby character.coords :name True)))
         card f"name: {character.name}
@@ -282,7 +282,7 @@ The dialogue is as follows:
                               :n n
                               :where (when class {"classification" class})))))
 
-(defn/a get-new [messages player]
+(defn :async get-new [messages player]
   "Are any new or existing characters mentioned in the messages?
 They will appear at the player's location."
   ; messages will already have been truncated
@@ -293,8 +293,7 @@ They will appear at the player's location."
         char-list (await (respond (->> messages
                                        (prepend prelude)
                                        (append instruction)
-                                       (truncate :spare-length 200)
-                                       (append (assistant "The list of character names is:")))
+                                       (truncate :spare-length 200))
                                   :max-tokens 50))
         filtered-char-list (->> char-list
                                  (debullet)

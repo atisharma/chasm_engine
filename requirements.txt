@@ -1,9 +1,10 @@
-hy==0.28.0
-hyrule>=0.5.0
+hy==0.29.0
+hyrule>=0.6.0
+hyjinx>=0.29.4
 sqlitedict
-openai[datalib]
+openai
+anthropic
 replicate
-tomli
 jaro-winkler
 tiktoken
 chromadb

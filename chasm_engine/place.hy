@@ -14,35 +14,32 @@ Functions that manage place.
 (import chasm_engine.state [world get-place set-place update-place])
 (import chasm_engine.types [Coords Place])
 (import chasm_engine.chat [respond complete-json complete-lines msgs->dlg
-                           system user assistant])
+                           system user]) 
 
 
 (defclass PlaceError [Exception])
 
-;;; -----------------------------------------------------------------------------
-;;; Anything -> bool
-;;; -----------------------------------------------------------------------------
+;; Anything -> bool
+;; -----------------------------------------------------------------------------
 
 (defn nearby? [coords1 coords2 [distance 1]]
   "Is coord1 within a distance of coord2 (inclusive)?"
   (and (<= (abs (- (:x coords1) (:x coords2))) distance)
        (<= (abs (- (:y coords1) (:y coords2))) distance)))
 
-(defn/a [(alru-cache :maxsize 1000)] accessible? [placename destination]
+(defn :async [(alru-cache :maxsize 1000)] accessible? [placename destination]
   "Is a destination accessible to the player?
 We cache this both for performance and persistence of place characteristics."
   (let [response (await (respond [(system world)
                                   (user f"Your place is {placename}. Would you expect to be able to reach {destination} from here in one or two moves?
-Respond with only either 'Yes' or 'No'.")
-                                  (assistant "My single-word yes/no response is:")]))]
+Respond with only either 'Yes' or 'No'.")]))]
     (or (similar response "yes")
         (in "yes" (.lower response)))))
 
-;;; -----------------------------------------------------------------------------
-;;; Place prompts -> text
-;;; -----------------------------------------------------------------------------
+;; Place prompts -> text
+;; -----------------------------------------------------------------------------
 
-(defn/a chat-gen-description [nearby-str place player messages [length "very short"]]
+(defn :async chat-gen-description [nearby-str place player messages [length "very short"]]
   "Make up a short place description from its name."
   (let [messages [(system (.join "\n\n"
                                  ["Your purpose is to generate fun and exciting descriptions of places, in keeping with the information you have. Make the player feel viscerally like they are present in the place."
@@ -59,11 +56,10 @@ Nearby places:
 The player is sometimes called 'user' or '{player.name}' - these refer to the same person whom is referred to in the second person by the assistant. If naming the player, only ever refer to them as {player.name}.
                          
 Generate a {length}, vivid description of what the player sees, hears, smells or touches from {place.name}.")]
-                  ;(assistant f"The description of 'The {place.name}' is:")]
         response (await (respond messages))]
     (trim-prose response)))
 
-(defn/a
+(defn :async
   [(alru-cache :maxsize 1000)
    (retry :stop (stop-after-attempt 4))]
   gen-description
@@ -88,7 +84,7 @@ The protagonist's new location is 'The {place.name}', with attributes:
                 (.replace "\"" "")
                 trim-prose)])))
 
-(defn/a gen-json [nearby-places]
+(defn :async gen-json [nearby-places]
   "Make up a place from its neighbours."
   (let [seed (choice alphanumeric)
         template f"{{
@@ -101,7 +97,7 @@ The protagonist's new location is 'The {place.name}', with attributes:
 {(or (+ "Nearby are " nearby-places) "")}"
         instruction f"Complete the template for a place you want to explore, that's distinct from those nearby, but that's in keeping with the story's setting. Avoid adjectives used in nearby places, be interesting and imaginative.
 Example names would include: 'Residential Buildings', 'Mysterious Ruins', 'Junction', 'Inn', 'Architect's Office', 'Corner Shop', 'Palace', 'Nightclub', 'Small White House', 'Ship', 'Castle', 'Secret Cave'.
-The name should have {seed} in the first few letters. The place might be {(choice place-types)}."
+The name should have {seed} in the first few letters. Avoid numerals in the name. The place might be {(choice place-types)}."
         details (await (complete-json
                          :template template
                          :context context
@@ -112,7 +108,7 @@ The name should have {seed} in the first few letters. The place might be {(choic
        "atmosphere" (:atmosphere details None)
        "terrain" (:terrain details None)})))
 
-(defn/a gen-lines [nearby-places]
+(defn :async gen-lines [nearby-places]
   "Make up a place from its neighbours."
   (let [seed (choice alphanumeric)
         context f"The story's setting is: {world}
@@ -123,7 +119,7 @@ atmosphere: a few keywords
 terrain: the terrain"
         instruction f"Complete the template for a place you want to explore, that's distinct from those nearby, but that's in keeping with the story's setting. Avoid adjectives used in nearby places; be interesting and imaginative.
 Example names would include: 'Residential Buildings', 'Mysterious Ruins', 'Junction', 'Inn', 'Architect's Office', 'Corner Shop', 'Palace', 'Nightclub', 'Small White House', 'Ship', 'Castle', 'Secret Cave', 'Bridge'.
-The name should have {seed} in the first few letters. The place might be {(choice place-types)}."
+The name should have {seed} in the first few letters. Avoid numerals in the name. The place might be {(choice place-types)}."
         details (await (complete-lines
                          :context context
                          :template template
@@ -134,7 +130,7 @@ The name should have {seed} in the first few letters. The place might be {(choic
                (< (len (.split (:name details ""))) 4))
       (| details {"name" name}))))
 
-(defn/a gen-rooms [place-dict]
+(defn :async gen-rooms [place-dict]
   "Make up some rooms for a place."
   (let [room-list (await (respond [(system f"Your purpose is to imagine a list of rooms you'd like to find at a place in an adventure game.
 {world}
@@ -166,7 +162,7 @@ Now list its rooms, if any.")]
          3 7)))
 
 ;; FIXME: it's a bit flaky
-(defn/a guess-room [messages coords]
+(defn :async guess-room [messages coords]
   "Guess the player's room."
   (let [dlg (await (msgs->dlg "Player" "Narrator" messages))  
         room-list (rooms coords :as-string False)
@@ -178,9 +174,8 @@ Now list its rooms, if any.")]
              (best-of room-list))
         "")))
 
-;;; -----------------------------------------------------------------------------
-;;; Place functions
-;;; -----------------------------------------------------------------------------
+;; Place functions
+;; -----------------------------------------------------------------------------
 
 (defn rose [dx dy]
   "The word for the compass direction.
@@ -195,7 +190,7 @@ Now list its rooms, if any.")]
          #(-1 -1) "southwest"
          #(-1 1)  "northwest"))
 
-(defn/a go [dirn coords [allow-inaccessible False] [threshold 0.8]] ; str, Coords -> Coords or None
+(defn :async go [dirn coords [allow-inaccessible False] [threshold 0.8]] ; str, Coords -> Coords or None
   "Interpret a string as a change in location.
 Match the string to a compass direction or a nearby place name.
 Return new coords or None."
@@ -227,7 +222,7 @@ Return new coords or None."
 (defn get-offset-place [coords dx dy]
   (get-place (Coords (+ (:x coords) dx) (+ (:y coords) dy))))
 
-(defn/a nearby [_coords [name False] [place False] [coords False] [place-dirn False] [list-inaccessible False]]
+(defn :async nearby [_coords [name False] [place False] [coords False] [place-dirn False] [list-inaccessible False]]
   "A list of all existing [place names + directions] in adjacent cells, accessible or not."
   (let [cx (:x _coords)
         cy (:y _coords)
@@ -244,12 +239,12 @@ Return new coords or None."
                 place-dirn [nearby-place f"{nearby-place.name}, to the {(rose dx dy)}"]
                 :else f"{nearby-place.name}, to the {(rose dx dy)}"))))
 
-(defn/a nearby-str [coords #** kwargs]
+(defn :async nearby-str [coords #** kwargs]
   "A table of all existing [place names, directions]
 in adjacent cells, accessible or not."
   (.join "\n" (await (nearby coords #** kwargs))))
   
-(defn/a new [coords]
+(defn :async new [coords]
   "Add a description etc, item, character to a place."
   ; TODO: consider pre-generating a long list of names, to ensure uniqueness.
   (let [near-places (.join ", " (await (nearby coords :list-inaccessible True :name True)))
@@ -272,7 +267,7 @@ in adjacent cells, accessible or not."
           (set-place place))
       (log.error f"generation failed @ {coords}\n{near-places}\n-> {details}"))))
 
-(defn/a accessible [coords * min-places]
+(defn :async accessible [coords * min-places]
   "A list of the accessible Places the player can move to.
 If none are naturally accessible, pick a nearby few at random.
 This function is not deterministic, because we ask the model to decide."
@@ -286,12 +281,12 @@ This function is not deterministic, because we ask the model to decide."
                      :key (fn [p] (hash-id p.name)))
              min-places))))
 
-(defn/a accessible-coords [coords [min-places 4]]
+(defn :async accessible-coords [coords [min-places 4]]
   "A list of all existing Coords that are accessible from here."
   (lfor a (await (accessible coords :min-places min-places))
         a.coords))
 
-(defn/a
+(defn :async
   [(retry :stop (stop-after-attempt 4))]
   extend-map [coords]
   "Extend the map so neighbouring places exist."
@@ -316,7 +311,7 @@ This function is not deterministic, because we ask the model to decide."
         room-str
         place.rooms)))
 
-(defn/a describe [player [messages None] [length "very short"]]
+(defn :async describe [player [messages None] [length "very short"]]
   "Return a description of the location."
   (let [coords player.coords
         place (get-place coords)

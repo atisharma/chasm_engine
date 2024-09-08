@@ -85,7 +85,7 @@
 
 ; target number of items / characters per place
 (setv item-density 0.25
-      character-density 0.25)
+      character-density 0.2)
 
 (setv full-inventory-messages
       ["You've got enough to carry already."

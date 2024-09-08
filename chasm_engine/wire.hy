@@ -2,6 +2,7 @@
 The server protocol implementation.
 The signature verification happens in server.hy, not here, because it involves looking up the public key.
 "
+
 (import json)
 (import zmq)
 (import time [time])
@@ -10,7 +11,9 @@ The signature verification happens in server.hy, not here, because it involves l
 (setv sender-id (. (uuid1) hex))
 
 
+;; TODO increment this when implementing `status`
 (setv CHASM_PROTOCOL_VERSION "0.0.1")
+;; TODO maybe get this from the module version
 (setv CHASM_SERVER_VERSION "0.0.1")
 
 

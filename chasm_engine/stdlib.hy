@@ -1,6 +1,9 @@
 (require hyrule.argmove [-> ->>])
 (require hyrule.control [unless])
+
 (import hyrule [inc dec rest butlast starmap distinct])
+
+(import datetime [datetime timezone])
 
 (import functools [partial cache lru-cache])
 (import async-lru [alru-cache])
@@ -21,17 +24,13 @@
 
 (import jaro)
 
-;; tomllib for python 3.11 onwards
-;; when we move to 3.11, we can remove this
-(try
-  (import tomllib)
-  (except [ModuleNotFoundError]
-    (import tomli :as tomllib)))
+(import tomllib) ; tomllib for python 3.11 onwards
 
 
-;;; -----------------------------------------------------------------------------
-;;; config function
-;;; -----------------------------------------------------------------------------
+;; TODO use hyjinx.lib where possible
+
+;; config function
+;; -----------------------------------------------------------------------------
 
 ; this args parser swallows the help provided by the main one in cli
 (setv args-parser (.ArgumentParser argparse :description "Run the chasm server."))
@@ -56,9 +55,8 @@
     (except [KeyError]
       None)))
 
-;;; -----------------------------------------------------------------------------
-;;; meta functions
-;;; -----------------------------------------------------------------------------
+;; meta functions
+;; -----------------------------------------------------------------------------
 
 (defn mreload [#* modules]
   "Reload a whole list of modules."
@@ -67,9 +65,8 @@
          (except [e [ImportError]] 
             (print e)))))
 
-;;; -----------------------------------------------------------------------------
-;;; list functions
-;;; -----------------------------------------------------------------------------
+;; list functions
+;; -----------------------------------------------------------------------------
 
 (defn first [xs]
   (next (iter xs)))
@@ -93,9 +90,8 @@
   "Append x to list l."
   (+ l [x]))
 
-;;; -----------------------------------------------------------------------------
-;;; File & IO functions
-;;; -----------------------------------------------------------------------------
+;; File & IO functions
+;; -----------------------------------------------------------------------------
 
 (defn load [fname]
   "Read a json file. None if it doesn't exist."
@@ -145,9 +141,8 @@
           :parents True
           :exist-ok True))  
 
-;;; -----------------------------------------------------------------------------
-;;; Hashing, id and password functions
-;;; -----------------------------------------------------------------------------
+;; Hashing, id and password functions
+;; -----------------------------------------------------------------------------
 
 (defn hash-id [s]
   "Hex digest of sha1 hash of string."
@@ -178,17 +173,15 @@
                                                  :iterations 100000
                                                  :salt salt)))))
 
-;;; -----------------------------------------------------------------------------
-;;; random things
-;;; -----------------------------------------------------------------------------
+;; random things
+;; -----------------------------------------------------------------------------
 
 (defn dice [n]
   "True 1/n of the time."
   (not (randint 0 n)))
 
-;;; -----------------------------------------------------------------------------
-;;; String functions
-;;; -----------------------------------------------------------------------------
+;; String functions
+;; -----------------------------------------------------------------------------
 
 (defn sstrip [s]
   "Strip surrounding whitespace, quotes, '.',
@@ -311,3 +304,11 @@ The attribute should be on its own line as:
   "Format a chat or dialogue as a long string."
   (.join "\n"
          (map format-msg messages)))
+
+;; time function
+;; -----------------------------------------------------------------------------
+
+(defn now []
+  "Just the time."
+  (.strftime (datetime.now timezone.utc) "%H:%M, %a %d %h"))
+
