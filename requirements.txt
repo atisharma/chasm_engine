@@ -1,6 +1,4 @@
-hy==1.0.0
-hyrule>=0.7.0
-hyjinx>=1.0.0
+hyjinx
 sqlitedict
 openai
 anthropic

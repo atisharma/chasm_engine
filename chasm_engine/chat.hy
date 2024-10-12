@@ -192,7 +192,6 @@ The messages should already have the standard roles."
         conf (config "providers" provider)
         defaults {"api_key" "n/a"
                   "max_tokens" (config "max_tokens")
-                  "model" "gpt-3.5-turbo"
                   "api_scheme" "openai"}
         params (| defaults conf kwargs)
         api-scheme (.pop params "api_scheme")]
