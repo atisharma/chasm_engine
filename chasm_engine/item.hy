@@ -7,7 +7,7 @@ Functions that deal with items.
 
 (import chasm_engine [log])
 
-(import chasm_engine.stdlib *)
+(import chasm_engine.lib *)
 (import chasm_engine.constants [alphanumeric item-attributes full-inventory-messages inventory-capacity])
 (import chasm_engine [place state])
 (import chasm_engine.types [Item Coords at?])

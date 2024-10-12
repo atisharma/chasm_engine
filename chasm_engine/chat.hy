@@ -4,7 +4,7 @@ Chat management functions.
 
 (require hyrule.argmove [-> ->>])
 
-(import hyjinx.lib [first second])
+(require hyjinx.macros [prepend append])
 
 (import chasm_engine [log])
 
@@ -15,7 +15,7 @@ Chat management functions.
 
 (import tenacity [retry stop-after-attempt wait-random-exponential])
 
-(import chasm_engine.stdlib *)
+(import chasm_engine.lib *)
 
 ;; -----------------------------------------------------------------------------
 

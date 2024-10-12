@@ -9,6 +9,8 @@ See documentation:
 
 (require hyrule [defmain unless])
 
+(require hyjinx.macros [prepend append])
+
 (import sys)
 (import asyncio)
 (import json)
@@ -18,11 +20,12 @@ See documentation:
 (import zmq)
 (import zmq.asyncio)
 
+(import hyjinx [crypto])
+
 (import chasm_engine [log])
 
-(import chasm_engine [crypto])
 (import chasm_engine [engine])
-(import chasm_engine.stdlib [config-file config hash-id prepend inc])
+(import chasm_engine.lib [config-file config hash-id inc])
 (import chasm_engine.state [get-account set-account update-account])
 (import chasm_engine.wire [wrap unwrap zerror])
 

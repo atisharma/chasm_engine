@@ -115,9 +115,9 @@ def _edit_place(args):
         edit.edit_place(args.x, args.y)
 
 def _dump_narrative(args):
-    from chasm_engine import state, stdlib
+    from chasm_engine import state, lib
     print(
-        stdlib.format_msgs(
+        lib.format_msgs(
             state.get_narrative(args.name)
         )
     )
@@ -136,5 +136,5 @@ def _look_place(args):
     )
 
 def _dump_config(args):
-    from chasm_engine import stdlib
-    print(stdlib.config(args.param))
+    from chasm_engine import lib
+    print(lib.config(args.param))

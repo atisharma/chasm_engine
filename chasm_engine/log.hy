@@ -3,7 +3,7 @@
 (import logging)
 (import logging.config [dictConfig])
 
-(import chasm_engine.stdlib *)
+(import chasm_engine.lib *)
 
 ;; TODO: per-module log configuration
 

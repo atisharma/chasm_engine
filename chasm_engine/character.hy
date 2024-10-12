@@ -5,11 +5,13 @@ Functions that deal with characters.
 (require hyrule.argmove [-> ->>])
 (require hyrule.control [unless])
 
+(require hyjinx.macros [prepend append])
+
 (import time [time])
 
 (import chasm_engine [log])
 
-(import chasm_engine.stdlib *)
+(import chasm_engine.lib *)
 (import chasm_engine.constants [alphabet default-character banned-names])
 (import chasm_engine.types [Coords Character Item at?
                             mutable-character-attributes

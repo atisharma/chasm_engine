@@ -19,7 +19,7 @@ Functions that deal with recall and vector databases.
 
 (import chasm_engine [log])
 
-(import chasm_engine.stdlib *)
+(import chasm_engine.lib *)
 
 
 ;; -----------------------------------------------------------------------------

@@ -17,7 +17,7 @@ Thing in themselves and relationships between things.
 (import sqlite3 [OperationalError])
 ; consider using diskcache
 
-(import chasm_engine.stdlib *)
+(import chasm_engine.lib *)
 (import chasm_engine.types [Place Item Character Coords])
 
 

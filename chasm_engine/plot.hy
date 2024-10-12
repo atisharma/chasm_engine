@@ -9,10 +9,12 @@ Develop the plot / world events
 - global quests / mysteries (not character ones)
 "
 
+(require hyjinx.macros [prepend append])
+
 (import time [time])
 (import datetime [datetime timezone])
         
-(import chasm_engine.stdlib *)
+(import chasm_engine.lib *)
 (import chasm_engine.types *)
 
 (import chasm_engine [log])

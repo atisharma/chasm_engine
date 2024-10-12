@@ -9,7 +9,7 @@ Functions that manage place.
 
 (import chasm_engine [log])
 
-(import chasm_engine.stdlib *)
+(import chasm_engine.lib *)
 (import chasm_engine.constants [compass-directions alphanumeric place-types place-attributes])
 (import chasm_engine.state [world get-place set-place update-place])
 (import chasm_engine.types [Coords Place])
