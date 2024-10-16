@@ -1,0 +1,36 @@
+# Contextual information about the world, location, etc.
+
+world = '''Story setting: {world}
+
+{news}
+{plot_points}
+'''
+
+npc = '''
+The character's name is {character}.
+{character}'s present location is {location}.
+{character}'s objective: {objective}
+
+{inventory}
+'''
+
+player = '''
+The player's name is {player}.
+{player}'s present location is {location}.
+{player}'s objective: {objective}
+
+{inventory}
+
+{items_here}
+
+{character_descriptions_here}
+
+These places are accessible from the player's present location:
+{locations}
+
+These rooms are available at the player's present location:
+{rooms}
+'''
+
+location = '''{items_here}
+{characters_here}'''

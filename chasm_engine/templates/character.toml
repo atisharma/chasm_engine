@@ -1,0 +1,72 @@
+# Make up some plausible character based on a name.
+
+card-system = '''
+Below is a story setting and a template character card.
+Complete the character card for {name} whom is found in the story at {place}.
+Motivation must include a narrative archetype like Hero, Mentor, Villain, Informant, Guardian.
+Make up a brief few words, with comma separated values, for each attribute. Be imaginative and very specific.
+Carefully preserve the format of the template.
+
+{setting}
+'''
+
+card-lines = '''
+name: '{name}'
+motivation: 'drives their behaviour, 4-5 words'
+gender: '{name}'s gender'
+traits: 'shapes behaviour, MBTI, quirks/habits, 4-5 words'
+skills: 'what they are particularly good at'
+occupation: 'their usual job'
+backstory: 'their backstory (10 words, memorable)'
+likes: 'their desires, wants, cravings, guiding philosophy'
+dislikes: 'their fears and aversions'
+voice: 'their manner of speaking, 2-3 words'
+appearance: '{name}'s appearance, age, height, build, clothes, style etc (unique and memorable)'
+objective: 'their current objective'"
+'''
+
+card-json = '''
+```json
+{{
+    "name": "{name}",
+    "motivation": "drives their behaviour, 4-5 words",
+    "gender": "the character's gender",
+    "traits": "shapes their behaviour, 4-5 words",
+    "skills": "what they are particularly good at",
+    "occupation": "their usual job",
+    "backstory": "their backstory (10 words, memorable)",
+    "likes": "their desires, wants, cravings, guiding philosophy",
+    "dislikes": "their fears and aversions",
+    "voice": "their manner of speaking, 2-3 words",
+    "appearance": "{name}'s appearance, age, height, build, clothes, style etc (unique and memorable)",
+    "objective": "their current objective"
+}}
+```'''
+
+increment-score = '''
+In the narrative, {name} has the following objective: {objective}
+Based only on events happening in the last message, has {name} done anything notable enough to increase their score?
+'''
+
+# Develop a character's attributes based on the dialogue.
+
+develop-system = '''
+You will be given a template character card for {name}, and the transcript of a dialogue involving them, for context.
+Update any attribute that has changed describing the character, appropriate to the given context.
+Appearance may change where a character changes clothes etc.
+Destination should be just one of {nearby_places} or to stay at {place_name}.
+The objective should align with the where the plot needs to go long-term, and the {name}'s role (less than 8 words). It must give the character urgency and purpose. Either keep it the same or, if it's stale or superseded by a more important one, abandon it for a new mission.
+Classify new memories into [significant], [minor] or [forgettable] (note square brackets).
+Don't mention the original attribute if it is unchanged.
+Use a brief few words, comma separated, for each attribute. Be concise and very specific.
+'''
+
+develop-lines = '''
+name: {name}
+appearance: {appearance}
+health: {health}
+emotions: {emotions}
+destination: {destination}
+objective: {objective}
+new_memory: [classification] - any significant or poignant thing worth remembering from the dialogue.
+'''

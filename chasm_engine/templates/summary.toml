@@ -1,0 +1,38 @@
+
+msgs-topic = "Summarize the topic of the preceding conversation before now in about five words."
+
+msgs-list = "Summarize the preceding conversation before now as a markdown list, preserving the most interesting, pertinent and important points."
+
+msgs-paragraph = "Please edit down the preceding conversation into a single concise paragraph, preserving the most interesting, pertinent and important points."
+
+yes-no = '''Reply to the following query with either 'yes' or 'no' as best you can based on the context and preceding conversation.
+The query to evaluate is: '{query}'
+
+Consider the following important context in your evaluation:
+{context}
+'''
+
+complete-json = '''Below, you are given a JSON template to complete. You must stick very closely to the format of the template.
+The template is:
+{template}
+Now, complete the template. Give only valid JSON, with no other text, context, code fence or explanation. Stop as soon as you have produced the JSON.'''
+
+complete-lines = '''You will be given a template to complete. You must stick very closely to the format of the template.
+{instruction}
+{context}
+Below is the template to complete.
+{template}
+Now, complete the template, one attribute per line. Give only new values, no other text or explanation.'''
+
+text-topic = '''Please express the topic of the following text in about five words.
+{text}'''
+
+text-points = '''Summarize the following text as a list of bullet points, preserving the most interesting, pertinent and important points.
+{text}'''
+
+text = '''Please concisely rewrite the following text, preserving the most interesting, pertinent and important points.
+{text}'''
+
+text-extract = '''{query}
+Please concisely rewrite the following text, extracting the points most interesting, pertinent and important to the preceding query. Don't confabulate or invent information. If there is no relevant information, be silent.
+{text}'''

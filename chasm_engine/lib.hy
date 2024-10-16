@@ -9,6 +9,7 @@
                     dice])
 (import hyjinx.lib [slurp
                     spit
+                    extract-json
                     jload :as load
                     jsave :as save
                     jappend :as file-append])
@@ -35,8 +36,10 @@
 
 (import jaro)
 
-(import tomllib) ; tomllib for python 3.11 onwards
+(import tomllib)
 
+
+(defclass ChasmEngineError [RuntimeError])
 
 ;; config function
 ;; -----------------------------------------------------------------------------
@@ -52,22 +55,18 @@
 (setv [args _] (.parse-known-args args-parser))
 (setv config-file args.config)
 
-(defn config [#* keys]
+(defn config [#* keys [file config-file]]
   "Get values in a toml file like a hashmap, but default to None."
-  (unless (os.path.isfile config-file)
-    (raise (FileNotFoundError config-file)))
+  (unless (os.path.isfile file)
+    (raise (FileNotFoundError file)))
   (try
-    (-> config-file
+    (-> file
         (slurp)
         (tomllib.loads)
         (get #* keys))
     (except [KeyError]
       None)))
-
-;; meta functions
-;; -----------------------------------------------------------------------------
-
-
+  
 ;; list functions
 ;; -----------------------------------------------------------------------------
 
@@ -111,9 +110,17 @@
 ;; String functions
 ;; -----------------------------------------------------------------------------
 
+(defn jn [list-of-strings]
+  "Join list elements on newline."
+  (.join "\n" list-of-strings))
+
+(defn jnn [list-of-strings]
+  "Join list elements on two newlines."
+  (.join "\n\n" list-of-strings))
+
 (defn sstrip [s]
   "Strip surrounding whitespace, quotes, '.',
-force to lowercase, remove 'the' from start of line."
+  force to lowercase, remove 'the' from start of line."
   (re.sub r"^[tT]he " ""
           (-> s
               (.strip "\n\t .\"'`")
@@ -127,11 +134,11 @@ force to lowercase, remove 'the' from start of line."
 
 (defn bullet [l]
   "Make a markdown bulleted list from l."
-  (.join "\n" (lfor x l f"- {x}")))
+  (jn (lfor x l f"- {x}")))
 
 (defn close-quotes [s]
   "If there is an odd number of quotes in a line, close the quote."
-  (.join "\n"
+  (jn
     (lfor line (-> s (.replace "\"\"" "\"") (.splitlines))
           (if (% (.count line "\"") 2)  ; if an odd number of quotes
             (if (= (get line -1) "\"")  ; if ends in a quote
@@ -151,7 +158,7 @@ force to lowercase, remove 'the' from start of line."
                        (map (fn [x] (when x (.strip x "\n\t")))))
                   (sieve)
                   (list))
-        text (.join "\n\n" paras)
+        text (jnn paras)
         m (re.match r"(^.*[.?!*\"])|^\S[^.?!]" text :flags re.S)]
         ; m (re.match r"(.*[.?!*\"])[^.?!*\"]+" text :flags re.S)]
     (when m
@@ -203,8 +210,8 @@ force to lowercase, remove 'the' from start of line."
 
 (defn grep-attribute [s attribute]
   "Get an attribute from a string. Return as k-v tuple.
-The attribute should be on its own line as:
-`attribute: value`."
+  The attribute should be on its own line as:
+  `attribute: value`."
   (let [kvs (lfor l (.split s "\n")
                 :if (similar attribute
                              (first (.partition l ":")))
@@ -214,7 +221,9 @@ The attribute should be on its own line as:
       #(attribute (first kvs)))))
 
 (defn grep-attributes [s attributes]
-  "Get named attributes from a string. Return as dict."
+  "Get named attributes from a string `s`.
+  Compare to `attributes` which is a list of strings.
+  Return as dict."
   (dict (filter None (map (partial grep-attribute s) attributes))))
   
 (defn format-msg [message] 
@@ -230,7 +239,7 @@ The attribute should be on its own line as:
 
 (defn format-msgs [messages]
   "Format a chat or dialogue as a long string."
-  (.join "\n"
+  (jn
          (map format-msg messages)))
 
 ;; time function

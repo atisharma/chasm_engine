@@ -1,6 +1,7 @@
 (import chasm_engine.types [Character Coords])
 
 
+;; consider seeding from dictionary words instead
 (setv alphabet "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
       alphanumeric "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
 

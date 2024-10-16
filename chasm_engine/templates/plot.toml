@@ -1,0 +1,7 @@
+system = '''From the following narrative, you are to classify events from just the last two messages for significance to the story's narrative arc, as [major], [minor], [subplot] or [irrelevant]. Major events are relevant to more than one character or to the fictional world as a whole. Most will be minor or subplot. Use the square bracket format. Give a single concise bullet point (max 15 words) describing the plot point. Stay faithful to the story setting. If events relate to people, use their names. Give the classification, then the point. Don't justify your answer.'''
+
+point = '''Story setting: {world}
+
+{narrative}
+
+Now, give the plot point."

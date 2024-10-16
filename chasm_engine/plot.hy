@@ -25,8 +25,10 @@ Develop the plot / world events
                            system user
                            msgs->dlg])
 
+(require chasm-engine.instructions [deftemplate def-fill-template])
 
-;; -----------------------------------------------------------------------------
+
+(def-fill-template plot point system)
 
 (defn news []
  "Up-to-date info about the universe."
@@ -39,7 +41,8 @@ Develop the plot / world events
   (:documents (memory.recent "narrator" :n n :where where)))
 
 (defn recall-points [text [n 6] [class "major"]]
-  "Recall the important plot points relating to `text` (the player, story thread, characters present, etc.)."
+  "Recall the important plot points relating to `text`
+  (the player, story thread, characters present, etc.)."
   (first
     (:documents (memory.query "narrator"
                               :text text
@@ -50,11 +53,9 @@ Develop the plot / world events
   "Scan the recent conversation for plot points and insert them into the record."
   (let [msgs (truncate (cut messages -6 None) :spare-length 200)
         narrative (format-msgs (msgs->dlg "narrative" player.name msgs))
-        instruction "In the following narrative, classify events from the last two messages for significance to the story's narrative arc, as [major], [minor], [subplot] or [irrelevant]. Major events are relevant to more than one character or to the fictional world as a whole. Most will be minor or subplot. Use the square bracket format. Give a single concise bullet point (max 15 words) describing the plot point. Stay faithful to the story setting. If events relate to people, use their names. Give the classification, then the point. Don't justify your answer."
-        setting f"Story setting: {world}"
-        response (await (respond [(system instruction)
-                                  (user (.join "\n\n" [setting narrative "Give the plot point."]))]
-                                 :max_tokens 100))
+        response (await (plot-point
+                          :world world
+                          :narrative narrative))
         sanitised (.replace response "\n" " ")
         classification (re.search r"\[(\w+)\]" sanitised)
         point (re.search r"\][- ]*([\w ,.'-]+)" sanitised)]
@@ -73,3 +74,4 @@ Develop the plot / world events
         (memory.add "narrator"
                     :metadata meta
                     :text pt)))))
+

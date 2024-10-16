@@ -129,7 +129,7 @@ But you're probably using autocommit anyway."
 
 (defn update-place [loc #** kwargs]
   "Update a place's details. You cannot change the coordinates
-(it replaces the place at those coords instead)."
+  (it replaces the place at those coords instead)."
   (log.debug f"Updating place {loc.name}, {kwargs}.")
   (set-place (Place #** (| (._asdict loc) kwargs))))
 

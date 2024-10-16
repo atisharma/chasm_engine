@@ -3,45 +3,38 @@ Functions that deal with items.
 "
 
 (require hyrule.argmove [-> ->>])
-(require hyrule.control [unless])
+
+(import hyjinx [extract-json])
 
 (import chasm_engine [log])
+
+(require chasm_engine.instructions [deftemplate def-fill-template])
 
 (import chasm_engine.lib *)
 (import chasm_engine.constants [alphanumeric item-attributes full-inventory-messages inventory-capacity])
 (import chasm_engine [place state])
 (import chasm_engine.types [Item Coords at?])
 (import chasm_engine.state [world get-item set-item update-item get-item-names])
-(import chasm_engine.chat [complete-json complete-lines])
 
-
-(defclass ItemError [Exception])
 
 ;; TODO: modify / damage / destroy items
 
+(defclass ItemError [Exception])
+
+(def-fill-template item json system)
+(def-fill-template item lines system)
+
 (defn :async gen-json [place]
   "Make up some fantastical item."
-  (let [seed (choice alphanumeric)
-        template f"{{
-    \"name\": \"item name (has '{seed}' in the first few letters)\",
-    \"type\": \"item type\",
-    \"appearance\": \"item's appearance\",
-    \"usage\": \"what the item does\"
-}}"
-        setting f"Story setting: {world}"
-        instruction f"Below is a story setting and a template describing a portable item in the story.
-Complete the template for a single portable object you would expect to find in the {place.name}.
-Give one attribute per line, with no commentary or other notes, just the updated template with the details.
-Make up a name, type, appearance, usage.
-Write a very short sentence (max 10 words) for appearance and another for usage. Be very specific."
-        kvs (await (complete-json
-                     :template template
-                     :context setting
-                     :instruction instruction))]
+  (let [result (await (item-json
+                        :world world
+                        :place-name place.name
+                        :seed (choice alphanumeric)))]
+       kvs (extract-json result)
     (when kvs
       ; sometimes the model likes to make up an "item" field instead of "name".
       (let [details (dfor [k v] (.items kvs)
-                          :if (in k ["name" "appearance" "type" "usage" "item"])
+                          :if (in k item-attributes)
                           k v)
             name (:name details (:item details None))]
         (log.info f"Creating item '{name}'")
@@ -58,22 +51,11 @@ Write a very short sentence (max 10 words) for appearance and another for usage.
 
 (defn :async gen-lines [place]
   "Make up some fantastical item."
-  (let [seed (choice alphanumeric)
-        template f"name: item name (has '{seed}' in the first few letters)
-type: item type
-appearance: item's appearance
-usage: what the item does"
-        setting f"Story setting: {world}"
-        instruction f"Below is a story setting and a template describing a portable item in the story.
-Complete the template for a single portable object you would expect to find in the {place.name}.
-Give one attribute per line, with no commentary or other notes, just the updated template with the details.
-Make up a name, type, appearance, usage.
-Write a very short sentence (max 10 words) for appearance and another for usage. Be very specific."
-        details (await (complete-lines
-                         :context setting
-                         :instruction instruction
-                         :template template
-                         :attributes item-attributes))]
+  (let [result (await (item-lines
+                        :world world
+                        :place-name place.name
+                        :seed (choice alphanumeric)))
+        details (grep-attributes result item-attributes)]
     (try
       (let [_name (.pop details "name" None)
             _alt-name (.pop details "item" None)
@@ -95,10 +77,10 @@ Write a very short sentence (max 10 words) for appearance and another for usage.
 
 (defn :async spawn [coords]
   "Invent a new item from a place name, store it and return it.
-None if the place doesn't exist or if generation fails."
+  None if the place doesn't exist or if generation fails."
   (let [p (place.get-place coords)]
     (when p
-      (let [item (await (gen-lines p))]
+      (let [item (await (gen-json p))]
         (when (and item
                    (not (in item.name (get-item-names))))
           (set-item item))))))
@@ -128,7 +110,7 @@ None if the place doesn't exist or if generation fails."
 
 (defn unclaimed-items []
   "List of all items (globally) without an owner.
-If you just want those at a location, use `get-items`."
+  If you just want those at a location, use `get-items`."
   (lfor item (state.get-items)
         :if (not item.owner)
         item))
@@ -155,7 +137,7 @@ If you just want those at a location, use `get-items`."
 
 (defn claim [item owner]
   "Set the owner of the item and remove its coords.
-This implements picking it up, taking etc."
+  This implements picking it up, taking etc."
   (update-item item :owner owner.name :coords None))
 
 (defn drop [item owner]
