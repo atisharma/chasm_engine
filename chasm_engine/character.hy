@@ -11,6 +11,8 @@ Functions that deal with characters.
 
 (import chasm_engine [log])
 
+(require chasm_engine.instructions [deftemplate def-fill-template])
+
 (import chasm_engine.lib *)
 (import chasm_engine.constants [alphabet default-character banned-names])
 (import chasm_engine.types [Coords Character Item at?
@@ -18,18 +20,19 @@ Functions that deal with characters.
                             initial-character-attributes])
 (import chasm_engine [place memory])
 
-(import chasm_engine.state [world path
+(import chasm_engine.state [world
                             get-place
-                            get-accounts
                             get-character set-character update-character character-key get-characters])
-(import chasm_engine.chat [respond yes-no
-                           complete-json complete-lines
-                           token-length truncate
-                           user system
-                           msgs->dlg])
 
 
 (defclass CharacterError [Exception])
+
+(def-fill-template character json system)
+(def-fill-template character lines system)
+(def-fill-template character develop-lines develop-system)
+(def-fill-template character score score-system)
+(def-fill-template character mentioned mentioned-system)
+
 
 (defn valid-key? [s]
   (re.match "^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$" s))
@@ -78,28 +81,12 @@ Functions that deal with characters.
         name-str (or name f"the character (invent one whose first name begins with '{seed}')")
         place (get-place coords)
         place-name (if place place.name "a typical place in this world")
-        card f"name: '{name-str}'
-motivation: 'drives their behaviour, 4-5 words
-gender: 'the gender'
-traits: 'shapes behaviour, MBTI, quirks/habits, 4-5 words'
-skills: 'what they are particularly good at'
-occupation: 'their usual job'
-backstory: 'their backstory (10 words, memorable)'
-likes: 'their desires, wants, cravings, guiding philosopher'
-dislikes: 'their fears and aversions'
-voice: 'their manner of speaking, 2-3 words'
-appearance: 'their appearance, age, height, build, clothes, style etc (unique and memorable)'
-objective: 'their current objective'"
-        setting f"Story setting: {world}"
-        instruction f"Below is a story setting and a template character card.
-Complete the character card for {name-str} whom is found in the story at {place.name}.
-Motivation must include a narrative archetype like Hero, Mentor, Villain, Informant, Guardian.
-Make up a brief few words, with comma separated values, for each attribute. Be imaginative and very specific."
-        details (await (complete-lines
-                         :context setting
-                         :template card
-                         :instruction instruction
-                         :attributes initial-character-attributes))
+        details (grep-attributes
+                  (await (character-lines
+                           :name name
+                           :place place-name
+                           :setting f"Story setting: {world}"))
+                  initial-character-attributes)
         name (word-chars (or name (:name details "")))
         objective (word-chars (:objective details ""))
         name-dict (if name {"name" name} {})]
@@ -117,29 +104,11 @@ Make up a brief few words, with comma separated values, for each attribute. Be i
         name-dict (if name {"name" name} {})
         place (get-place coords)
         place-name (if place place.name "a typical place in this world")
-        card f"{{
-    \"name\": \"{name-str}\",
-    \"motivation\": \"drives their behaviour, 4-5 words\",
-    \"gender\": \"the character's gender\",
-    \"traits\": \"shapes their behaviour, 4-5 words\",
-    \"skills\": \"what they are particularly good at\",
-    \"occupation\": \"their usual job\",
-    \"backstory\": \"their backstory (10 words, memorable)\",
-    \"likes\": \"their desires, wants and cravings\",
-    \"dislikes\": \"their fears and aversions\",
-    \"voice\": \"their manner of speaking, 2-3 words\",
-    \"appearance\": \"{name-str}'s appearance, age, height, build, clothes, style etc (unique and memorable)\",
-    \"objective\": \"their initial objective\"
-}}"
-        setting f"Story setting: {world}"
-        instruction f"Below is a story setting and a character card.
-Complete the character card for {name-str} whom is found in the story at {place.name}.
-Motivation must include a narrative archetype like Hero, Mentor, Villain, Informant, Guardian.
-Make up a brief few words, comma separated, for each attribute. Be imaginative and very specific."
-        details (await (complete-json
-                         :template card
-                         :context setting
-                         :instruction instruction))]
+        details (extract-json
+                  (await (character-json
+                           :name name
+                           :place place-name
+                           :setting f"Story setting: {world}")))]
     (when details
       (log.info f"'{(:name details None)}'")
       (Character #** (| (._asdict default-character)
@@ -198,46 +167,36 @@ This loops over all characters."
 (defn :async increment-score? [character messages]
   "Has the character done something worthwhile?"
   (let [setting f"Story setting: {world}"
-        objective f"In the narrative, {character.name} has the following objective: {character.objective}"
-        query f"Based only on events happening in the last two messages, has {character.name} done anything notable enough to increase their score?"
-        msgs (truncate messages :spare-length 200)
-        dialogue (await (msgs->dlg "narrator" character.name msgs))
-        verdict (await (yes-no [(system query)
-                                (user setting)]
-                               :context (.join "\n\n" [objective (format-msgs dialogue)])
-                               :query query))]
+        result (await
+                 (character-score
+                   messages
+                   :name character.name
+                   :objective character.objective))
+        verdict (or (similar result "yes")
+                    (in "yes" (.lower result)))]
     (log.info f"{verdict}")
     verdict))
 
 (defn :async develop-lines [character dialogue]
   "Develop a character's attributes based on the dialogue."
   (let [nearby-places (.join ", " (await (place.nearby character.coords :name True)))
-        card f"name: {character.name}
-appearance: {character.appearance}
-health: {character.health}
-emotions: {character.emotions}
-destination: {character.destination}
-objective: {character.objective}
-new_memory: [classification] - any significant or poignant thing worth remembering from the dialogue"
-        instruction f"You will be given a template character card for {character.name}, and the transcript of a dialogue involving them, for context.
-Update any attribute that has changed describing the character, appropriate to the given context.
-Appearance may change where a character changes clothes etc.
-Destination should be just one of {nearby-places} or to stay at {(place.name character.coords)}.
-Objective should align with the where the plot needs to go long-term, and the character's role (less than 8 words). It must give the character urgency and purpose. Either keep it the same or, if it's stale or superseded by a more important one, abandon it for a new mission.
-Classify new memories into [significant], [minor] or [forgettable] (note square brackets).
-Don't mention the original attribute if it is unchanged.
-Use a brief few words, comma separated, for each attribute. Be concise and very specific."
-        length (+ 200 (token-length [instruction world card card])) ; count card twice to allow the result
-        dialogue-str (format-msgs (truncate dialogue :spare-length length))
-        context f"Story setting: {world}
-
-The dialogue is as follows:
-{dialogue-str}"
-        details (await (complete-lines
-                         :context context
-                         :template card
-                         :instruction instruction
-                         :attributes (append "new_memory" mutable-character-attributes)))
+        details (grep-lines
+                  (await
+                    (develop-lines
+                      dialogue
+                      :world world
+                      :place-name place-name
+                      :nearby-places nearby-places
+                      :name character.name
+                      :appearance character.appearance
+                      :health character.health
+                      :emotions character.emotions
+                      :destination character.destination
+                      :objective character.objective
+                      :context context
+                      :template card
+                      :instruction instruction))
+                  (append "new_memory" mutable-character-attributes))
         objective (word-chars (.pop details "objective" ""))]
     (try
       (let [new-score (if (similar (or character.objective "")
@@ -286,17 +245,12 @@ The dialogue is as follows:
 
 (defn :async get-new [messages player]
   "Are any new or existing characters mentioned in the messages?
-They will appear at the player's location."
-  ; messages will already have been truncated
+  They will appear at the player's location."
   (let [place-name (place.name player.coords)
-        prelude (system f"Story setting: {world}\n\nGive a list of names of individuals (if any), one per line, that are obviously referred to in the text as being physically present at the current location ({place-name}) and time. Do not invent new characters. Exclude places and objects, only people's proper names count, no pronouns. Give the names as they appear in the text. Setting and narrative appear below.")
-        instruction (user "Now, give the list of characters.")
         disallowed (+ [player.name place-name] banned-names)
-        char-list (await (respond (->> messages
-                                       (prepend prelude)
-                                       (append instruction)
-                                       (truncate :spare-length 200))
-                                  :max-tokens 50))
+        char-list (await (character-mentioned
+                           (cut messages -6 None)
+                           :place-name place-name))
         filtered-char-list (->> char-list
                                  (debullet)
                                  (.split :sep "\n")

@@ -132,12 +132,13 @@ Functions that manage place.
         room-list (rooms coords :as-string False)
         rooms-str (.join ", " room-list)]
     (if rooms-str
-      (await (place-guess-room
-               :dialogue dlg
-               :rooms rooms-str
-               :player player.name)
-             (best-of room-list)
-        ""))))
+      (best-of
+        room-list
+        (await (place-guess-room
+                 :dialogue dlg
+                 :rooms rooms-str
+                 :player player.name)))
+      "")))
 
 ;; Place functions
 ;; -----------------------------------------------------------------------------
