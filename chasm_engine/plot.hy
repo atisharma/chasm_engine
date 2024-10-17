@@ -28,6 +28,7 @@ Develop the plot / world events
 (require chasm-engine.instructions [deftemplate def-fill-template])
 
 
+(deftemplate context)
 (def-fill-template plot point system)
 
 (defn news []
@@ -51,7 +52,7 @@ Develop the plot / world events
 
 (defn :async extract-point [messages player]
   "Scan the recent conversation for plot points and insert them into the record."
-  (let [msgs (truncate (cut messages -6 None) :spare-length 200)
+  (let [msgs (truncate (cut messages -6 None) :spare-length 1000)
         narrative (format-msgs (msgs->dlg "narrative" player.name msgs))
         response (await (plot-point
                           :world world
@@ -66,12 +67,11 @@ Develop the plot / world events
             meta {"time" f"{(time):015.2f}"
                   "place" (place.name player.coords)
                   "coords" (str player.coords)
-                  "characters" (.join " " chars-here)
+                  "characters" (.join ", " chars-here)
                   "classification" (.lower (first (classification.groups)))}
-            pt (first (point.groups))]
-        (when (in classification ["major" "minor" "subplot"])
-          (new-event f"{chars-here} {pt}"))
-        (memory.add "narrator"
-                    :metadata meta
-                    :text pt)))))
+            points (point.groups)]
+        (for [pt points]
+          (memory.add "narrator"
+                      :metadata meta
+                      :text f"{pt}"))))))
 

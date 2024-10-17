@@ -93,6 +93,7 @@ Functions that deal with recall and vector databases.
                 :where where)))
       
 (defn recent [name [n 5] [where None]]
+  "Recall the most recent memories."
   (let [c (collection name)
         ct (.count c)]
     (.get c

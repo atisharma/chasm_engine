@@ -2,7 +2,7 @@
 
 
 (def-fill-template summary msgs-topic)
-(def-fill-template summary msgs-list)
+(def-fill-template summary msgs-points)
 (def-fill-template summary msgs-paragraph)
 (def-fill-template summary yes-no)
 (def-fill-template summary complete-json)

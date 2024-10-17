@@ -22,15 +22,16 @@ Functions that deal with items.
 (defclass ItemError [Exception])
 
 (def-fill-template item json system)
-(def-fill-template item lines system)
+;(def-fill-template item lines system)
 
 (defn :async gen-json [place]
   "Make up some fantastical item."
-  (let [result (await (item-json
+  (let [seed (choice alphanumeric)
+        result (await (item-json
                         :world world
                         :place-name place.name
-                        :seed (choice alphanumeric)))]
-       kvs (extract-json result)
+                        :seed seed))
+        kvs (extract-json result)]
     (when kvs
       ; sometimes the model likes to make up an "item" field instead of "name".
       (let [details (dfor [k v] (.items kvs)
@@ -49,31 +50,32 @@ Functions that deal with items.
                 :coords place.coords
                 :owner None))))))
 
-(defn :async gen-lines [place]
-  "Make up some fantastical item."
-  (let [result (await (item-lines
-                        :world world
-                        :place-name place.name
-                        :seed (choice alphanumeric)))
-        details (grep-attributes result item-attributes)]
-    (try
-      (let [_name (.pop details "name" None)
-            _alt-name (.pop details "item" None)
-            name (word-chars (or _name _alt-name))]
-        (log.info f"Creating item '{name}'")
-        (when name
-          (Item #** (| {"type" "object"
-                        "appearance" "Looks like you'd expect."
-                        "usage" "Usage unknown."}
-                       details)
-                :name name
-                :coords place.coords
-                :owner None)))
-      (except [e [Exception]]
-        ; generating to template sometimes fails 
-        (log.error "Bad new item" e)
-        (log.error place)
-        (log.error seed)))))
+#_(defn :async gen-lines [place]
+    "Make up some fantastical item."
+    (let [seed (choice alphanumeric)
+          result (await (item-lines
+                          :world world
+                          :place-name place.name
+                          :seed seed))
+          details (grep-attributes result item-attributes)]
+      (try
+        (let [_name (.pop details "name" None)
+              _alt-name (.pop details "item" None)
+              name (word-chars (or _name _alt-name))]
+          (log.info f"Creating item '{name}'")
+          (when name
+            (Item #** (| {"type" "object"
+                          "appearance" "Looks like you'd expect."
+                          "usage" "Usage unknown."}
+                         details)
+                  :name name
+                  :coords place.coords
+                  :owner None)))
+        (except [e [Exception]]
+          ; generating to template sometimes fails 
+          (log.error "Bad new item" e)
+          (log.error place)
+          (log.error seed)))))
 
 (defn :async spawn [coords]
   "Invent a new item from a place name, store it and return it.

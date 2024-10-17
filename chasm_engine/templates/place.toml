@@ -6,11 +6,11 @@ Would you expect to be able to reach {destination} from here in one or two moves
 
 # Make up a short place description from its name.
 description-system = '''Setting: {world}
-Your purpose is to generate short, fun, imaginative descriptions of a place, in keeping with the information you have. Make the reader feel viscerally like they are present in the place. Set the scene. Write in the second person, using 'you'. Be concise. Don't mention any people or characters that may be present here, concentrate on things that won't change. Write in plain, unformatted text.
-Generate an outstanding, short paragraph of vivid description of what the the protagonist sees, hears, smells or touches from {place_name}. Concentrate on specific detail and be concise.
-For example, aim for "Macondo was a village of twenty adobe houses, built on the bank of a river of clear water that ran along a bed of polished stones, which were white and enormous, like prehistoric eggs," rather than "Macondo was a village of about twenty houses, built on a riverbank.
+Your purpose is to generate short, fun, imaginative descriptions of a place, in keeping with the information you have. Write in the second person, using 'you'. Be concise. Don't mention any people or characters that may be present here, concentrate on things that won't change. Write in plain, unformatted text.
+Generate an outstanding, short paragraph of description of what the the protagonist sees, hears, smells or touches from {place_name}. Concentrate on specific detail and be concise. Avoid talking about the ambience or general sense of the place; let the reader simply infer it from the observations.
 The player is sometimes called 'user' but usually '{player}' - these refer to the same person whom is referred to in the second person by the assistant (narrator). If naming the player, only ever refer to them as {player}.
-                         
+For example, aim for "Macondo was a village of twenty adobe houses, built on the bank of a river of clear water that ran along a bed of polished stones, which were white and enormous, like prehistoric eggs," rather than "Macondo was a village of about twenty houses, built on a riverbank."
+
 Finally, I will provide some details about {player}'s location.'''
 
 description = '''Nearby places:
@@ -24,7 +24,7 @@ Now, generate a {length} description of the place.'''
 # Make up a place from its neighbours.
 new = '''{context}
 Complete the template for a place you would want to explore, that's distinct from those nearby, but that's in keeping with the story's setting. Avoid adjectives used in nearby places, be interesting and imaginative.
-Example names would include: 'Residential Buildings', 'Mysterious Ruins', 'Junction', 'Inn', 'Architect's Office', 'Corner Shop', 'Palace', 'Nightclub', 'Small White House', 'Ship', 'Castle', 'Secret Cave', 'Bridge'.
+Example names would include: 'Residential Buildings', 'Junction', 'Inn', 'Architect's Office', 'Corner Shop', 'Palace', 'Nightclub', 'Small White House', 'Ship', 'Castle', 'Secret Cave', 'Bridge'.
 The name should have {seed} in the first few letters. Avoid numerals in the name. The place might be {place_type}.'''
 
 json = '''```json
@@ -32,7 +32,7 @@ json = '''```json
     "name": "an imaginative and original place name",
     "appearance": "a few keywords of description",
     "atmosphere": "a few keywords",
-    "terrain": "the terrain"
+    "terrain": "a few keywords"
 }}
 ```'''
 
@@ -40,28 +40,29 @@ lines = '''
 name: substitute an imaginative and original place name
 appearance: a few keywords to describe
 atmosphere: a few keywords
-terrain: the terrain
+terrain: a few keywords
 '''
 
 # Make up some rooms for a place.
 rooms-system = '''Your purpose is to imagine a list of rooms you'd like to find at a place in an adventure game.
 {world}
-I will give you a place.
-If it has rooms (as for a building), list the names of those rooms, one per line. Otherwise (as for outdoors), say 'None'.
+I will give you a place. You will reply with a valid JSON array of strings, or null.
+If it has rooms (as for a building), the reply will be a list the names of those rooms.
+Otherwise (as for outdoors), say 'null'.
 
 For example for 'Forest', the list is:
-None
+null
 
 For 'Small House', the list is:
-kitchen
-bedroom
-cellar'''
+```json
+[ "kitchen", "bedroom", "cellar" ]
+```
+'''
 
 rooms = '''{place}
-Now, give the list of rooms, one per line, if any.'''
+Now, give the list of rooms, if any.'''
 
 # Guess the player's room.
-
 guess-room = '''Here is a playthrough in an interactive fiction game. You are to guess the most likely room that the player is in at the end of the dialogue.
 {dialogue}
 Given the preceding dialogue between the player and the narrator, which room of the following rooms is the player most likely currently in at the end of the dialogue?

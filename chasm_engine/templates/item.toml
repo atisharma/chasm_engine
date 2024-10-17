@@ -23,6 +23,6 @@ Below is a story setting and a template describing a portable item in the story.
 The setting is: {world}
 Complete the template for a single portable object you would expect to find in the {place_name}.
 Give one attribute per line, with no commentary or other notes, just the updated template with the details.
-Make up a name, type, appearance, usage.
+Make up a name, type, appearance, usage, using normal words and punctuation.
 Carefully preserve the format of the template.
 Write a very short sentence (max 10 words) for appearance and another for usage. Be very specific.'''

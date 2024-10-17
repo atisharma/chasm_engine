@@ -12,7 +12,6 @@ Carefully preserve the format of the template.
 lines = '''
 name: '{name}'
 motivation: 'drives their behaviour, 4-5 words'
-gender: '{name}'s gender'
 traits: 'shapes behaviour, MBTI, quirks/habits, 4-5 words'
 skills: 'what they are particularly good at'
 occupation: 'their usual job'
@@ -21,6 +20,7 @@ likes: 'their desires, wants, cravings, guiding philosophy'
 dislikes: 'their fears and aversions'
 voice: 'their manner of speaking, 2-3 words'
 appearance: '{name}'s appearance, age, height, build, clothes, style etc (unique and memorable)'
+gender: '{name}'s gender'
 objective: 'their current objective'"
 '''
 
@@ -29,7 +29,6 @@ json = '''
 {{
     "name": "{name}",
     "motivation": "drives their behaviour, 4-5 words",
-    "gender": "the character's gender",
     "traits": "shapes their behaviour, 4-5 words",
     "skills": "what they are particularly good at",
     "occupation": "their usual job",
@@ -38,13 +37,14 @@ json = '''
     "dislikes": "their fears and aversions",
     "voice": "their manner of speaking, 2-3 words",
     "appearance": "{name}'s appearance, age, height, build, clothes, style etc (unique and memorable)",
+    "gender": "the character's gender",
     "objective": "their current objective"
 }}
 ```'''
 
 # list the characters recently mentioned
 mentioned-system = '''Story setting: {world}
-You will be asked to give a list of names of individuals (if any), one per line, that are obviously referred to in the following playthrough as being physically present at the current location ({place-name}) and time. The narrative is given in the messages below.'''
+You will be asked to give a list of names of individuals (if any), one per line, that are obviously referred to in the following playthrough as being physically present at the current location ({place_name}) and time. The narrative is given in the messages below.'''
 
 mentioned = '''Now, give the list of characters that have been mentioned. Give one per line. Do not invent new characters that have not already appeared. Exclude places and objects, only people's proper names count, no pronouns. Give the names exactly as they appear in the text.'''
 
@@ -55,17 +55,17 @@ You will be asked to consider {name}'s score.
 '''
 
 score = '''In the preceding narrative, {name} has the following objective: {objective}
-Based *only on events happening in the last message*, has {name} done anything notable enough to increase their score?
+Based *only on events happening in the last pair of messages*, has {name} done anything notable enough to increase their score?
 Reply to the following query with either 'yes' or 'no' as best you can based on the context and preceding conversation.
 '''
 
 # Develop a character's attributes based on the dialogue.
 develop-system = '''Story setting: {world}
-You will be given the transcript of a dialogue involving {name}, for context, then finally, a template character card for {name}.
-Update the card to reflect any attribute that has changed describing the character, appropriate to the given context. Leave attributes unchanged if they don't really need updating. Omit the original attribute from your list if it is unchanged.
-Appearance may change where a character changes clothes etc.
+You will be given the transcript of a dialogue involving the character called {name}, for context, then finally, a template character card for {name}.
+Update just the values in the card to reflect any attribute describing {name} that has changed in the last *two* messages, appropriate to the given context. You should omit an original attribute if it is unchanged or doesn't really need updating.
+Appearance may change where a character is reported to change clothes, for example etc.
 Destination should be just one of {nearby_places} or to stay at {place_name}.
-The objective should align with the where the plot needs to go long-term, and the {name}'s role (less than 8 words). It must give the character urgency and purpose. Either keep it the same or, if it's stale or superseded by a more important one, abandon it for a new mission.
+The objective should align with the where the plot needs to go long-term, and {name}'s role (less than 8 words). It must give {name} urgency and purpose. Either keep it the same or, if it's stale or superseded by a more important one, abandon it for a new mission.
 Classify any new memory into [significant], [minor] or [forgettable] (note square brackets).
 Use a brief few words, comma separated, for each attribute. Be concise and very specific.
 '''
@@ -78,4 +78,17 @@ emotions: {emotions}
 destination: {destination}
 objective: {objective}
 new_memory: [classification] - any significant or poignant thing worth remembering from the dialogue.
+'''
+
+develop-json = '''```json
+{{
+    "name": "{name}",
+    "appearance": "{appearance}",
+    "health": "{health}",
+    "emotions": "{emotions}",
+    "destination": "{destination}",
+    "objective": "{objective}",
+    "new_memory": "[classification] - record any significant or poignant thing worth remembering from the dialogue."
+}}
+```
 '''

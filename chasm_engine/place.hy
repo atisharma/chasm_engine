@@ -28,7 +28,7 @@ Functions that manage place.
 (def-fill-template place rooms rooms-system)
 (def-fill-template place guess-room)
 (def-fill-template place json new)
-(def-fill-template place lines new)
+;(def-fill-template place lines new)
 (def-fill-template place accessible)
 
 ;; Anything -> bool
@@ -43,7 +43,8 @@ Functions that manage place.
   "Is a destination accessible to the player?
   We cache this both for performance and persistence of place characteristics."
   (let [response (await (place-accessible
-                          :place place
+                          :world world
+                          :placename placename
                           :destination destination))]
     (or (similar response "yes")
         (in "yes" (.lower response)))))
@@ -53,27 +54,27 @@ Functions that manage place.
 
 (defn :async chat-gen-description [nearby-str place player messages [length "very short"]]
   "Make up a short place description from its name."
-  (trim-prose
-    (await
-      (place-description messages
-                         :world world
-                         :place-name place.name
-                         :place place
-                         :player player.name
-                         :nearby nearby-str
-                         :length length))))
-  
+  (-> (place-description
+        messages
+        :world world
+        :place-name place.name
+        :place place
+        :player player.name
+        :nearby nearby-str
+        :length length)
+    (await)
+    (trim-prose)))
 
-(defn :async [(alru-cache :maxsize 1000)] gen-description [nearby-str coords [world-str world]]
+(defn :async gen-description [nearby-str coords [world-str world]]
   "Make up a single-paragraph place description from its name."
   (let [place (get-place coords)
         response (await (place-description
                           :world world
                           :place-name place.name
                           :place place
-                          :player player.name
+                          :player "you"
                           :nearby nearby-str
-                          :length "short"))]
+                          :length "one paragraph"))]
     (.join "\n\n"
            [f"**{place.name}**"
             (-> response
@@ -82,12 +83,10 @@ Functions that manage place.
 
 (defn :async gen-json [nearby-places]
   "Make up a place from its neighbours."
-  (let [seed (choice alphanumeric)
-        context f"The story's setting is: {world}\nNearby places: {nearby-places}"
-        details (extract-json
+  (let [details (extract-json
                   (await (place-json
-                           :context context
-                           :seed seed
+                           :context f"The story's setting is: {world}\nNearby places: {nearby-places}"
+                           :seed (choice alphanumeric)
                            :place-type (choice place-types))))]
     (when (and details (:name details None))
       {"name" (capwords (re.sub r"^[Tt]he " "" (:name details)))
@@ -95,35 +94,27 @@ Functions that manage place.
        "atmosphere" (:atmosphere details None)
        "terrain" (:terrain details None)})))
 
-(defn :async gen-lines [nearby-places]
-  "Make up a place from its neighbours."
-  (let [seed (choice alphanumeric)
-        details (grep-attributes
-                  (await (place-lines
-                           :context context
-                           :seed seed
-                           :place-type (choice place-types)))
-                  place-attributes)
-        name (word-chars (:name details ""))]
-    (when (and name
-               (< (len (.split (:name details ""))) 4))
-      (| details {"name" name}))))
+#_(defn :async gen-lines [nearby-places]
+    "Make up a place from its neighbours."
+    (let [seed (choice alphanumeric)
+          details (grep-attributes
+                    (await (place-lines
+                             :context context
+                             :seed seed
+                             :place-type (choice place-types)))
+                    place-attributes)
+          name (word-chars (:name details ""))]
+      (when (and name
+                 (< (len (.split (:name details ""))) 4))
+        (| details {"name" name}))))
 
 (defn :async gen-rooms [place-dict]
   "Make up some rooms for a place."
-  (let [room-list (await (place-rooms
-                           :world world
-                           :place place-dict))]
-    (cut (->> room-list
-              (debullet)
-              (.split :sep "\n")
-              (map capwords)
-              (sieve)
-              (filter (fn [x] (not (in x "None"))))
-              ;(map word-chars)
-              ;(sieve)
-              (list))
-         3 7)))
+  (extract-json
+    (await
+      (place-rooms
+        :world world
+        :place place-dict))))
 
 ;; FIXME: it's a bit flaky -- might be better with newer models -- test
 (defn :async guess-room [messages coords]
@@ -214,7 +205,7 @@ Functions that manage place.
   "Add a description etc, item, character to a place."
   ; TODO: consider pre-generating a long list of names, to ensure uniqueness.
   (let [near-places (.join ", " (await (nearby coords :list-inaccessible True :name True)))
-        details (await (gen-lines near-places))]
+        details (await (gen-json near-places))]
     (if (and details (:name details None))
         (let [m (->> (:name details)
                      (re.search r"([\w ]+)"))
@@ -267,7 +258,9 @@ Functions that manage place.
     
 (defn rooms [coords [as-string True]]
   (let [place (get-place coords)
-        rooms-str (.join ", " place.rooms)
+        rooms-str (if place.rooms
+                    (.join ", " place.rooms)
+                    "")
         room-str (if place.rooms
                      f"{place.name} has the following rooms: {rooms-str}"
                      "")]

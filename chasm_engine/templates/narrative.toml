@@ -14,7 +14,7 @@ Be descriptive but brief, don't give instructions, don't break character. Don't 
 Consider the following context when composing the next part of the narrative.
 {context}
 Below is the playthrough up to now. Keep {player} at {here}.
-Continue the narrative, being brief.
+Continue the narrative, being brief, with at most one or two paragraphs.
 '''
 
 

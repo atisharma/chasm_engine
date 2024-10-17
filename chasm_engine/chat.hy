@@ -4,17 +4,14 @@ Chat management functions.
 
 (require hyrule.argmove [-> ->>])
 (require hyjinx.macros [prepend append])
-(require chasm-engine.instructions [deftemplate])
 
 (import hyjinx [first])
 
 (import chasm-engine [log])
 
 (import tiktoken)
-(import openai [AsyncOpenAI])
-(import openai [InternalServerError APIStatusError APITimeoutError])
-(import replicate)
-(import anthropic [AsyncAnthropic])
+(import openai)
+(import anthropic)
 
 (import tenacity [retry retry-if-exception-type stop-after-attempt wait-random-exponential])
 
@@ -22,6 +19,14 @@ Chat management functions.
 
 
 (defclass ChatError [RuntimeError])
+(setv APIErrors [openai.APIConnectionError
+                 openai.InternalServerError
+                 openai.APIStatusError
+                 openai.APITimeoutError
+                 anthropic.APIConnectionError
+                 anthropic.InternalServerError
+                 anthropic.APIStatusError
+                 anthropic.APITimeoutError])
 
 ;; Message functions
 ;; -----------------------------------------------------------------------------
@@ -122,22 +127,6 @@ Chat management functions.
 (defn flip-roles [messages]
   (dlg->msgs "assistant" "user" messages))
 
-(defn llama-format [messages
-                    [system-tag "SYSTEM:"] [assistant-tag "ASSISTANT:"] [user-tag "USER:"]
-                    [system-close-tag ""] [assistant-close-tag ""] [user-close-tag ""]]
-  "Format standard role messages to Llama 2 tags. Remove system prompts."
-  ;; this is for use with Replicate.
-  (+ (.join "\n"
-            (lfor m messages
-                  (let [role (:role m)
-                        content (:content m)]
-                    (match role
-                           "system" f"{system-tag}{content}{system-close-tag}"
-                           "assistant" f"{assistant-tag}{content}{assistant-close-tag}"
-                           "user" f"{user-tag}{content}{user-close-tag}"))))
-     f"\n{assistant-tag}"))
-    
-
 ;; Remote API calls
 ;; -----------------------------------------------------------------------------
 
@@ -146,42 +135,17 @@ Chat management functions.
 
 (defn :async _openai [params messages]
   "Openai-compatible API calls: https://platform.openai.com/docs/api-reference"
-  (let [client (AsyncOpenAI :api-key (.pop params "api_key")
-                            :base-url (.pop params "api_base"))
+  (let [client (openai.AsyncOpenAI :api-key (.pop params "api_key")
+                                   :base-url (.pop params "api_base"))
         response (await
                    (client.chat.completions.create
                      :messages (standard-roles messages)
                      #** params))]
     (. (. (first response.choices) message) content)))
 
-(defn :async _replicate [params messages]
-  "Replicate-compatible API calls: https://replicate.com/docs"
-  (.pop params "api_key" None)
-  ;(log.info f"params {params}") 
-  (let [api-token (.pop params "api_token" None)
-        model (.pop params "model")
-        system-tag (.pop params "system_tag" None)
-        assistant-tag (.pop params "assistant_tag" None)
-        user-tag (.pop params "user_tag" None)
-        system-close-tag (.pop params "system_close_tag" None)
-        assistant-close-tag (.pop params "assistant_close_tag" None)
-        user-close-tag (.pop params "user_close_tag" None)
-        client (replicate.client.Client :api-token api-token)
-        response (await (client.async_run
-                          model
-                          :stream False
-                          :input {"prompt" (llama-format (standard-roles messages)
-                                                         :system-tag system-tag :assistant-tag assistant-tag :user-tag user-tag 
-                                                         :system-close-tag system-close-tag :assistant-close-tag assistant-close-tag :user-close-tag user-close-tag) 
-                                  #** params}))]
-    ; async client sometimes returns an iterator, sometimes not, but we are not streaming (yet)
-    (if (isinstance response str)
-        response
-        (.join "" response))))
-
 (defn :async _anthropic [params messages]
   "Use the Anthropic API."
-  (let [client (AsyncAnthropic :api-key (.pop params "api_key"))
+  (let [client (anthropic.AsyncAnthropic :api-key (.pop params "api_key"))
         response (await
                    (client.messages.create
                      :messages (standard-roles messages)
@@ -191,7 +155,7 @@ Chat management functions.
 (defn :async 
   [(retry :wait (wait-random-exponential :min 0.5 :max 10)
           :stop (stop-after-attempt 6)
-          :retry (retry-if-exception-type [InternalServerError APIStatusError APITimeoutError]))]
+          :retry (retry-if-exception-type APIErrors))]
   respond [messages [provider "backend"] #** kwargs]
   "Reply to a list of messages and return just content.
   The messages should already have the standard roles.
@@ -205,7 +169,6 @@ Chat management functions.
         api-scheme (.pop params "api_scheme")]
     (match api-scheme
            "openai"    (await (_openai params messages))
-           "replicate" (await (_replicate params messages))
            "anthropic" (await (_anthropic params messages))
            _           (await (_openai params messages)))))
 

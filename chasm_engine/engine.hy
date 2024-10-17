@@ -25,7 +25,8 @@ The engine logic is expected to handle many players.
                             get-account update-account get-accounts
                             get-narrative set-narrative])
 
-(import chasm-engine.chat [OpenAIError APIError APIConnectionError ChatError
+(import chasm-engine.chat [APIErrors
+                           ChatError
                            respond
                            msg->dlg msgs->dlg
                            truncate standard-roles
@@ -35,10 +36,10 @@ The engine logic is expected to handle many players.
 (require chasm-engine.instructions [deftemplate def-fill-template])
 
 ;; is it circular import for summaries? Maybe OK as it's a macro?
-(import chasm-engine.summaries [msgs->topic text->topic msgs->points])
+(import chasm-engine.summaries [summary-msgs-topic summary-text-topic summary-msgs-points])
 
 
-(defclass EngineError [Exception])
+(defclass EngineError [RuntimeError])
 
 (setv develop-queue (set))
 
@@ -134,6 +135,7 @@ The engine logic is expected to handle many players.
                    (take? line) (info (item.fuzzy-claim (take? line) player))
                    (drop? line) (info (item.fuzzy-drop (drop? line) player))
                    (give? line) (info (item.fuzzy-give player #* (give? line)))
+
                    (.startswith line "/help") (info (help-str))
                    (.startswith line "/hint") (info (await (hint messages player line)))
                    (.startswith line "/hist") (msg "history" "The story so far...")
@@ -143,6 +145,7 @@ The engine logic is expected to handle many players.
                    ;(.startswith line "/characters") (info (or (character.describe-at player.coords :exclude player.name) "Nobody interesting here but you.")) ; for debugging
                    ;(.startswith line "/items") (info (item.describe-at player.coords)) ; for debugging
                    ;(.startswith line "/what-if") (info (await (narrate (append (user (last (.partition line))) messages) player))) ; for debugging
+
                    ;; responses as assistant
                    (look? line) (assistant (await (place.describe player :messages messages :length "short")))
                    (go? line) (assistant (await (move (append user-msg messages) player)))
@@ -150,18 +153,9 @@ The engine logic is expected to handle many players.
                    (command? line) (let [u-msg (user (get line (slice 1 None)))]
                                      (assistant (await (narrate (append u-msg messages) player))))
                    line (assistant (await (narrate (append user-msg messages) player))))
-                 (except [err [APIError]]
-                   (log.error "Server API error (APIError).")
-                   (error "Server error: call to language model failed."))
-                 (except [err [APIConnectionError]]
-                   (log.error "model API connection error (APIConnectionError).")
-                   (error "Server error: call to language model failed."))
-                 (except [err [OpenAIError]]
-                   (log.error "model API error (OpenAIError).")
-                   (error "Server error: call to language model server failed."))
                  (except [err [ChatError]]
                    (log.error "Empty reply" :exception err)
-                   (info "There was no reply."))
+                   (info f"There was no reply."))
                  (except [err [Exception]]
                    (log.error "Engine error" :exception err)
                    (error f"Engine error: {(repr err)}")))]
@@ -217,16 +211,16 @@ The engine logic is expected to handle many players.
     (let [player-name (.pop develop-queue)
           player (get-character player-name)
           messages (get-narrative player-name)
-          recent-messages (cut messages -2 None) ; just new messages
+          recent-messages (cut messages -4 None) ; just new messages
           characters-here (character.get-at player.coords)]
       (when (and player-name player messages)
         ; new plot point, record in vdb, db and recent events
         (await (plot.extract-point recent-messages player))
         ; all players get developed
         (for [c characters-here]
-          (await (character.develop-lines c recent-messages)))
-        ; Summon npcs to the player's location if < 4 here
-        (when (< (len characters-here) 4)
+          (await (character.develop-json c recent-messages)))
+        ; Summon npcs to the player's location if the player is the only one here
+        (when (= (len characters-here) 1)
           (for [c-name (await (character.get-new recent-messages player))]
             (let [c (get-character c-name)]
               (if (and c c.npc)
@@ -356,9 +350,10 @@ The engine logic is expected to handle many players.
   "Fill in player context templates with current information."
   (plot.context "player"
     :player player.name
+    :items-here (item.describe-at player.coords)
     :location (place.name player.coords)
     :locations (await (place.nearby-str player.coords))
-    :rooms (place.rooms (player.coords))
+    :rooms (place.rooms player.coords)
     :character-descriptions-here (character.describe-at player.coords :long True)
     :objective player.objective
     :inventory (item.describe-inventory player)))
@@ -394,12 +389,9 @@ The engine logic is expected to handle many players.
 
 (defn :async narrate [messages player]
   "Narrate the story, in the fictional universe."
-  (let [present-str (if (> (len character-names-here) 1)
-                        (+ (.join ", " character-names-here) f" are here at the {here.name}.")
-                        f"{character.name} is at the {here.name}.")
-        here (. (get-place player.coords) name) ; a place
-        context (jnn [(jn (plot.recall-points news))
-                      (player-context player)
+  (let [here (. (get-place player.coords) name) ; a place
+        context (jnn [(jn (plot.recall-points (plot.news)))
+                      (await (player-context player))
                       (memories player)])
         narrative-prompt (narrative "system-prompt"
                            :player player.name
@@ -411,68 +403,14 @@ The engine logic is expected to handle many players.
         (respond :provider "narrator")
         (await)
         (trim-prose)
-        (or "")))) ; what does the last line do?
+        (or "")))) ; ensure it returns a string, never None.
 
-; FIXME: not written
 (defn consume-item [messages player item]
   "The character changes the narrative and the item based on the usage.
   Rewrite the item description based on its usage.")
+  ; FIXME not written
   ; How is it being used?
   ; What happens to the item?
-
-; FIXME: This is not written for the current client-server paradigm
-
-; FIXME: makes no sense in a server context
-
-#_(defn :async converse [messages player]
-    "Have a chat with a character."
-    (let [user-msg (last messages)
-          _line (:content user-msg)
-          line (talk? _line)
-          recent (text->topic (format-msgs (msgs->dlg player.name "narrator" (cut messages -8 None))))
-          here (get-place player.coords)
-          items-here-str (item.describe-at player.coords)
-          character-names-here (lfor c (character.get-at player.coords :exclude player.name) c.name)
-          characters-here (character.describe-at player.coords :long True)
-          partner-guess (first (.split line))
-          partner (best-of character-names-here partner-guess)]
-      (if (and partner (similar partner partner-guess))
-          (let [chat-prompt (narrative "converse"
-                              :player player.name
-                              :partner partner
-                              :context f"{world}\n{(plot.news)}"
-                              :items-here-str items-here-str
-                              :here here.name)
-                dialogue []]
-            (talk-status dialogue (get-character partner))
-            (setv chat-line (.strip (rlinput f"{player.name}: " :prefill (.join " " (rest (.split line))))))
-            (log.info f"{player.name} is talking to {partner}.")
-            ; context-stuff previous chats
-            (while (and (= "assistant" (:role (last dialogue)))
-                        chat-line
-                        (not (.startswith chat-line "/q")))
-              (.append dialogue (user chat-line))
-              (let [response (await (respond [(system chat-prompt)
-                                              #* dialogue
-                                              (user line)]
-                                             :provider "narrator"))
-                    reply-msg (-> response
-                                  (trim-prose)
-                                  (assistant))]
-                (unless (or (similar "END CONVERSATION" (:content reply-msg))
-                            (similar "." (:content reply-msg)))
-                  (.append dialogue reply-msg)
-                  (print-message (msg->dlg player.name partner reply-msg) :padding #(0 3 0 0))
-                  (talk-status dialogue (get-character partner))
-                  (setv chat-line (.strip (rlinput f"{player.name}: "))))))
-            (when (> (len dialogue) 5)
-              (let [dlg (cut dialogue 2 None)]
-                (await (character.develop-lines (get-character partner) (msgs->dlg player.name partner dlg)))
-                (await (character.develop-lines player (msgs->dlg player.name partner dlg)))
-                (await (assistant (text->topic (format-msgs (msgs->dlg player.name partner dlg))))))))
-          (assistant (if partner
-                         f"Why don't you talk to {partner} instead?"
-                         f"There's nobody available with the name {partner-guess}.")))))
 
 (defn :async move-characters [messages]
   "Move characters to their targets."
@@ -507,10 +445,15 @@ The engine logic is expected to handle many players.
                          (cond (in nearby-place accessible-places) "• "
                                (= 0 (+ (abs dx) (abs dy))) "+ "
                                :else "  "))))))
-      (jnn
-          [f"***{(place.name coords)}***"
-           f"{(.join ", " (place.rooms coords :as-string False))}"
-           f"*{(await (place.nearby-str coords))}*"])))
+      (let [rooms (place.rooms coords :as-string False)]
+        (if rooms
+          (jnn
+            [f"***{(place.name coords)}***"
+             f"Rooms: {(.join ", " rooms)}"
+             f"*{(await (place.nearby-str coords))}*"])
+          (jnn
+            [f"***{(place.name coords)}***"
+             f"*{(await (place.nearby-str coords))}*"])))))
 
 (defn spy [char-name]
   (-> (get-character char-name)

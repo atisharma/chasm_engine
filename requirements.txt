@@ -2,7 +2,6 @@ hyjinx
 sqlitedict
 openai
 anthropic
-replicate
 jaro-winkler
 tiktoken
 chromadb

@@ -29,7 +29,8 @@ Functions that deal with characters.
 
 (def-fill-template character json system)
 (def-fill-template character lines system)
-(def-fill-template character develop-lines develop-system)
+;(def-fill-template character develop-lines develop-system)
+(def-fill-template character develop-json develop-system)
 (def-fill-template character score score-system)
 (def-fill-template character mentioned mentioned-system)
 
@@ -52,7 +53,7 @@ Functions that deal with characters.
                      "occupation" (:occupation loaded None)
                      "motivation" (:motivation loaded None)}]
       (let [char (or (get-character name)
-                     (await (gen-lines coords name))
+                     (await (gen-json coords name))
                      default-character)
             filtered (dfor [k v] (.items sanitised) :if v k v)
             character (Character #** (| (._asdict default-character)
@@ -83,7 +84,7 @@ Functions that deal with characters.
         place-name (if place place.name "a typical place in this world")
         details (grep-attributes
                   (await (character-lines
-                           :name name
+                           :name name-str
                            :place place-name
                            :setting f"Story setting: {world}"))
                   initial-character-attributes)
@@ -100,13 +101,13 @@ Functions that deal with characters.
 (defn :async gen-json [coords [name None]] ; -> Character or None
   "Make up some plausible character based on a name."
   (let [seed (choice alphabet)
-        name-str (or name f"the character (whose first name begins with {seed})")
+        name-str (or name f"the character's name (whose first name begins with {seed})")
         name-dict (if name {"name" name} {})
         place (get-place coords)
         place-name (if place place.name "a typical place in this world")
         details (extract-json
                   (await (character-json
-                           :name name
+                           :name name-str
                            :place place-name
                            :setting f"Story setting: {world}")))]
     (when details
@@ -150,7 +151,7 @@ Functions that deal with characters.
 
 (defn get-at [coords [exclude None]]
   "List of characters at a location, excluding player.
-This loops over all characters."
+  This loops over all characters."
   (let [cs (get-characters)]
     (if cs
       (lfor character cs
@@ -177,40 +178,62 @@ This loops over all characters."
     (log.info f"{verdict}")
     verdict))
 
-(defn :async develop-lines [character dialogue]
+#_(defn :async develop-lines [character messages]
+    "Develop a character's attributes based on the dialogue."
+    (let [nearby-places (.join ", " (await (place.nearby character.coords :name True)))
+          details (grep-lines
+                    (await
+                      (character-develop-lines
+                        messages
+                        #** (._asdict character)
+                        :world world
+                        :place-name (place.name character.coords)
+                        :nearby-places nearby-places))
+                    (append "new_memory" mutable-character-attributes))]
+      (try
+        (let [objective (word-chars (.pop details "objective" ""))
+              new-score (if (await (increment-score? character dialogue))
+                          score
+                          (inc score))]
+          (log.info f"{character.name}")
+          (.pop details "name" None) ; leave the name alone
+          (remember character (.pop details "new_memory" ""))
+          (update-character character
+                            :score new-score
+                            :objective objective
+                            #** details))
+        (except [e [Exception]]
+          ; generating to template sometimes fails 
+          (log.error "Bad character" e)
+          (log.error details)))))
+
+(defn :async develop-json [character messages]
   "Develop a character's attributes based on the dialogue."
   (let [nearby-places (.join ", " (await (place.nearby character.coords :name True)))
-        details (grep-lines
+        details (extract-json
                   (await
-                    (develop-lines
-                      dialogue
+                    (character-develop-json
+                      messages
+                      #** (._asdict character)
                       :world world
-                      :place-name place-name
-                      :nearby-places nearby-places
-                      :name character.name
-                      :appearance character.appearance
-                      :health character.health
-                      :emotions character.emotions
-                      :destination character.destination
-                      :objective character.objective
-                      :context context
-                      :template card
-                      :instruction instruction))
-                  (append "new_memory" mutable-character-attributes))
-        objective (word-chars (.pop details "objective" ""))]
+                      :place-name (place.name character.coords)
+                      :nearby-places nearby-places)))
+        ;; inserting invalid keys will fail
+        clean-details (dfor [k v] (.items details)
+                        :if (in k (._asdict default-character))
+                        k v)]
     (try
-      (let [new-score (if (similar (or character.objective "")
-                                   (:objective details "")
-                                   :threshold 0.7)
-                          character.score
-                          (inc character.score))]
+      (let [objective (word-chars (.pop clean-details "objective" ""))
+            new-score (if (await (increment-score? character messages))
+                        character.score
+                        (inc character.score))]
         (log.info f"{character.name}")
-        (.pop details "name" None) ; leave the name alone
-        (remember character (.pop details "new_memory" ""))
+        (.pop clean-details "name" None) ; leave the name alone
+        (remember character (.pop clean-details "new_memory" ""))
         (update-character character
                           :score new-score
                           :objective objective
-                          #** details))
+                          #** clean-details))
       (except [e [Exception]]
         ; generating to template sometimes fails 
         (log.error "Bad character" e)
@@ -250,6 +273,7 @@ This loops over all characters."
         disallowed (+ [player.name place-name] banned-names)
         char-list (await (character-mentioned
                            (cut messages -6 None)
+                           :world world
                            :place-name place-name))
         filtered-char-list (->> char-list
                                  (debullet)

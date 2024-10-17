@@ -18,7 +18,8 @@ The module includes the following main functions and macros:
 
 (import tomllib)
 
-(import chasm_engine.lib [ChasmEngineError config])
+(import chasm_engine.lib [ChasmEngineError
+                          config])
 
 
 (defn find-templates []
@@ -73,14 +74,14 @@ The module includes the following main functions and macros:
         docstr (.format "Applies the kwargs to template `{instruction}`\n as defined in `{template_file}.toml`.\n{system_doc}"
                         :instruction (str instruction)
                         :template-file (str template-file)
-                        :system-doc (if system-prompt
+                        :system-doc (if system-str
                                       f"\nAlso uses {system-str} as the system prompt."
                                       ""))
         fn-name (hy.models.Symbol (.join "-" [template instruction]))]
-    (if system-prompt
+    (if system-str
       `(defn :async ~fn-name [[messages []] [provider "backend"] #** kwargs]
          ~docstr
-         (import chasm_engine.chat [respond])
+         (import chasm_engine.chat [respond user system])
          (import chasm-engine.instructions [find-template complete-template])
          (let [user-msg (complete-template ~template ~instruction #** kwargs)
                system-msg (complete-template ~template (str ~system-str) #** kwargs)]
@@ -90,7 +91,7 @@ The module includes the following main functions and macros:
                            :provider provider))))
       `(defn :async ~fn-name [[messages []] [provider "backend"] #** kwargs]
          ~docstr
-         (import chasm_engine.chat [respond])
+         (import chasm_engine.chat [respond user])
          (import chasm-engine.instructions [find-template complete-template])
          (let [user-msg (complete-template ~template ~instruction #** kwargs)]
            (await (respond [#* messages

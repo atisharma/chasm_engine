@@ -129,6 +129,7 @@
 (defn debullet [markdown-list] ; -> str
   "Get the main items from a markdown list."
   (->> markdown-list
+       (re.sub r"^`+.*$" "" :flags re.M) ; remove code fence
        (re.sub r"^[\*\-\.(\[ \])\d]*" "" :flags re.M) ; remove bullet points
        (re.sub r"^([\w ']*\w).*$" r"\1" :flags re.M))) ; get main item
 

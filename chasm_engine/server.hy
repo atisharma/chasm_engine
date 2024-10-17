@@ -111,7 +111,7 @@ See documentation:
         args (:args payload [])
         kwargs (:kwargs payload [])
         client-time (:sender-time msg Inf)
-        response (cond (not (time-ok? client-time)) (zerror "STALE" f"Message stale, off by {(int (- (float client-time) (time)))}s, server was probably busy or your clock is wrong.")
+        response (cond (not (time-ok? client-time)) (zerror "STALE" f"Message stale, off by {(int (- (float client-time) (time)))}s, server was probably too busy or your clock is wrong.")
                        (verify msg) (await (handoff-request player-name client-time method #* args #** kwargs))
                        :else (zerror "SIGNATURE" "Failed to verify signature. Maybe your name/passphrase is wrong."))]
     (log.debug f"{msg}")
@@ -148,8 +148,8 @@ See documentation:
         (log.error "background-loop exception" :exception err)))))
 
 (defn :async serve []
-  (print f"Starting server at {(.isoformat (datetime.today))} for {config-file}")
-  (log.info f"Starting server for {config-file}")
+  (print f"Starting server at {(.isoformat (datetime.today))} for {config-file}: {(config "world")}")
+  (log.info f"Starting server for {config-file}: {(config "world")}")
   (let [tasks (lfor n (range N_CONCURRENT_CLIENTS) (asyncio.create-task (server-loop n)))
         bg-task (asyncio.create-task (background-loop))]
     (try
