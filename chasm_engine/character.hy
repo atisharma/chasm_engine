@@ -217,13 +217,14 @@ Functions that deal with characters.
                       #** (._asdict character)
                       :world world
                       :place-name (place.name character.coords)
-                      :nearby-places nearby-places)))
-        ;; inserting invalid keys will fail
-        clean-details (dfor [k v] (.items details)
-                        :if (in k (._asdict default-character))
-                        k v)]
+                      :nearby-places nearby-places)))]
     (try
-      (let [objective (word-chars (.pop clean-details "objective" ""))
+      ;; inserting invalid keys will fail
+      ;; guard against details being None or list
+      (let [clean-details (dfor [k v] (.items (or details {}))
+                            :if (in k (._asdict default-character))
+                            k v)
+            objective (word-chars (.pop clean-details "objective" ""))
             new-score (if (await (increment-score? character messages))
                         character.score
                         (inc character.score))]
