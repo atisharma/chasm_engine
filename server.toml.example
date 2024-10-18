@@ -3,41 +3,46 @@ world = "worlds/generic-world-name"
 
 # params passed to the model are defined in their own section below
 # context_length is the context window of the model.
-context_length = 3700
+context_length = 30000
 
 # max_tokens limits the text generation
-max_tokens = 250
+max_tokens = 300
 
 loglevel = "warning"
 
 # There is no good reason not to use the default embedding.
-# If you change embedding provider, the embedding of your previous data will be unreadable
+# If you change embedding, the embeddings of your previous data will be unreadable
 # Leaving unset will use Sentence Transformers,
 # which uses pytorch, so will use CUDA if available.
 # For local, it depends, but all-MiniLM-L6-v2 is probably sufficient (the default)
-# For OpenAI, you must use text-embedding-ada-002
-# If using ooba, the embedding model is set by environment variable when starting the ooba API.
 #embedding_provider = "OpenAI"
-#embedding = "text-embedding-ada-002"
+#embedding = "text-embedding-3-small"
+embedding = "all-MiniLM-L6-v2"
 
-# The engine will pick a provider at random for each call
+# The engine will use [providers.backend] for generating places, character, plot etc.
+# This one should be good at instruction following, but does not have to be a great writer.
+[providers.backend]
+api_base = "http://localhost:5000/v1"
+api_key = "your-api-key"
 
+# The engine will use [providers.narrator] for generating the narrative prose.
+[providers.narrator]
+api_base = "http://localhost:5001/v1"
+api_key = "your-api-key"
+
+# example local provider format using tabbyAPI
+[providers.tabbyapi]
+api_base = "http://localhost:5002/v1"
+api_key = "your-api-key"
+
+# example OpenAI-compatible (e.g. OpenAI, deepinfra) provider format
 [providers.OpenAI]
-model = "gpt-3.5-turbo"
+model = "gpt-4o-mini"
 api_base = "https://api.openai.com/v1"
-api_key = "sk-your-super-secret-key"
+api_key = "sk-your-openai-key"
 
-[providers.local]
-# Oobabooga's text-generation-webui works well using the "openai" extension
-# and setting the base url appropriately. Exllama is fast.
-# I now use llama-api.
-# Mythomax 13B is recommended.
-api_base = "http://localhost:5001"
-api_key = "N/A"
-stop = ["</s>", "Assistant:", "ASSISTANT:", "User:", "USER:"]
-
-#[providers.local2]
-# If you have enough VRAM, you can run multiple local models simultaneously
-#api_base = "http://localhost:5002"
-#api_key = "N/A"
-#stop = ["</s>", "Assistant:"]
+# example Anthropic provider format
+[providers.anthropic]
+api_scheme = "anthropic"
+api_key = "sk-your-anthropic-key"
+model = "claude-3-5-sonnet-20240620"

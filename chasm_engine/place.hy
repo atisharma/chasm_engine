@@ -41,7 +41,7 @@ Functions that manage place.
 
 (defn :async [(alru-cache :maxsize 1000)] accessible? [placename destination]
   "Is a destination accessible to the player?
-  We cache this both for performance and persistence of place characteristics."
+  We cache this both for performance and (runtime) persistence of place characteristics."
   (let [response (await (place-accessible
                           :world world
                           :placename placename

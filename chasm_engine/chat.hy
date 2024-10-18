@@ -19,6 +19,7 @@ Chat management functions.
 
 
 (defclass ChatError [RuntimeError])
+
 (setv APIErrors [openai.APIConnectionError
                  openai.InternalServerError
                  openai.APIStatusError
@@ -59,10 +60,10 @@ Chat management functions.
          (encoding.encode)
          (len))))
 
-(defn standard-roles [messages]
+(defn standard-roles [messages * [roles ["assistant" "user" "system"]]]
   "Remove messages not with standard role."
   (lfor m messages
-        :if (in (:role m) ["assistant" "user" "system"])
+        :if (in (:role m) roles)
         m))
   
 (defn truncate [messages [spare-length None]]
@@ -144,11 +145,20 @@ Chat management functions.
     (. (. (first response.choices) message) content)))
 
 (defn :async _anthropic [params messages]
-  "Use the Anthropic API."
+  "Use the Anthropic API.
+  The Anthropic Messages API requires max-tokens.
+  It also ccepts a top-level `system` parameter, not \"system\"
+  as an input message role."
   (let [client (anthropic.AsyncAnthropic :api-key (.pop params "api_key"))
+        system-prompt (jn (lfor m messages
+                            :if (= (:role m) "system")
+                            (:content m)))
+        max-tokens (.pop params "max_tokens" 500) ; requires a default max-tokens
         response (await
                    (client.messages.create
-                     :messages (standard-roles messages)
+                     :system system-prompt
+                     :messages (standard-roles messages :roles ["user" "assistant"])
+                     :max-tokens max-tokens
                      #** params))]
     (. (first response.content) text)))
 
@@ -167,10 +177,14 @@ Chat management functions.
                   "model" None}
         params (| defaults conf kwargs)
         api-scheme (.pop params "api_scheme")]
-    (match api-scheme
-           "openai"    (await (_openai params messages))
-           "anthropic" (await (_anthropic params messages))
-           _           (await (_openai params messages)))))
+    (try
+      (match api-scheme
+             "openai"    (await (_openai params messages))
+             "anthropic" (await (_anthropic params messages))
+             _           (await (_openai params messages)))
+      (except [err [Exception]]
+        (log.error f"Chat API exception ({api-scheme})" :exception err)
+        (raise (ChatError (.join " " [api-scheme (str err)])))))))
 
 (defn :async chat [messages #** kwargs] ; -> message
   "An assistant response (message) to a list of messages.
