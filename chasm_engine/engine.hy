@@ -28,7 +28,6 @@ The engine logic is expected to handle many players.
 (import chasm-engine.chat [APIErrors
                            ChatError
                            respond
-                           msg->dlg msgs->dlg
                            truncate standard-roles
                            token-length
                            msg user assistant system])
@@ -159,12 +158,12 @@ The engine logic is expected to handle many players.
                  (except [err [Exception]]
                    (log.error "Engine error" :exception err)
                    (error f"Engine error: {(repr err)}")))]
-    ; info, error do not extend narrative.
+    ; info, error do not extend narrative; just record assistant message
     (when (and result (= (:role result) "assistant"))
-      (.extend narrative [user-msg result])
-      (set-narrative (cut narrative -100 None) player-name) ; keep just last 100 messages
+      (.extend narrative [user-msg result]) ; add pair of messages
+      (set-narrative (truncate narrative) player-name)
       (await (move-characters narrative)))
-    (log.debug f"-> {result}")
+    (log.debug f"{user} -> {result}")
     ; always return the most recent state
     (await (payload narrative result player-name))))
       

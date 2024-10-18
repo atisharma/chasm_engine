@@ -67,34 +67,22 @@ Chat management functions.
         m))
   
 (defn truncate [messages [spare-length None]]
-  "Hack away non-system messages until below length.
+  "Hack away (pairs of) non-system messages until below length.
   This will fail if the system message is too long.
   Non-destructive."
-  (let [l (- (config "context_length") (or spare-length (config "max_tokens") 300))
-        ms (.copy messages)
-        roles (set (map (fn [x] (:role x)) ms))
-        too-long (> (token-length (str messages)) l)]
-    (cond
-      (not ms)
-      []
-
-      (and too-long (= (len roles) 1))
-      (raise (ChatError f"System messages too long ({(token-length (str ms))} tkns) - nothing left to cut."))
-
-      too-long
-      (do (for [m ms]
-            ;; remove the first non-system message
-            (when (!= (:role m) "system")
-              (.remove ms m)
-              (break)))
-          (truncate ms :spare-length spare-length))
-
-      ;; first non-system message must be a user message
-      (and (= "system" (:role (first ms)))
-           (= "assistant" (:role (second ms))))
-      (+ (first ms) (cut ms 2 None))
-
-      :else
+  ;; TODO simplify this, using standard-roles and recursive calls
+  (let [max-length (- (config "context_length")
+                      (or spare-length (config "max_tokens") 300))
+        system-msg (standard-roles messages :roles ["system"])
+        user-msgs (standard-roles messages :roles ["user" "assistant"])]
+    (when (> (token-length (str system-msg))
+             max-length)
+      (raise (ChatError f"System message is too long.")))
+    (if (> (token-length (str messages))
+           max-length)
+      ;; assume system message is at start and is not too long
+      ;; cut the first two user messages
+      (truncate (+ system-msg (cut user-msgs 2 None)) :spare-length spare-length)
       messages)))
 
 (defn msg->dlg [user-name assistant-name message]
