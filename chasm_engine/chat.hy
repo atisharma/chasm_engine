@@ -75,6 +75,9 @@ Chat management functions.
         roles (set (map (fn [x] (:role x)) ms))
         too-long (> (token-length (str messages)) l)]
     (cond
+      (not ms)
+      []
+
       (and too-long (= (len roles) 1))
       (raise (ChatError f"System messages too long ({(token-length (str ms))} tkns) - nothing left to cut."))
 
@@ -87,9 +90,9 @@ Chat management functions.
           (truncate ms :spare-length spare-length))
 
       ;; first non-system message must be a user message
-      (and (= "system" (:role (first messages)))
-           (= "assistant" (:role (second messages))))
-      (+ (first messages) (cut messages 2 None))
+      (and (= "system" (:role (first ms)))
+           (= "assistant" (:role (second ms))))
+      (+ (first ms) (cut ms 2 None))
 
       :else
       messages)))
