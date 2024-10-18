@@ -243,7 +243,7 @@ Functions that manage place.
   (lfor a (await (accessible coords :min-places min-places))
         a.coords))
 
-(defn :async [(retry :stop (stop-after-attempt 4))] extend-map [coords]
+(defn :async [(retry :stop (stop-after-attempt 3))] extend-map [coords]
   "Extend the map so neighbouring places exist."
   (let [cx (:x coords)
         cy (:y coords)
@@ -251,10 +251,9 @@ Functions that manage place.
                      dy [-1 0 1]
                      :setv _coords (Coords (+ cx dx) (+ cy dy))
                      (or (get-place _coords)
-                         (await (new _coords))
                          (await (new _coords))))]
     (unless (get-place coords)
-      (raise (ChasmPlaceError f"place/extend-map: unable to generate at {coords}")))))
+      (raise (ChasmPlaceError f"place/extend-map: failed to generate at {coords}")))))
     
 (defn rooms [coords [as-string True]]
   (let [place (get-place coords)

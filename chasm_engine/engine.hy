@@ -175,9 +175,10 @@ The engine logic is expected to handle many players.
   "When first starting the engine, create a few places to go."
   (for [x (range -3 4)
         y (range -3 4)]
-    (print f"Init: {x} {y}" :end "\r")
+    (print f"Init: {x} {y}  " :end "\r")
     (log.info f"Init: {x} {y}")
-    (await (place.extend-map (Coords x y)))))
+    (await (place.extend-map (Coords x y))))
+  (print f"Init done."))
 
 (defn :async extend-world [] ; -> place or None
   "Make sure the map covers all characters. Add items, new characters if necessary.
