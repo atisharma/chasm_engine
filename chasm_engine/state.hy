@@ -83,7 +83,7 @@ But you're probably using autocommit anyway."
        (.lower)))
 
 (defn get-character [char-name]
-  (log.debug f"Getting character {char-name}.")
+  ;(log.debug f"Getting character {char-name}.")
   (when char-name
     (try
       (Character #** (get characters (character-key char-name)))

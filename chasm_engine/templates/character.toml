@@ -62,10 +62,10 @@ Reply to the following query with either 'yes' or 'no' as best you can based on 
 # Develop a character's attributes based on the dialogue.
 develop-system = '''Story setting: {world}
 You will be given the transcript of a dialogue involving the character called {name}, for context, then finally, a template character card for {name}.
-Update just the values in the card to reflect any attribute describing {name} that has changed in the last *two* messages, appropriate to the given context. You should omit an original attribute if it is unchanged or doesn't really need updating.
+Update just the values in the card to reflect any attribute describing {name} that has changed in the last *two* messages, appropriate to the given context. You should omit an original attribute (both key and value) if it is unchanged or doesn't really need updating.
 Appearance may change where a character is reported to change clothes, for example etc.
 Destination should be just one of {nearby_places} or to stay at {place_name}.
-The objective should align with the where the plot needs to go long-term, and {name}'s role (less than 8 words). It must give {name} urgency and purpose. Either keep it the same or, if it's stale or superseded by a more important one, abandon it for a new mission.
+The objective should align with the where the plot needs to go long-term, and {name}'s role, and be one sentence of less than 8 words. It is used to develop the plot. Keep it the same unless it's stale or superseded by a more important one, in which case, abandon it for a new mission.
 Classify any new memory into [significant], [minor] or [forgettable] (note square brackets).
 Use a brief few words, comma separated, for each attribute. Be concise and very specific.
 '''
