@@ -206,6 +206,7 @@ Functions that manage place.
   ; TODO: consider pre-generating a long list of names, to ensure uniqueness.
   (let [near-places (.join ", " (await (nearby coords :list-inaccessible True :name True)))
         details (await (gen-json near-places))]
+    (log.debug details)
     (if (and details (:name details None))
         (let [m (->> (:name details)
                      (re.search r"([\w ]+)"))
